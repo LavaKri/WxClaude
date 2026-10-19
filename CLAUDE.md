@@ -6,7 +6,8 @@ mode (`claude -p --output-format stream-json`).
 This project is self-contained: it must not reference, import or depend on any other project.
 
 Detailed specs live in `docs/` (English). Read the relevant spec before changing a feature.
-**New session: start with `docs/roadmap.md`** (decisions taken, what is done, next milestones, open questions).
+**New session: start with `docs/roadmap.md`** (decisions taken, what is done, next milestones). Open questions and improvements
+are only in `docs/open-questions.md`; the other docs hold what is true, not questions.
 
 ## Stack
 - Python 3.14, wxPython 4.3 (native controls, for screen reader support), platformdirs.

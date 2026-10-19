@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from wxclaude.core.agents import Agent
 from wxclaude.core.errors import SessionReadError
 from wxclaude.core.messages import Message, Role, ToolUse, Usage
 
@@ -23,8 +24,24 @@ class Session:
     messages: list[Message] = field(default_factory=list)
     title: str = ""
     last_model: str | None = None
+    last_effort: str | None = None
     last_permission_mode: str | None = None
     usage: Usage = field(default_factory=Usage)
+
+    @property
+    def last_agent(self) -> Agent:
+        """The model, effort and permission mode of the last answer; what is unknown is unset.
+
+        It may be the alternative agent: it is only used for a conversation WxClaude knows
+        nothing about.
+        """
+        return Agent.from_dict(
+            {
+                "model": self.last_model,
+                "effort": self.last_effort,
+                "permission_mode": self.last_permission_mode,
+            }
+        )
 
 
 def _blocks(content: object) -> list[dict[str, object]]:
@@ -116,6 +133,7 @@ class _Builder:
     def _add_assistant(self, entry: dict[str, object], message: dict[str, object]) -> None:
         model = message.get("model")
         model = model if isinstance(model, str) and model != "<synthetic>" else None
+        effort = entry.get("effort")
         usage = _usage(message.get("usage"))
         texts: list[str] = []
         for block in _blocks(message.get("content")):
@@ -135,6 +153,8 @@ class _Builder:
                 self._pending_tools.append(tool)
         if model is not None:
             self.session.last_model = model
+            if isinstance(effort, str):
+                self.session.last_effort = effort
         text = "\n".join(texts).strip()
         if not text:
             return
@@ -151,6 +171,7 @@ class _Builder:
             role=Role.ASSISTANT,
             text=text,
             model=model,
+            effort=effort if isinstance(effort, str) and model is not None else None,
             hidden=text == _NOISE_ANSWER,
             tools=self._pending_tools,
             thinking=self._pending_thinking,

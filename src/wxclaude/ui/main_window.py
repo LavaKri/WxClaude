@@ -8,15 +8,22 @@ import wx
 from wxclaude import __version__
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
-from wxclaude.core.claude_projects import SessionInfo, list_projects, list_sessions
+from wxclaude.core.claude_projects import (
+    SessionInfo,
+    choose_conversation,
+    list_projects,
+    list_sessions,
+)
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.errors import (
     ExportError,
+    JsonStoreError,
     ScreenReaderOutputError,
     SessionReadError,
     SettingsError,
 )
 from wxclaude.core.export import export_text
+from wxclaude.core.headings import to_utf16
 from wxclaude.core.messages import Message, Role
 from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
@@ -24,12 +31,14 @@ from wxclaude.core.shortcuts import (
     INTERRUPT_COMMAND,
     NEW_CONVERSATION_COMMAND,
     OPEN_WORKSPACE_COMMAND,
+    REFRESH_CONVERSATION_COMMAND,
     RESUME_CONVERSATION_COMMAND,
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
     TASKS_COMMAND,
     ConfigurableCommand,
 )
+from wxclaude.core.workspace_state import WorkspaceState
 from wxclaude.core.workspaces import add_recent, describe, remove_missing, workspace_label
 from wxclaude.i18n import _
 from wxclaude.ui.agent_dialog import AgentDialog
@@ -54,6 +63,7 @@ class MainWindow(wx.Frame):
         super().__init__(None, title=_("WxClaude"), size=wx.Size(900, 650))
         self._settings = settings
         self._workspace: Path | None = None
+        self._state: WorkspaceState | None = None  # what is remembered about the workspace
         self._agent = settings.default_agent
         self._busy = False  # True while Claude is answering (set by the runner, later)
         self._recent_ids: dict[int, str] = {}
@@ -101,10 +111,13 @@ class MainWindow(wx.Frame):
         self._apply_screen_reader_output()
         self.Bind(wx.EVT_MENU_OPEN, self._on_menu_open)
         self.Bind(wx.EVT_CLOSE, self._on_close)
+        self._conversation.set_show_hidden(not settings.hide_system_messages)
         self._refresh_enabled()
         self._refresh_recent_menu()
         self._restore_last_session()
         wx.CallAfter(self._focus_main_field)
+        if settings.load_warning:
+            wx.CallAfter(self._show_file_warning, settings.load_warning)
 
     @property
     def conversation_id(self) -> str:
@@ -127,6 +140,7 @@ class MainWindow(wx.Frame):
         conversation_menu = wx.Menu()
         new_item = conversation_menu.Append(wx.ID_ANY, _("&New conversation"))
         resume_item = conversation_menu.Append(wx.ID_ANY, _("&Resume a conversation…"))
+        refresh_item = conversation_menu.Append(wx.ID_ANY, _("Re&fresh the conversation"))
         rename_item = conversation_menu.Append(wx.ID_ANY, _("Ren&ame the conversation"))
         branch_item = conversation_menu.Append(wx.ID_ANY, _("New conversation &branch"))
         delete_item = conversation_menu.Append(wx.ID_ANY, _("&Delete the conversation"))
@@ -134,6 +148,7 @@ class MainWindow(wx.Frame):
         self._command_items += [
             (NEW_CONVERSATION_COMMAND, new_item, _("&New conversation")),
             (RESUME_CONVERSATION_COMMAND, resume_item, _("&Resume a conversation…")),
+            (REFRESH_CONVERSATION_COMMAND, refresh_item, _("Re&fresh the conversation")),
             (INTERRUPT_COMMAND, self._interrupt_item, _("&Interrupt Claude")),
         ]
         agent_item = conversation_menu.Append(wx.ID_ANY, _("&Modify the agent…"))
@@ -147,7 +162,14 @@ class MainWindow(wx.Frame):
         # A conversation belongs to a workspace: without a workspace only the items that open
         # one are available, and without a conversation those that need one are greyed.
         self._needs_workspace = [new_item, resume_item]
-        self._needs_conversation = [export_item, rename_item, branch_item, agent_item, tasks_item]
+        self._needs_conversation = [
+            export_item,
+            rename_item,
+            branch_item,
+            agent_item,
+            tasks_item,
+            refresh_item,
+        ]
 
         help_menu = wx.Menu()
         about_item = help_menu.Append(wx.ID_ABOUT, _("&About"))
@@ -167,6 +189,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, lambda _event: self.Close(), quit_item)
         self.Bind(wx.EVT_MENU, self._on_new_conversation, new_item)
         self.Bind(wx.EVT_MENU, self._on_resume_conversation, resume_item)
+        self.Bind(wx.EVT_MENU, self._on_refresh_conversation, refresh_item)
         self.Bind(wx.EVT_MENU, self._on_rename_conversation, rename_item)
         self.Bind(wx.EVT_MENU, self._on_new_branch, branch_item)
         self.Bind(wx.EVT_MENU, self._on_choose_agent, agent_item)
@@ -212,12 +235,19 @@ class MainWindow(wx.Frame):
 
     def open_workspace(self, folder: Path) -> None:
         """Make ``folder`` the working folder; the conversation of another folder is closed."""
-        if folder != self._workspace:
+        changed = folder != self._workspace
+        if changed:
             self._close_conversation()
         self._set_workspace(folder)
+        if changed:
+            self._select_workspace_conversation(folder)
 
     def _set_workspace(self, folder: Path) -> None:
         """Make ``folder`` the working folder and remember it in the recent list."""
+        if self._state is None or folder != self._workspace:
+            self._state = WorkspaceState.load(folder, self._settings.workspaces_dir)
+            if self._state.warning:
+                self._show_file_warning(self._state.warning)
         self._workspace = folder
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
@@ -274,8 +304,7 @@ class MainWindow(wx.Frame):
     def _set_conversation(self, conversation_id: str, name: str) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
         self._conversation_id = conversation_id
-        self._settings.last_conversation_id = conversation_id
-        self._set_conversation_name(name)
+        self._set_conversation_name(name)  # also remembers the conversation
         self._refresh_enabled()
 
     def _close_conversation(self) -> None:
@@ -285,8 +314,6 @@ class MainWindow(wx.Frame):
         self._conversation_id = ""
         self._conversation_name = ""
         self._branch_count = 0
-        self._settings.last_conversation_id = ""
-        self._settings.last_conversation_name = ""
         self._update_title()
         self._refresh_enabled()
 
@@ -308,8 +335,15 @@ class MainWindow(wx.Frame):
 
     def _set_conversation_name(self, name: str) -> None:
         self._conversation_name = name
-        self._settings.last_conversation_name = name
+        self._remember_conversation()
         self._update_title()
+
+    def _remember_conversation(self) -> None:
+        """Keep what the settings remember: the current conversation of the workspace, its name
+        and its main agent."""
+        if self._conversation_id and self._state is not None:
+            self._state.remember(self._conversation_id, self._conversation_name, self._agent)
+            self._save_state()
 
     def _start_new_conversation(self, name: str) -> None:
         self._set_conversation(new_conversation_id(), name)
@@ -323,9 +357,8 @@ class MainWindow(wx.Frame):
         self.SetTitle(" - ".join(parts))
 
     def _restore_last_session(self) -> None:
-        """At startup: open the last workspace and select the conversation that was current.
+        """At startup: open the last workspace and select its conversation.
 
-        Only the identifier and the name of the conversation are restored, nothing is loaded.
         Without the option, at the first start, or if that workspace no longer exists, there is
         no workspace and no conversation: only what opens a workspace is available.
         """
@@ -336,8 +369,47 @@ class MainWindow(wx.Frame):
         if not folder.is_dir():
             return
         self._set_workspace(folder)
-        if settings.last_conversation_id and settings.last_conversation_name:
-            self._set_conversation(settings.last_conversation_id, settings.last_conversation_name)
+        self._select_workspace_conversation(folder)
+
+    def _select_workspace_conversation(self, workspace: Path) -> None:
+        """Select the remembered conversation of ``workspace``, else its most recent one.
+
+        A workspace without any conversation stays without: none is created.
+        """
+        if self._state is None:
+            return
+        sessions = list_sessions(workspace)
+        self._state.forget_missing({session.id for session in sessions})
+        chosen = choose_conversation(sessions, self._state.current_conversation)
+        if chosen is not None:
+            self._load_conversation(chosen)
+
+    def _load_conversation(self, chosen: SessionInfo) -> bool:
+        """Show the conversation ``chosen`` and make it current; False if it cannot be read."""
+        try:
+            session = read_session(chosen.path)
+        except SessionReadError as error:
+            self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            return False
+        settings = self._settings
+        record = self._state.conversations.get(chosen.id) if self._state is not None else None
+        name = (record.name if record else "") or chosen.title
+        if not name:
+            name = default_name(settings.conversation_counter)
+            settings.conversation_counter += 1
+        # A conversation WxClaude knows nothing about takes the agent of its last message as its
+        # main agent (it is remembered by _set_conversation below).
+        self._agent = (
+            record.agent.over(settings.default_agent)
+            if record
+            else session.last_agent.over(settings.default_agent)
+        )
+        self._conversation.set_messages(session.messages)
+        self._prompt.Clear()
+        self._branch_count = 0
+        self._set_conversation(chosen.id, name)
+        self._say(Announce.CONVERSATION_RESUMED, name=name)
+        return True
 
     def _on_new_conversation(self, _event: wx.CommandEvent) -> None:
         number = self._settings.conversation_counter
@@ -368,25 +440,32 @@ class MainWindow(wx.Frame):
             if dialog.ShowModal() != wx.ID_OK:
                 return
             chosen = sessions[dialog.GetSelection()]
+        if self._load_conversation(chosen):
+            self._conversation.SetFocus()
+
+    def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:
+        """Read the session file again: messages added since (by the CLI) appear."""
+        if self._workspace is None or not self._conversation_id:
+            return
+        found = [s for s in list_sessions(self._workspace) if s.id == self._conversation_id]
+        if not found:
+            self._say(Announce.CONVERSATION_NOT_SAVED)
+            return
         try:
-            session = read_session(chosen.path)
+            session = read_session(found[0].path)
         except SessionReadError as error:
             self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
             return
-        name = chosen.title
-        if not name:
-            number = self._settings.conversation_counter
-            name = default_name(number)
-            self._settings.conversation_counter = number + 1
-        self._conversation.set_messages(session.messages)
-        self._prompt.Clear()
-        self._agent = Agent.from_dict(
-            {"model": session.last_model, "permission_mode": session.last_permission_mode}
-        ).over(self._settings.default_agent)
-        self._branch_count = 0
-        self._set_conversation(chosen.id, name)
-        self._say(Announce.CONVERSATION_RESUMED, name=name)
-        self._conversation.SetFocus()
+        view = self._conversation
+        before = len(view.document.spans)
+        span = view.message_at_caret()
+        view.set_messages(session.messages)
+        if span is not None:
+            for new_span in view.document.spans:
+                if new_span.message.id == span.message.id:
+                    view.SetInsertionPoint(to_utf16(view.document.text, new_span.start))
+                    break
+        self._say(Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before))
 
     def _on_rename_conversation(self, _event: wx.CommandEvent) -> None:
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)
@@ -427,12 +506,14 @@ class MainWindow(wx.Frame):
         with AgentDialog(self, self._agent) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
                 self._agent = dialog.agent
+                self._remember_conversation()
                 self._say(Announce.AGENT_UPDATED)
 
     def _on_options(self, _event: wx.CommandEvent) -> None:
         with OptionsDialog(self, self._settings) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
                 dialog.apply(self._settings)
+                self._conversation.set_show_hidden(not self._settings.hide_system_messages)
                 self._apply_shortcuts()
                 self._apply_screen_reader_output()
                 self._save_settings()
@@ -512,6 +593,23 @@ class MainWindow(wx.Frame):
 
     def _show_error(self, message: str) -> None:
         wx.MessageBox(message, _("Error"), wx.OK | wx.ICON_ERROR, self)
+
+    def _show_file_warning(self, details: str) -> None:
+        """Tell the user that a file of the application was damaged (and what was done)."""
+        wx.MessageBox(
+            _("A configuration file could not be read.\n{details}").format(details=details),
+            _("Warning"),
+            wx.OK | wx.ICON_WARNING,
+            self,
+        )
+
+    def _save_state(self) -> None:
+        if self._state is None:
+            return
+        try:
+            self._state.save()
+        except JsonStoreError as error:
+            self._show_error(_("Cannot save the workspace data.\n{error}").format(error=error))
 
     def _save_settings(self) -> None:
         try:

@@ -1,7 +1,7 @@
 import pytest
 import wx
 
-from wxclaude.core.agents import Agent
+from wxclaude.core.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import INTERRUPT_COMMAND, ShortcutProblem
 from wxclaude.ui.options_dialog import OptionsDialog
@@ -24,15 +24,31 @@ def dialog(wx_app: wx.App, settings: Settings):
 
 def test_tabs_are_in_the_expected_order(dialog: OptionsDialog) -> None:
     notebook = dialog._notebook
-    assert notebook.GetPageCount() == 4
-    assert notebook.GetPageText(1) == "Agent"
-    assert notebook.GetPageText(2) == "Shortcuts"
+    assert notebook.GetPageCount() == 5
+    assert [notebook.GetPageText(index) for index in range(5)] == [
+        "General",
+        "Conversation",
+        "Agent",
+        "Shortcuts",
+        "Screen reader",
+    ]
+
+
+def test_the_new_options_are_checked_by_default_and_can_be_changed(
+    dialog: OptionsDialog, settings: Settings
+) -> None:
+    assert dialog._hide_system_messages.GetValue()
+    assert dialog._announce_progress.GetValue()
+    dialog._hide_system_messages.SetValue(False)
+    dialog._announce_progress.SetValue(False)
+    dialog.apply(settings)
+    assert (settings.hide_system_messages, settings.announce_progress) == (False, False)
 
 
 def test_agent_edits_survive_switching_between_the_two_agents(
     dialog: OptionsDialog, settings: Settings
 ) -> None:
-    dialog._agent_panel._model.SetSelection(3)  # opus
+    dialog._agent_panel._model.SetSelection(2)  # opus (no "not set" entry here)
     dialog._agent_list.SetSelection(1)
     dialog._on_agent_chosen(wx.CommandEvent())
     assert dialog._agent_panel.agent == settings.alternative_agent
@@ -42,6 +58,20 @@ def test_agent_edits_survive_switching_between_the_two_agents(
     dialog.apply(settings)
     assert settings.default_agent.model == "opus"
     assert settings.alternative_agent == Agent(effort="low")
+
+
+def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
+    dialog: OptionsDialog,
+) -> None:
+    panel = dialog._agent_panel
+    assert panel._model.GetCount() == 4  # haiku, sonnet, opus, fable
+    assert panel.agent == DEFAULT_AGENT
+    dialog._agent_list.SetSelection(1)
+    dialog._on_agent_chosen(wx.CommandEvent())
+    assert panel._model.GetCount() == 5
+    assert panel._model.GetString(0) == "(same as the conversation)"
+    assert panel.agent.model is None
+    assert panel.agent.effort == "low"
 
 
 def test_a_shortcut_can_be_assigned_and_applied(dialog: OptionsDialog, settings: Settings) -> None:

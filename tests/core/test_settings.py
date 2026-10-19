@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from wxclaude.core.agents import Agent
+from wxclaude.core.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.conversations import new_conversation_id
 from wxclaude.core.errors import SettingsError
 from wxclaude.core.screen_reader import default_output
@@ -24,13 +24,13 @@ def test_save_then_load_round_trip(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     settings = Settings.load(store)
     settings.language = "en"
-    settings.default_agent = Agent(model="sonnet")
+    settings.default_agent = Agent(model="opus", effort="high", permission_mode="plan")
     settings.alternative_agent = Agent(model="haiku", permission_mode="plan")
     settings.recent_workspaces = ["C:\\work\\one"]
     settings.save()
     loaded = Settings.load(store)
     assert loaded.language == "en"
-    assert loaded.default_agent == Agent(model="sonnet")
+    assert loaded.default_agent == Agent(model="opus", effort="high", permission_mode="plan")
     assert loaded.alternative_agent == Agent(model="haiku", permission_mode="plan")
     assert loaded.recent_workspaces == ["C:\\work\\one"]
 
@@ -74,22 +74,60 @@ def test_last_session_round_trip_and_invalid_values(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     settings = Settings.load(store)
     settings.reopen_last = False
-    settings.last_workspace = "C:\\work\\one"
-    settings.last_conversation_id = new_conversation_id()
-    settings.last_conversation_name = "Notes"
+    settings.last_workspace = str(tmp_path / "Work")
     settings.conversation_counter = 7
     settings.save()
     loaded = Settings.load(store)
-    assert (loaded.reopen_last, loaded.last_workspace) == (False, "C:\\work\\one")
-    assert loaded.last_conversation_id == settings.last_conversation_id
-    assert (loaded.last_conversation_name, loaded.conversation_counter) == ("Notes", 7)
+    assert (loaded.reopen_last, loaded.last_workspace) == (False, str(tmp_path / "Work"))
+    assert loaded.conversation_counter == 7
+    assert loaded.workspaces_dir == tmp_path / "workspaces"
     store.write_text(
-        '{"reopen_last": "yes", "conversation_counter": 0, "last_conversation_id": "x"}',
-        encoding="utf-8",
+        json.dumps({"reopen_last": "yes", "conversation_counter": 0}), encoding="utf-8"
     )
     invalid = Settings.load(store)
     assert (invalid.reopen_last, invalid.conversation_counter) == (True, 1)
-    assert invalid.last_conversation_id == ""
+
+
+def test_the_conversation_and_progress_options_default_to_true_and_round_trip(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert (settings.hide_system_messages, settings.announce_progress) == (True, True)
+    settings.hide_system_messages = False
+    settings.announce_progress = False
+    settings.save()
+    loaded = Settings.load(store)
+    assert (loaded.hide_system_messages, loaded.announce_progress) == (False, False)
+    store.write_text('{"hide_system_messages": "no", "announce_progress": 0}', encoding="utf-8")
+    invalid = Settings.load(store)
+    assert (invalid.hide_system_messages, invalid.announce_progress) == (True, True)
+
+
+def test_the_default_agent_is_always_complete(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text('{"default_agent": {"model": "opus"}}', encoding="utf-8")
+    assert Settings.load(store).default_agent == Agent(
+        model="opus", effort="medium", permission_mode="manual"
+    )
+    store.write_text("{}", encoding="utf-8")
+    assert Settings.load(store).default_agent == DEFAULT_AGENT
+
+
+def test_the_older_conversation_keys_are_ignored(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    old_data = {
+        "last_workspace": str(tmp_path),
+        "last_conversation_id": new_conversation_id(),
+        "workspace_conversations": {"x": new_conversation_id()},
+    }
+    store.write_text(json.dumps(old_data), encoding="utf-8")
+    loaded = Settings.load(store)
+    assert loaded.last_workspace == str(tmp_path)
+    loaded.save()
+    saved = json.loads(store.read_text(encoding="utf-8"))
+    assert "last_conversation_id" not in saved
+    assert "workspace_conversations" not in saved
 
 
 def test_screen_reader_output_round_trip_and_unknown_value(tmp_path: Path) -> None:
@@ -108,8 +146,18 @@ def test_unsupported_language_is_ignored(tmp_path: Path) -> None:
     assert Settings.load(store).language == "fr"
 
 
-def test_invalid_json_raises(tmp_path: Path) -> None:
+def test_a_damaged_file_gives_the_defaults_and_a_warning(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     store.write_text("{", encoding="utf-8")
+    settings = Settings.load(store)
+    assert settings.language == "fr"
+    assert "settings.json" in settings.load_warning
+    assert (tmp_path / "settings.json.corrupt").exists()
+
+
+def test_a_save_that_fails_raises_settings_error(tmp_path: Path) -> None:
+    blocker = tmp_path / "blocker"
+    blocker.write_text("a file, not a folder", encoding="utf-8")
+    settings = Settings.load(blocker / "settings.json")
     with pytest.raises(SettingsError):
-        Settings.load(store)
+        settings.save()

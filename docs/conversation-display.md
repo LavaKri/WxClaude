@@ -2,8 +2,8 @@
 
 Specification decided with the user. Implemented: `core/headings.py` (parser, navigation, UTF-16),
 `core/conversation_document.py` (text and message spans), `ui/conversation_view.py` (the field and
-its keys). Not implemented yet: the rebuild after each turn (needs the runner), the option that
-shows hidden messages, the context menu.
+its keys). The system messages are hidden by default (option Conversation > "Hide the system
+messages").
 
 The French wording of the titles is `Vous dites : …` and `Réponse de <model>, effort <effort>`
 (effort names: faible, moyen, élevé, très élevé, maximum); `Claude a répondu` without a model.
@@ -23,17 +23,19 @@ For each exchange:
 # Vous dites : <preview of the prompt>
 <the prompt>
 
-# Réponse de claude-sonnet-5-5, effort moyen
+## Réponse de claude-sonnet-5-5, effort moyen
 <the answer, unchanged>
 ```
 
-- The prompt is a **level 1 title**; the title of an answer is also level 1 (the model that
-  answered and the effort that was requested, since the stream does not report it; without a
-  known effort: `Réponse de <model>`; an answer without a model, for example the message that
+- The prompt is a **level 1 title**; the title of an answer is a **level 2 title** (the model that
+  answered and the effort it was generated with, read from the `effort` field of the session
+  file (the stream does not report it, so for a message just sent the requested effort is used);
+  without a known effort: `Réponse de <model>`; an answer without a model, for example the message that
   announces a usage limit: `Claude a répondu`).
-- The **headings of Claude's answer are not modified** (no level shift).
+- The **headings of Claude's answer are not modified** (no level shift), so they can be of any
+  level; `1` visits the prompts and the level 1 titles inside answers.
 - The preview is the first sentence if it has 20 words or fewer, else the first 20 words and `…`.
-- Titles are translated (`_()`); the exact wording above is to be confirmed.
+- Titles are translated (`_()`).
 - Only complete messages are appended (no partial text), so the field is never rewritten in the
   middle and the caret and the focus are not disturbed.
 
@@ -69,9 +71,10 @@ UTF-16 units, so convert between Python indexes and field positions (an emoji ta
 - After each turn, the session file written by the CLI is read again; it is the reference. If the
   messages differ from what was appended, the field is rebuilt.
 - Hidden noise (the answer "No response requested.", the prompt "continue") is not displayed unless
-  an option asks for it.
+  the option "Hide the system messages" is cleared; the view keeps all the messages and rebuilds
+  the text when the option changes, the caret staying on its message.
 
-## Later: other information in dialogs
+## Other information in dialogs
 
 The message model keeps what is not displayed (tools used, tool results, thinking, usage). In the
 body of a message the context menu (Applications key, Shift+F10) offers an item to show it in a
@@ -80,8 +83,10 @@ parser at the caret position.
 
 ## Progress and usage
 
-- **Progress** goes to the status bar (not focusable) and is announced through UI Automation;
-  a configurable shortcut reads it again. Two status fields: the action, the current task.
-- **Usage of Claude**: a dialog in the Tools menu (subscription gauges, tokens of the last turn and
-  of the session, cost). Data arrives with the answers.
+- **Progress** goes to the status bar (not focusable) and is announced through UI Automation
+  (option Screen reader > "Announce the progress of Claude"); there is no shortcut of ours to read
+  it again, screen readers have their own for the status bar. Two status fields: the action, the
+  current task.
+- **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U` (subscription gauges, tokens of
+  the last turn and of the session, cost). Data arrives with the answers.
 - **Errors** are not part of the conversation text: status bar and a dialog.

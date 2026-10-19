@@ -61,6 +61,7 @@ class OptionsDialog(wx.Dialog):
         )
         self._notebook = wx.Notebook(self, name=_("Options"))
         self._notebook.AddPage(self._general_page(settings), _("General"))
+        self._notebook.AddPage(self._conversation_page(settings), _("Conversation"))
         self._notebook.AddPage(self._agent_page(settings), _("Agent"))
         self._notebook.AddPage(self._shortcuts_page(settings), _("Shortcuts"))
         self._notebook.AddPage(self._screen_reader_page(settings), _("Screen reader"))
@@ -97,12 +98,23 @@ class OptionsDialog(wx.Dialog):
         page.SetSizer(sizer)
         return page
 
+    # Conversation ----------------------------------------------------------------------------
+
+    def _conversation_page(self, settings: Settings) -> wx.Panel:
+        page = wx.Panel(self._notebook)
+        self._hide_system_messages = wx.CheckBox(page, label=_("&Hide the system messages"))
+        self._hide_system_messages.SetValue(settings.hide_system_messages)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self._hide_system_messages, 0, wx.ALL, 6)
+        page.SetSizer(sizer)
+        return page
+
     # Agent -----------------------------------------------------------------------------------
 
     def _agent_page(self, settings: Settings) -> wx.Panel:
         page = wx.Panel(self._notebook)
         self._agents = [settings.default_agent, settings.alternative_agent]
-        self._unset_labels = [_("(not set: Claude Code setting)"), _("(same as the conversation)")]
+        self._unset_labels = [None, _("(same as the conversation)")]
         self._agent_index = 0
 
         list_label = wx.StaticText(page, label=_("&Agent"))
@@ -255,9 +267,12 @@ class OptionsDialog(wx.Dialog):
         )
         current = output_named(settings.screen_reader_output) or default_output()
         self.output_choice.SetSelection(self._outputs.index(current))
+        self._announce_progress = wx.CheckBox(page, label=_("Announce the &progress of Claude"))
+        self._announce_progress.SetValue(settings.announce_progress)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(self.output_choice, 0, wx.EXPAND | wx.ALL, 8)
+        sizer.Add(self._announce_progress, 0, wx.ALL, 8)
         page.SetSizer(sizer)
         return page
 
@@ -267,6 +282,8 @@ class OptionsDialog(wx.Dialog):
         """Store the values chosen in the dialog into ``settings``."""
         settings.language = SUPPORTED_LANGUAGES[self._language.GetSelection()]
         settings.reopen_last = self._reopen_last.GetValue()
+        settings.hide_system_messages = self._hide_system_messages.GetValue()
+        settings.announce_progress = self._announce_progress.GetValue()
         self._agents[self._agent_index] = self._agent_panel.agent
         settings.default_agent, settings.alternative_agent = self._agents
         for command in CONFIGURABLE_COMMANDS:

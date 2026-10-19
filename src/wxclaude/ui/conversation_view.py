@@ -36,6 +36,7 @@ class ConversationView(wx.TextCtrl):
         )
         self._say = say
         self._document = ConversationDocument()
+        self._messages: list[Message] = []  # all of them, the hidden ones too
         self.Bind(wx.EVT_KEY_DOWN, self._on_key)
 
     @property
@@ -44,15 +45,37 @@ class ConversationView(wx.TextCtrl):
 
     def set_messages(self, messages: list[Message]) -> None:
         """Replace everything (new conversation, history loaded, field rebuilt)."""
-        self.ChangeValue(self._document.rebuild(messages))
+        self._messages = list(messages)
+        self.ChangeValue(self._document.rebuild(self._messages))
         self.SetInsertionPoint(0)
 
     def clear_messages(self) -> None:
+        self._messages = []
         self._document.clear()
         self.ChangeValue("")
 
+    def set_show_hidden(self, show: bool) -> None:
+        """Show or hide the system messages (noise); the caret stays on its message."""
+        if show == self._document.show_hidden:
+            return
+        span = self.message_at_caret()
+        self._document.show_hidden = show
+        self.ChangeValue(self._document.rebuild(self._messages))
+        position = 0
+        if span is not None:
+            position = next(
+                (
+                    to_utf16(self._document.text, new.start)
+                    for new in self._document.spans
+                    if new.message.id == span.message.id
+                ),
+                0,
+            )
+        self.SetInsertionPoint(position)
+
     def append_message(self, message: Message) -> None:
         """Add a complete message at the end; the caret stays where the user left it."""
+        self._messages.append(message)
         added = self._document.append(message)
         if not added:
             return

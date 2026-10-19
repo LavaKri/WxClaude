@@ -12,7 +12,7 @@ class AgentDialog(wx.Dialog):
 
     def __init__(self, parent: wx.Window, agent: Agent) -> None:
         super().__init__(parent, title=_("Modify the agent"))
-        self._panel = AgentPanel(self, agent, _("(not set: Claude Code setting)"))
+        self._panel = AgentPanel(self, agent, None)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self._panel, 1, wx.EXPAND | wx.ALL, 6)
         sizer.Add(self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL), 0, wx.EXPAND | wx.ALL, 6)

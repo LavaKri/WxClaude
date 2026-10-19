@@ -24,8 +24,10 @@ known about the CLI is in `claude-cli.md`.
 
 | Module | Role |
 |---|---|
-| `agents.py` | `Agent`: model, effort and permission mode (each optional); `over()` layers one on another. Models are listed by ascending power. |
+| `agents.py` | `Agent`: model, effort and permission mode (each optional); `over()` layers one on another; `DEFAULT_AGENT` is complete. Models are listed by ascending power. |
 | `settings.py` | `Settings`: JSON file in the user configuration folder; only invalid or unknown values are dropped. |
+| `jsonstore.py` | Reading and writing the JSON files: atomic write, `.bak` backup, damaged file set aside (`.corrupt`). |
+| `workspace_state.py` | `WorkspaceState`: per workspace, the current conversation and the name and main agent of each conversation (`workspaces/<hash>.json`). |
 | `shortcuts.py` | Configurable commands, shortcut notation (`Ctrl+Shift+O`), rules and conflicts. |
 | `workspaces.py` | Recent workspaces (missing folders are dropped) and how a workspace is listed. |
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
@@ -47,14 +49,23 @@ known about the CLI is in `claude-cli.md`.
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |
+| `single_instance.py` | Only one WxClaude per user (`wx.SingleInstanceChecker`). |
 
 ## Workspaces and conversations
 
 A conversation always belongs to a workspace (the working folder of the CLI). Without a workspace
-there is no conversation; opening another workspace closes the current conversation. The
-identifier of the current conversation and of the last workspace are saved, and at startup (option
-"At startup, open the last workspace") the workspace is opened and that conversation is only
-selected, nothing is loaded.
+there is no conversation. A file per workspace remembers its current conversation, and per
+conversation its name and its main agent (`docs/settings.md`).
+
+Whenever a workspace is opened (at startup, with the option "At startup, open the last workspace",
+or later) a conversation is selected and loaded: the remembered one if its session file still
+exists, else the most recent one (by its last message). A workspace without any session gets no
+conversation, none is created. Opening the workspace that is already open changes nothing.
+
+The agent of a conversation is always complete: the remembered one (over the default agent for
+what it leaves unset). A conversation unknown to WxClaude takes the model, the effort and the permission mode of
+its last message as its main agent, and is remembered from then on. Refreshing the conversation
+(F5) reads its session file again and never touches the agent.
 
 ## Translations
 

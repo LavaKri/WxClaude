@@ -2,6 +2,7 @@
 
 Start here in a new session. Read `CLAUDE.md` (rules), then this file, then the spec of the feature
 you work on (`conversation-display.md`, `claude-cli.md`, `interface.md`, `settings.md`).
+What is still to decide, to verify or to improve is in `open-questions.md`.
 
 ## Decisions taken
 
@@ -12,19 +13,33 @@ you work on (`conversation-display.md`, `claude-cli.md`, `interface.md`, `settin
 - **Display**: a read-only text field holding the conversation as a Markdown document, navigation
   by headings (see `conversation-display.md`). First version: only the user's prompts and Claude's
   answers; everything else (tools, tables, links) later, in dialogs.
-- **Progress**: status bar (not focusable) + UI Automation announcements + a shortcut to read it.
-- **Agents** replace the word "profile": model, effort, permission mode. An alternative agent is
+- **Progress**: status bar (not focusable) + UI Automation announcements; no shortcut of ours to
+  read it (screen readers have one for the status bar).
+- **Agents** replace the word "profile": model, effort, permission mode, always all three
+  explicit for a conversation (nothing is left to the CLI settings). An alternative agent is
   used by Shift+Enter. Changing the model loses the prompt cache, the rest does not
   (`claude-cli.md`).
 - **A conversation always belongs to a workspace** and has an identifier (the CLI session id,
-  chosen by the application with `--session-id`). At startup the last workspace is opened and its
-  conversation only selected.
+  chosen by the application with `--session-id`). Opening a workspace (also at startup, for
+  the last one) selects and loads its remembered conversation, else its most recent one, else none
+  (never created automatically).
+- **One process per message** (`claude -p` is started for each prompt), not one long-lived
+  process.
+- **One instance** of WxClaude per user.
+- **Names of conversations** are kept by WxClaude only; the session files of the CLI are never
+  written by WxClaude.
+- **Errors from Claude** (CLI not found or not logged in, process failure, API error such as an
+  overload or a reached limit, result with an error) go to the status bar and to a dialog, never
+  into the conversation text.
+- **Titles**: prompts are level 1, answers level 2 (`conversation-display.md`); the wording is kept.
+- **Usage dialog**: `Ctrl+Shift+U`.
+- **No migration** of older settings files: only the keys described in `settings.md` are read.
 - **No subagents** when working on this project (see `CLAUDE.md`).
 - Nothing in the code or docs may refer to another project.
 
 ## Done
 
-Skeleton, menus, options (General, Agent, Shortcuts, Screen reader), configurable shortcuts,
+Skeleton, menus, options (General, Conversation, Agent, Shortcuts, Screen reader), configurable shortcuts,
 agents, conversation names, workspaces (recent, from Claude projects, last one reopened),
 UI Automation announcements, task list dialog (empty), documentation. See `interface.md`.
 Milestone 1 (below): `core/messages.py` (`Message`, `ToolUse`, `Usage`) and
@@ -38,15 +53,16 @@ Claude is **not launched yet**: sending a prompt only echoes it.
      tools, tool results, thinking, usage).
    - Reader of the session files (`~/.claude/projects/<folder>/<id>.jsonl`): only prompts and
      answers for now, duplicates removed, noise flagged hidden, title, token usage, last model
-     and permission mode (the effort is not in the files).
-   - Not done yet: listing the sessions of a workspace (needed by "Resume a conversation").
+     and permission mode; the effort of each answer is the `effort` field of its entry.
 2. ~~**Display**~~ (done, to check by hand with NVDA and JAWS)
    - Markdown heading parser (markdown-it-py, CommonMark), UTF-16 position conversion,
      navigation (T, Shift+T, 1 to 6, Shift+digit), announcement "title text, title N".
    - `ConversationView` in the main window; message spans for context menus and copy.
-   - "Resume a conversation" (`list_sessions` in `core/claude_projects.py`, choice dialog, the
-     history is loaded in the view; the agent takes the last model and permission mode of the file).
-   - Still to do: the context menu on a message, the option showing hidden messages.
+   - "Resume a conversation" (`list_sessions` in `core/claude_projects.py`, sorted by last
+     message, choice dialog, the history is loaded in the view). Opening a workspace selects its
+     remembered conversation, else the most recent, else none. A file per workspace remembers
+     the main agent and the name of each conversation (`settings.md`). Refresh the conversation
+     (F5). The option "Hide the system messages" shows or hides the noise of the session.
 3. **Runner**
    - `claude -p --output-format stream-json` from the agent (`--model`, `--effort`,
      `--permission-mode`), `--session-id` for the first message, `--resume` afterwards.
@@ -59,14 +75,3 @@ Claude is **not launched yet**: sending a prompt only echoes it.
    usage** dialog (Tools menu). Task list filled from `~/.claude/tasks/<id>/*.json`.
 6. **Rename, branch (`--fork-session`), delete**, export.
 7. **Packaging** (PyInstaller) and manual checks with NVDA and JAWS.
-
-## Open questions
-
-- Where is the name of a conversation kept: in settings (now) or written in the session file
-  (a `custom-title` line, so Claude Code shows it too)?
-- Errors from Claude: status bar plus a dialog, outside the conversation text? (proposed)
-- Default shortcuts to read the progress and to open the Claude usage dialog.
-- Do UI Automation notifications reach JAWS (they reach NVDA and Narrator)? Test, with a
-  focusable progress field as fallback.
-- Reading the usage gauge without sending a message (not found yet).
-- Shall "At startup" also be able to reopen without selecting the conversation?

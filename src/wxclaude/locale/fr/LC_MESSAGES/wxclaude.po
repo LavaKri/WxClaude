@@ -460,3 +460,33 @@ msgstr "Choisissez un projet :"
 
 msgid "Open from Claude projects"
 msgstr "Ouvrir depuis les projets Claude"
+
+msgid "Re&fresh the conversation"
+msgstr "&Actualiser la conversation"
+
+msgid "Refresh the conversation"
+msgstr "Actualiser la conversation"
+
+msgid "Conversation refreshed. New messages: {count}."
+msgstr "Conversation actualisée. Nouveaux messages : {count}."
+
+msgid "This conversation has no history yet."
+msgstr "Cette conversation n'a pas encore d'historique."
+
+msgid "A configuration file could not be read.\n{details}"
+msgstr "Un fichier de configuration n'a pas pu être lu.\n{details}"
+
+msgid "Warning"
+msgstr "Avertissement"
+
+msgid "Cannot save the workspace data.\n{error}"
+msgstr "Impossible d'enregistrer les données de l'espace de travail.\n{error}"
+
+msgid "&Hide the system messages"
+msgstr "&Masquer les messages système"
+
+msgid "Announce the &progress of Claude"
+msgstr "Annoncer la &progression de Claude"
+
+msgid "WxClaude is already running."
+msgstr "WxClaude est déjà en cours d'exécution."

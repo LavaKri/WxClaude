@@ -1,10 +1,16 @@
 import json
 import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
-from wxclaude.core.claude_projects import list_projects, list_sessions
+from wxclaude.core.claude_projects import (
+    SessionInfo,
+    choose_conversation,
+    list_projects,
+    list_sessions,
+)
 from wxclaude.core.conversations import new_conversation_id
 
 pytestmark = pytest.mark.unit
@@ -82,3 +88,43 @@ def test_sessions_of_a_workspace_with_their_titles(tmp_path: Path) -> None:
 
 def test_sessions_of_an_unknown_workspace_or_folder(tmp_path: Path) -> None:
     assert list_sessions(tmp_path, tmp_path / "nothing") == []
+
+
+def _message_line(when: datetime) -> dict[str, object]:
+    return {"type": "assistant", "timestamp": when.isoformat(), "message": {"content": []}}
+
+
+def test_sessions_are_sorted_by_their_last_message_not_by_file_date(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    projects = tmp_path / "projects"
+    now = datetime.now(UTC)
+    renamed_later, talked_later = new_conversation_id(), new_conversation_id()
+    first = _conversation_file(
+        projects / "C--work",
+        renamed_later,
+        work,
+        _message_line(now - timedelta(hours=2)),
+        {"type": "custom-title", "customTitle": "Renamed"},  # the file is written last
+    )
+    second = _conversation_file(
+        projects / "C--work", talked_later, work, _message_line(now - timedelta(hours=1))
+    )
+    os.utime(second, (second.stat().st_mtime - 1000,) * 2)
+    assert first.stat().st_mtime > second.stat().st_mtime
+    sessions = list_sessions(work, projects)
+    assert [s.id for s in sessions] == [talked_later, renamed_later]
+    assert sessions[1].last_used == pytest.approx((now - timedelta(hours=2)).timestamp())
+
+
+def test_the_remembered_conversation_is_chosen_else_the_most_recent_else_none(
+    tmp_path: Path,
+) -> None:
+    def info(name: str, used: float) -> SessionInfo:
+        return SessionInfo(name, tmp_path / name, "", used)
+
+    recent, old = info("recent", 2.0), info("old", 1.0)
+    assert choose_conversation([recent, old], "old") is old
+    assert choose_conversation([recent, old], "gone") is recent
+    assert choose_conversation([recent, old], "") is recent
+    assert choose_conversation([], "old") is None

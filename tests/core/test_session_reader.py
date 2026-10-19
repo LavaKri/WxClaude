@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from wxclaude.core.agents import Agent
 from wxclaude.core.errors import SessionReadError
 from wxclaude.core.messages import Role
 from wxclaude.core.session_reader import read_session
@@ -134,3 +135,26 @@ def test_last_permission_mode_and_broken_lines(tmp_path: Path) -> None:
 def test_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(SessionReadError):
         read_session(tmp_path / "missing.jsonl")
+
+
+def test_the_effort_of_an_answer_is_read_from_its_entry(tmp_path: Path) -> None:
+    answer = _assistant([_text("Hi")])
+    answer["effort"] = "high"
+    synthetic = _assistant([_text("Limit")], "b", model="<synthetic>")
+    synthetic["effort"] = "high"
+    session = read_session(_write(tmp_path / "s.jsonl", [_user("Hello"), answer, synthetic]))
+    assert [m.effort for m in session.messages] == [None, "high", None]
+
+
+def test_the_last_agent_is_the_one_of_the_last_answer(tmp_path: Path) -> None:
+    first = _assistant([_text("a")], "a1", model="claude-haiku-4-5")
+    first["effort"] = "low"
+    last = _assistant([_text("b")], "a2", model="claude-opus-5-5")
+    last["effort"] = "high"
+    session = read_session(
+        _write(tmp_path / "s.jsonl", [_user("x", permissionMode="plan"), first, last])
+    )
+    assert session.last_agent == Agent(
+        model="claude-opus-5-5", effort="high", permission_mode="plan"
+    )
+    assert read_session(_write(tmp_path / "t.jsonl", [_user("x")])).last_agent == Agent()

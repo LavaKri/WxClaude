@@ -48,11 +48,13 @@ def _press(view: ConversationView, key: str, *, shift: bool = False) -> None:
 def test_t_goes_to_the_next_heading_and_announces_it(view: ConversationView, said: _Said) -> None:
     _press(view, "T")
     assert view.GetInsertionPoint() == len("# You say: Hello\nHello\n\n")
-    assert said.calls[-1] == (Announce.HEADING, {"title": "Answer from m", "level": 1})
+    assert said.calls[-1] == (Announce.HEADING, {"title": "Answer from m", "level": 2})
 
 
 def test_digit_goes_to_the_next_heading_of_that_level(view: ConversationView, said: _Said) -> None:
-    _press(view, "2")
+    _press(view, "1")
+    assert said.calls[-1] == (Announce.HEADING, {"title": "You say: Again 😀", "level": 1})
+    _press(view, "2", shift=True)
     assert said.calls[-1] == (Announce.HEADING, {"title": "Part", "level": 2})
 
 
@@ -84,3 +86,15 @@ def test_the_message_under_the_caret_is_found(view: ConversationView) -> None:
     span = view.message_at_caret()
     assert span is not None
     assert span.message.id == "1"
+
+
+def test_system_messages_can_be_shown_and_hidden_again(view: ConversationView) -> None:
+    view.append_message(Message("5", Role.USER, "continue", hidden=True))
+    assert "continue" not in view.GetValue()
+    view.SetInsertionPoint(view.document.spans[1].start)  # in the answer
+    view.set_show_hidden(True)
+    assert "# You say: continue" in view.GetValue()
+    assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]
+    view.set_show_hidden(False)
+    assert "continue" not in view.GetValue()
+    assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]

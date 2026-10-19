@@ -13,6 +13,10 @@ class ExportError(WxClaudeError):
     """A conversation cannot be exported."""
 
 
+class JsonStoreError(WxClaudeError):
+    """A JSON file of the application cannot be written."""
+
+
 class SessionReadError(WxClaudeError):
     """A session file of the Claude Code CLI cannot be read."""
 

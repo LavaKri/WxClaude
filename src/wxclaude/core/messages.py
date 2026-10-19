@@ -40,9 +40,10 @@ class ToolUse:
 class Message:
     """A prompt or an answer.
 
-    ``model`` is None for a prompt and for answers without a model (synthetic ones). ``effort`` is
-    never in the session files: it is only known for messages sent during this run. A ``hidden``
-    message is noise that is not displayed unless an option asks for it.
+    ``model`` is None for a prompt and for answers without a model (synthetic ones). ``effort``
+    is the one the answer was generated with (the ``effort`` field of the assistant entries of the
+    session file; the stream does not report it). A ``hidden`` message is noise that is not
+    displayed unless an option asks for it.
     """
 
     id: str

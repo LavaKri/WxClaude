@@ -79,6 +79,9 @@ NEW_CONVERSATION_COMMAND = ConfigurableCommand("conversation.new", N_("New conve
 RESUME_CONVERSATION_COMMAND = ConfigurableCommand(
     "conversation.resume", N_("Resume a conversation"), "Ctrl+Shift+O"
 )
+REFRESH_CONVERSATION_COMMAND = ConfigurableCommand(
+    "conversation.refresh", N_("Refresh the conversation"), "F5"
+)
 INTERRUPT_COMMAND = ConfigurableCommand("claude.interrupt", N_("Interrupt Claude"), "Ctrl+Shift+I")
 #: The same shortcut as the task list of the Claude Code CLI.
 TASKS_COMMAND = ConfigurableCommand("tasks.list", N_("Task list"), "Ctrl+T")
@@ -92,6 +95,7 @@ CONFIGURABLE_COMMANDS = (
     OPEN_WORKSPACE_COMMAND,
     NEW_CONVERSATION_COMMAND,
     RESUME_CONVERSATION_COMMAND,
+    REFRESH_CONVERSATION_COMMAND,
     INTERRUPT_COMMAND,
     TASKS_COMMAND,
     SEND_COMMAND,

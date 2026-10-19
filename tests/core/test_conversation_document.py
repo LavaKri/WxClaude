@@ -35,14 +35,14 @@ def test_titles() -> None:
     assert message_title(_answer("x", effort="xhigh")) == "Answer from m, effort very high"
 
 
-def test_every_message_is_a_level_one_heading() -> None:
+def test_prompts_are_level_one_and_answers_level_two_headings() -> None:
     document = ConversationDocument()
     document.append(_prompt("Hi"))
     document.append(_answer("# Inside\ntext"))
     headings = parse_headings(document.text)
     assert [(h.level, h.title) for h in headings] == [
         (1, "You say: Hi"),
-        (1, "Answer from m"),
+        (2, "Answer from m"),
         (1, "Inside"),
     ]
 
@@ -52,7 +52,7 @@ def test_append_returns_only_the_added_text() -> None:
     first = document.append(_prompt("Hi"))
     second = document.append(_answer("Yo"))
     assert document.text == first + second
-    assert second == "# Answer from m\nYo\n\n"
+    assert second == "## Answer from m\nYo\n\n"
 
 
 def test_hidden_messages_are_skipped_unless_asked() -> None:
@@ -81,5 +81,5 @@ def test_rebuild_replaces_everything() -> None:
     document = ConversationDocument()
     document.append(_prompt("old"))
     text = document.rebuild([_answer("new")])
-    assert text == document.text == "# Answer from m\nnew\n\n"
+    assert text == document.text == "## Answer from m\nnew\n\n"
     assert len(document.spans) == 1

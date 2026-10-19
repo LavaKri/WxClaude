@@ -7,7 +7,9 @@ verified yet for the current interface).
   defined initial focus.
 - A label is created right before its control so that screen readers pair them.
 - No unexpected focus change; the conversation view never takes the focus by itself. At startup the
-  focus is on the prompt if there is a conversation, otherwise on the conversation view.
+  focus is on the prompt if there is a conversation, otherwise on the conversation view. Loading
+  a conversation by itself (startup, workspace change) does not move the focus; the menu item
+  "Resume a conversation" puts it on the conversation view, to read the history.
 - Native controls first. Read-only fields are multi-line text fields, which the Tab key reaches.
 - Information is never given by colour alone.
 - Items that cannot be used are greyed rather than hidden or silent.

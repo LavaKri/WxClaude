@@ -55,9 +55,15 @@ def message_title(message: Message) -> str:
     return _("Answer from {model}, effort {effort}").format(model=message.model, effort=effort)
 
 
+def title_level(message: Message) -> int:
+    """The heading level of the title of ``message``: 1 for a prompt, 2 for an answer."""
+    return 1 if message.role is Role.USER else 2
+
+
 def render_message(message: Message) -> str:
     """The text a message adds to the document: its title, its text and a blank line."""
-    return f"# {message_title(message)}\n{message.text}\n\n"
+    hashes = "#" * title_level(message)
+    return f"{hashes} {message_title(message)}\n{message.text}\n\n"
 
 
 class ConversationDocument:

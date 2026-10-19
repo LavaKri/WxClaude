@@ -51,3 +51,8 @@ class Agent:
             effort=pick("effort", EFFORTS),
             permission_mode=pick("permission_mode", PERMISSION_MODES),
         )
+
+
+#: The agent of a new conversation until the user chooses another: every field is set, so Claude is
+#: never started with a model, an effort or a permission mode chosen by the CLI settings.
+DEFAULT_AGENT = Agent(model="sonnet", effort="medium", permission_mode="manual")

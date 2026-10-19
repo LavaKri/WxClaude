@@ -46,10 +46,15 @@ def permission_levels_lines() -> list[str]:
 
 
 class AgentPanel(wx.Panel):
-    """Three labelled fields. A field left on its "unset" entry means "not specified"."""
+    """Three labelled fields.
+
+    With ``unset_label`` each field starts with that entry, meaning "not specified" (the
+    alternative agent takes it from the conversation). Without it every field holds a value: the
+    agent of a conversation is always complete.
+    """
 
     def __init__(
-        self, parent: wx.Window, agent: Agent, unset_label: str, *, mnemonics: bool = True
+        self, parent: wx.Window, agent: Agent, unset_label: str | None, *, mnemonics: bool = True
     ) -> None:
         super().__init__(parent)
         model_text = _("&Model") if mnemonics else _("Model")
@@ -60,50 +65,52 @@ class AgentPanel(wx.Panel):
         grid = wx.FlexGridSizer(2, 6, 6)
         grid.AddGrowableCol(1)
         grid.Add(wx.StaticText(self, label=model_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._model = wx.Choice(self, choices=[unset_label, *MODELS], name=_("Model"))
-        self._model.SetSelection(self._index(MODELS, agent.model))
+        self._model = wx.Choice(self, name=_("Model"))
         grid.Add(self._model, 1, wx.EXPAND)
-
         grid.Add(wx.StaticText(self, label=effort_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._effort = wx.Choice(
-            self,
-            choices=[unset_label, *(_(_EFFORT_LABELS[value]) for value in EFFORTS)],
-            name=_("Effort"),
-        )
-        self._effort.SetSelection(self._index(EFFORTS, agent.effort))
+        self._effort = wx.Choice(self, name=_("Effort"))
         grid.Add(self._effort, 1, wx.EXPAND)
-
         grid.Add(wx.StaticText(self, label=permission_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._permission = wx.Choice(
-            self,
-            choices=[unset_label, *(_(_PERMISSION_LABELS[value]) for value in PERMISSION_MODES)],
-            name=_("Permission mode"),
-        )
-        self._permission.SetSelection(self._index(PERMISSION_MODES, agent.permission_mode))
+        self._permission = wx.Choice(self, name=_("Permission mode"))
         grid.Add(self._permission, 1, wx.EXPAND)
+        self._unset = unset_label is not None
+        self.set_agent(agent, unset_label)
 
         outer = wx.BoxSizer(wx.VERTICAL)
         outer.Add(grid, 1, wx.EXPAND | wx.ALL, 6)
         self.SetSizer(outer)
 
-    def set_agent(self, agent: Agent, unset_label: str) -> None:
+    def set_agent(self, agent: Agent, unset_label: str | None) -> None:
         """Show ``agent`` in the fields; ``unset_label`` is the entry meaning "not specified"."""
-        for choice, values, value in (
-            (self._model, MODELS, agent.model),
-            (self._effort, EFFORTS, agent.effort),
-            (self._permission, PERMISSION_MODES, agent.permission_mode),
+        self._unset = unset_label is not None
+        for choice, values, labels, value in (
+            (self._model, MODELS, MODELS, agent.model),
+            (
+                self._effort,
+                EFFORTS,
+                tuple(_(_EFFORT_LABELS[name]) for name in EFFORTS),
+                agent.effort,
+            ),
+            (
+                self._permission,
+                PERMISSION_MODES,
+                tuple(_(_PERMISSION_LABELS[name]) for name in PERMISSION_MODES),
+                agent.permission_mode,
+            ),
         ):
-            choice.SetString(0, unset_label)
+            choice.Clear()
+            if unset_label is not None:
+                choice.Append(unset_label)
+            choice.Append(list(labels))
             choice.SetSelection(self._index(values, value))
 
-    @staticmethod
-    def _index(values: tuple[str, ...], value: str | None) -> int:
-        return values.index(value) + 1 if value in values else 0
+    def _index(self, values: tuple[str, ...], value: str | None) -> int:
+        offset = 1 if self._unset else 0
+        return values.index(value) + offset if value in values else 0
 
-    @staticmethod
-    def _pick(choice: wx.Choice, values: tuple[str, ...]) -> str | None:
-        index = choice.GetSelection()
-        return values[index - 1] if index > 0 else None
+    def _pick(self, choice: wx.Choice, values: tuple[str, ...]) -> str | None:
+        index = choice.GetSelection() - (1 if self._unset else 0)
+        return values[index] if index >= 0 else None
 
     def focus_first(self) -> None:
         """Give the focus to the first field."""

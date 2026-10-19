@@ -1,14 +1,13 @@
 """User settings, stored as JSON in the user configuration folder."""
 
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from platformdirs import user_config_dir
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.conversations import is_conversation_id
-from wxclaude.core.errors import SettingsError
+from wxclaude.core.agents import DEFAULT_AGENT, Agent
+from wxclaude.core.errors import JsonStoreError, SettingsError
+from wxclaude.core.jsonstore import read_json, write_json
 from wxclaude.core.screen_reader import default_output, output_named
 from wxclaude.core.shortcuts import (
     CONFIGURABLE_COMMANDS,
@@ -21,6 +20,11 @@ SETTINGS_FILE_NAME = "settings.json"
 SUPPORTED_LANGUAGES = ("fr", "en")
 
 
+def workspace_key(folder: Path) -> str:
+    """How a workspace is named in the settings (Windows paths ignore the case)."""
+    return str(folder).lower()
+
+
 def default_settings_path() -> Path:
     """Location of the settings file for the current user."""
     return Path(user_config_dir("WxClaude")) / SETTINGS_FILE_NAME
@@ -31,19 +35,23 @@ class Settings:
     """Application settings. Unknown keys in the file are ignored."""
 
     language: str = "fr"
-    default_agent: Agent = field(
-        default_factory=lambda: Agent(model="sonnet", effort="medium", permission_mode="manual")
-    )
+    default_agent: Agent = DEFAULT_AGENT  # complete: model, effort and permission mode
     alternative_agent: Agent = field(default_factory=lambda: Agent(effort="low"))
     recent_workspaces: list[str] = field(default_factory=list)
     shortcuts: dict[str, str] = field(default_factory=dict)  # only the changed ones
     screen_reader_output: str = field(default_factory=lambda: default_output().id)
     reopen_last: bool = True  # open the last workspace and conversation at startup
+    hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
+    announce_progress: bool = True  # say what Claude is doing while it answers
     last_workspace: str = ""
-    last_conversation_id: str = ""
-    last_conversation_name: str = ""
     conversation_counter: int = 1  # the number of the next "Conversation x" proposed
     store: Path | None = None
+    load_warning: str = ""  # what went wrong while reading the file, for the user
+
+    @property
+    def workspaces_dir(self) -> Path | None:
+        """The folder of the per-workspace files (None: settings kept in memory only)."""
+        return None if self.store is None else self.store.parent / "workspaces"
 
     def shortcut_for(self, command: ConfigurableCommand) -> str:
         """The shortcut of ``command`` (empty: none)."""
@@ -64,31 +72,33 @@ class Settings:
     def load(cls, store: Path | None) -> Settings:
         """Read settings from ``store``; defaults if absent. ``store=None`` stays in memory."""
         settings = cls(store=store)
-        if store is None or not store.exists():
+        if store is None:
             return settings
-        try:
-            data = json.loads(store.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise SettingsError(f"Cannot read {store}: {error}") from error
-        if not isinstance(data, dict):
-            raise SettingsError(f"Invalid settings file: {store}")
+        result = read_json(store)
+        settings.load_warning = result.warning
+        data = result.data
+        if data is None:
+            return settings
         language = data.get("language")
         if language in SUPPORTED_LANGUAGES:
             settings.language = language
         if "default_agent" in data:
-            settings.default_agent = Agent.from_dict(data["default_agent"])
+            settings.default_agent = Agent.from_dict(data["default_agent"]).over(DEFAULT_AGENT)
         if "alternative_agent" in data:
             settings.alternative_agent = Agent.from_dict(data["alternative_agent"])
         recent = data.get("recent_workspaces")
         if isinstance(recent, list):
             settings.recent_workspaces = [item for item in recent if isinstance(item, str)]
-        if isinstance(data.get("reopen_last"), bool):
-            settings.reopen_last = data["reopen_last"]
-        for key in ("last_workspace", "last_conversation_name"):
-            if isinstance(data.get(key), str):
-                setattr(settings, key, data[key])
-        if is_conversation_id(data.get("last_conversation_id")):
-            settings.last_conversation_id = data["last_conversation_id"].lower()
+        reopen_last = data.get("reopen_last")
+        if isinstance(reopen_last, bool):
+            settings.reopen_last = reopen_last
+        for key in ("hide_system_messages", "announce_progress"):
+            flag = data.get(key)
+            if isinstance(flag, bool):
+                setattr(settings, key, flag)
+        last_workspace = data.get("last_workspace")
+        if isinstance(last_workspace, str):
+            settings.last_workspace = last_workspace
         counter = data.get("conversation_counter")
         if isinstance(counter, int) and not isinstance(counter, bool) and counter >= 1:
             settings.conversation_counter = counter
@@ -110,7 +120,7 @@ class Settings:
         """Write the settings to their store, if any."""
         if self.store is None:
             return
-        data = {
+        data: dict[str, object] = {
             "language": self.language,
             "default_agent": self.default_agent.to_dict(),
             "alternative_agent": self.alternative_agent.to_dict(),
@@ -118,13 +128,12 @@ class Settings:
             "shortcuts": self.shortcuts,
             "screen_reader_output": self.screen_reader_output,
             "reopen_last": self.reopen_last,
+            "hide_system_messages": self.hide_system_messages,
+            "announce_progress": self.announce_progress,
             "last_workspace": self.last_workspace,
-            "last_conversation_id": self.last_conversation_id,
-            "last_conversation_name": self.last_conversation_name,
             "conversation_counter": self.conversation_counter,
         }
         try:
-            self.store.parent.mkdir(parents=True, exist_ok=True)
-            self.store.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except OSError as error:
-            raise SettingsError(f"Cannot write {self.store}: {error}") from error
+            write_json(self.store, data)
+        except JsonStoreError as error:
+            raise SettingsError(str(error)) from error

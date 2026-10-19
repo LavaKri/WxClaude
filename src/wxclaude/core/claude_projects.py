@@ -7,12 +7,15 @@ the ``cwd`` field of the session files it contains.
 
 import json
 import os
+from collections import deque
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from wxclaude.core.conversations import is_conversation_id
 
 _LINES_TO_READ = 200  # the working folder is in the first lines of a session file
+_CANDIDATE_LINES = 20  # lines kept to find the time of the last message
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,42 +54,56 @@ def _working_folder(session_file: Path) -> Path | None:
 
 @dataclass(frozen=True, slots=True)
 class SessionInfo:
-    """A conversation found on disk: its identifier, file, title ('' if none) and last write."""
+    """A conversation found on disk: its identifier, file, title ('' if none) and last message."""
 
     id: str
     path: Path
     title: str
-    last_used: float
+    last_used: float  # when the last prompt or answer was written (the file date if unknown)
 
 
-def _session_title(session_file: Path) -> str:
-    """The title of a session file: the last rename, else the last generated title."""
+def _message_time(line: str) -> float | None:
+    """The time of the prompt or answer written on ``line``, None if it is neither."""
+    try:
+        entry = json.loads(line)
+        if entry.get("type") not in ("user", "assistant") or entry.get("isSidechain"):
+            return None
+        return datetime.fromisoformat(entry["timestamp"]).timestamp()
+    except json.JSONDecodeError, AttributeError, KeyError, TypeError, ValueError:
+        return None
+
+
+def _scan_session(session_file: Path) -> tuple[str, float]:
+    """The title of a session (last rename, else last generated) and the time of its last message.
+
+    Renames and title entries are written again and again, so the date of the file says little
+    about the last exchange.
+    """
     custom = generated = ""
+    candidates: deque[str] = deque(maxlen=_CANDIDATE_LINES)  # the last lines that may be messages
     try:
         with session_file.open(encoding="utf-8", errors="replace") as lines:
             for line in lines:
-                if '"custom-title"' in line:
-                    key, kind = "customTitle", "custom"
-                elif '"ai-title"' in line:
-                    key, kind = "aiTitle", "ai"
-                else:
-                    continue
-                try:
-                    title = json.loads(line).get(key)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(title, str):
-                    if kind == "custom":
-                        custom = title
-                    else:
-                        generated = title
+                if '"custom-title"' in line or '"ai-title"' in line:
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if isinstance(entry.get("customTitle"), str):
+                        custom = entry["customTitle"]
+                    elif isinstance(entry.get("aiTitle"), str):
+                        generated = entry["aiTitle"]
+                elif '"timestamp"' in line and '"message"' in line:
+                    candidates.append(line)
+        fallback = session_file.stat().st_mtime
     except OSError:
-        return ""
-    return custom or generated
+        return "", 0.0
+    times = (_message_time(line) for line in reversed(candidates))
+    return custom or generated, next((t for t in times if t is not None), fallback)
 
 
 def list_sessions(workspace: Path, projects_dir: Path | None = None) -> list[SessionInfo]:
-    """The conversations Claude Code holds for ``workspace``, the most recent first."""
+    """The conversations Claude Code holds for ``workspace``, the last message most recent first."""
     root = projects_dir or claude_projects_dir()
     wanted = str(workspace).lower()
     found: list[SessionInfo] = []
@@ -102,7 +119,7 @@ def list_sessions(workspace: Path, projects_dir: Path | None = None) -> list[Ses
         if folder is None or str(folder).lower() != wanted:
             continue
         found.extend(
-            SessionInfo(file.stem, file, _session_title(file), file.stat().st_mtime)
+            SessionInfo(file.stem, file, *_scan_session(file))
             for file in sessions
             if is_conversation_id(file.stem)
         )
@@ -129,3 +146,12 @@ def list_projects(projects_dir: Path | None = None) -> list[ClaudeProject]:
         if key not in found or project.last_used > found[key].last_used:
             found[key] = project
     return sorted(found.values(), key=lambda project: project.last_used, reverse=True)
+
+
+def choose_conversation(sessions: list[SessionInfo], remembered_id: str) -> SessionInfo | None:
+    """The conversation to select in a workspace: the remembered one if it still exists, else the
+    most recent one, else None (no conversation is created)."""
+    for session in sessions:
+        if session.id == remembered_id:
+            return session
+    return sessions[0] if sessions else None
