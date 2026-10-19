@@ -13,5 +13,9 @@ class ExportError(WxClaudeError):
     """A conversation cannot be exported."""
 
 
+class SessionReadError(WxClaudeError):
+    """A session file of the Claude Code CLI cannot be read."""
+
+
 class ScreenReaderOutputError(WxClaudeError):
     """A message cannot be sent to the screen reader (or its output cannot be set up)."""
