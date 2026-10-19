@@ -7,3 +7,7 @@ class WxClaudeError(Exception):
 
 class SettingsError(WxClaudeError):
     """The settings file cannot be read or written."""
+
+
+class ExportError(WxClaudeError):
+    """A conversation cannot be exported."""

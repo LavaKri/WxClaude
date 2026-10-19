@@ -9,35 +9,207 @@ msgstr ""
 msgid "WxClaude"
 msgstr "WxClaude"
 
-msgid "&Conversation"
-msgstr "&Conversation"
+msgid "{folder} - WxClaude"
+msgstr "{folder} - WxClaude"
+
+msgid "Con&versation"
+msgstr "Con&versation"
 
 msgid "Conversation"
 msgstr "Conversation"
 
-msgid "&Message"
-msgstr "&Message"
+msgid "&Prompt"
+msgstr "&Prompt"
 
-msgid "Message"
-msgstr "Message"
+msgid "Prompt"
+msgstr "Prompt"
+
+msgid "&Send (Ctrl+Enter)"
+msgstr "&Envoyer (Ctrl+Entrée)"
+
+msgid "Send with the &alternative agent (Shift+Enter)"
+msgstr "Envoyer avec l'agent &alternatif (Maj+Entrée)"
+
+msgid "&Interrupt Claude"
+msgstr "&Interrompre Claude"
 
 msgid "Ready"
 msgstr "Prêt"
 
+msgid "&Open workspace…\tCtrl+O"
+msgstr "&Ouvrir un espace de travail…\tCtrl+O"
+
+msgid "Open from Claude &projects…"
+msgstr "Ouvrir depuis les &projets Claude…"
+
+msgid "&Recent"
+msgstr "&Récents"
+
+msgid "&Export the conversation…"
+msgstr "&Exporter la conversation…"
+
 msgid "&Quit\tCtrl+Q"
 msgstr "&Quitter\tCtrl+Q"
 
-msgid "&About"
-msgstr "À &propos"
+msgid "&New conversation\tCtrl+N"
+msgstr "&Nouvelle conversation\tCtrl+N"
+
+msgid "&Resume a conversation…\tCtrl+Shift+O"
+msgstr "&Reprendre une conversation…\tCtrl+Shift+O"
+
+msgid "Ren&ame the conversation"
+msgstr "Ren&ommer la conversation"
+
+msgid "New conversation &branch"
+msgstr "Nouvelle &branche de conversation"
+
+msgid "&Delete the conversation"
+msgstr "&Supprimer la conversation"
+
+msgid "&Interrupt Claude\tCtrl+Shift+I"
+msgstr "&Interrompre Claude\tCtrl+Shift+I"
+
+msgid "&Modify the agent…"
+msgstr "&Modifier l'agent…"
+
+msgid "&Options…"
+msgstr "&Options…"
 
 msgid "&File"
 msgstr "&Fichier"
 
+msgid "&Conversation"
+msgstr "&Conversation"
+
+msgid "&Tools"
+msgstr "&Outils"
+
 msgid "&Help"
 msgstr "&Aide"
+
+msgid "&About"
+msgstr "À &propos"
+
+msgid "About"
+msgstr "À propos"
 
 msgid "WxClaude {version}"
 msgstr "WxClaude {version}"
 
-msgid "About"
-msgstr "À propos"
+msgid "{name}, from {parent}"
+msgstr "{name}, depuis {parent}"
+
+msgid "Workspace: {folder}"
+msgstr "Espace de travail : {folder}"
+
+msgid "Choose the working folder"
+msgstr "Choisir le dossier de travail"
+
+msgid "The folder {folder} no longer exists. It was removed from the recent list."
+msgstr "Le dossier {folder} n'existe plus. Il a été retiré de la liste des récents."
+
+msgid "New conversation."
+msgstr "Nouvelle conversation."
+
+msgid "Export the conversation"
+msgstr "Exporter la conversation"
+
+msgid "conversation.txt"
+msgstr "conversation.txt"
+
+msgid "Text files (*.txt)|*.txt|Markdown files (*.md)|*.md"
+msgstr "Fichiers texte (*.txt)|*.txt|Fichiers Markdown (*.md)|*.md"
+
+msgid "Cannot export the conversation.\n{error}"
+msgstr "Impossible d'exporter la conversation.\n{error}"
+
+msgid "Conversation exported to {path}."
+msgstr "Conversation exportée vers {path}."
+
+msgid "Agent updated."
+msgstr "Agent modifié."
+
+msgid "You: {text}"
+msgstr "Vous : {text}"
+
+msgid "Running Claude is not implemented yet."
+msgstr "Le lancement de Claude n'est pas encore implémenté."
+
+msgid "Error"
+msgstr "Erreur"
+
+msgid "Cannot save the settings.\n{error}"
+msgstr "Impossible d'enregistrer les réglages.\n{error}"
+
+msgid "Modify the agent"
+msgstr "Modifier l'agent"
+
+msgid "(not set: Claude Code setting)"
+msgstr "(non précisé : réglage de Claude Code)"
+
+msgid "(same as the conversation)"
+msgstr "(comme la conversation)"
+
+msgid "Options"
+msgstr "Options"
+
+msgid "Agent of a new conversation"
+msgstr "Agent d'une nouvelle conversation"
+
+msgid "Alternative agent"
+msgstr "Agent alternatif"
+
+msgid "&Model"
+msgstr "&Modèle"
+
+msgid "Model"
+msgstr "Modèle"
+
+msgid "&Effort"
+msgstr "&Effort"
+
+msgid "Effort"
+msgstr "Effort"
+
+msgid "&Permission mode"
+msgstr "&Mode de permission"
+
+msgid "Permission mode"
+msgstr "Mode de permission"
+
+msgid "Low"
+msgstr "Faible"
+
+msgid "Medium"
+msgstr "Moyen"
+
+msgid "High"
+msgstr "Élevé"
+
+msgid "Very high"
+msgstr "Très élevé"
+
+msgid "Maximum"
+msgstr "Maximum"
+
+msgid "Ask before acting (manual)"
+msgstr "Demander avant d'agir (manual)"
+
+msgid "Accept file edits (acceptEdits)"
+msgstr "Accepter les modifications de fichiers (acceptEdits)"
+
+msgid "Plan only (plan)"
+msgstr "Planifier seulement (plan)"
+
+msgid "Automatic (auto)"
+msgstr "Automatique (auto)"
+
+msgid "Do not ask (dontAsk)"
+msgstr "Ne pas demander (dontAsk)"
+
+msgid ""
+"Changing the model loses the cache of the conversation: "
+"the next message is slower and costs more."
+msgstr ""
+"Changer de modèle fait perdre le cache de la conversation : "
+"le message suivant est plus lent et coûte plus cher."
