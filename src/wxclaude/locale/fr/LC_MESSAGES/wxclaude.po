@@ -1,0 +1,43 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: wxclaude 0.1.0\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "WxClaude"
+msgstr "WxClaude"
+
+msgid "&Conversation"
+msgstr "&Conversation"
+
+msgid "Conversation"
+msgstr "Conversation"
+
+msgid "&Message"
+msgstr "&Message"
+
+msgid "Message"
+msgstr "Message"
+
+msgid "Ready"
+msgstr "Prêt"
+
+msgid "&Quit\tCtrl+Q"
+msgstr "&Quitter\tCtrl+Q"
+
+msgid "&About"
+msgstr "À &propos"
+
+msgid "&File"
+msgstr "&Fichier"
+
+msgid "&Help"
+msgstr "&Aide"
+
+msgid "WxClaude {version}"
+msgstr "WxClaude {version}"
+
+msgid "About"
+msgstr "À propos"

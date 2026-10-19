@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wxclaude"
+version = "0.1.0"
+description = "Screen-reader-friendly desktop front end for the Claude Code CLI (claude -p)."
+requires-python = ">=3.14"
+dependencies = [
+    "wxPython>=4.3",
+    "platformdirs>=4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "Babel",
+    "pyinstaller",
+]
+
+[project.gui-scripts]
+wxclaude = "wxclaude.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+wxclaude = ["locale/*/LC_MESSAGES/*.mo"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "PT", "RUF"]
+
+[tool.mypy]
+python_version = "3.14"
+mypy_path = "src"
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "wxclaude.core.*"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "wxclaude.ui.*"
+disallow_subclassing_any = false
+
+[[tool.mypy.overrides]]
+module = ["wx", "wx.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = [
+    "unit: fast tests of pure logic (no wx)",
+    "ui: tests that create wx windows",
+    "slow: tests with large inputs",
+]
