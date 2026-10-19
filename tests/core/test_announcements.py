@@ -30,8 +30,8 @@ def test_notify_fills_the_text_and_sends_it() -> None:
 def test_a_failing_sink_is_reported_once_then_replaced() -> None:
     errors: list[ScreenReaderOutputError] = []
     center = AnnouncementCenter(_FailingSink(), on_error=errors.append)
-    center.notify(Announce.NEW_CONVERSATION)
-    center.notify(Announce.NEW_CONVERSATION)
+    center.notify(Announce.NEW_CONVERSATION, name="Notes")
+    center.notify(Announce.NEW_CONVERSATION, name="Notes")
     assert len(errors) == 1
     assert isinstance(center.message_sink, NullMessageSink)
 

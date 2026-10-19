@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
-from wxclaude.core.workspaces import MAX_RECENT, add_recent, describe, remove_missing
+from wxclaude.core.workspaces import (
+    MAX_RECENT,
+    add_recent,
+    describe,
+    remove_missing,
+    workspace_label,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -25,6 +31,12 @@ def test_remove_missing_drops_deleted_folders(tmp_path: Path) -> None:
     kept = tmp_path / "kept"
     kept.mkdir()
     assert remove_missing([str(kept), str(tmp_path / "gone")]) == [str(kept)]
+
+
+def test_workspace_label_gives_the_name_then_where_it_is() -> None:
+    folder = Path("C:/Users/Example/Dev/WxClaude")
+    expected = "WxClaude, from " + str(Path("C:/Users/Example/Dev")) + os.sep
+    assert workspace_label(str(folder)) == expected
 
 
 def test_describe_gives_name_and_parent() -> None:

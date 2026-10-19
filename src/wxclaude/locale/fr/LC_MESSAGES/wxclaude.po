@@ -11,8 +11,6 @@ msgstr ""
 msgid "WxClaude"
 msgstr "WxClaude"
 
-msgid "{folder} - WxClaude"
-msgstr "{folder} - WxClaude"
 
 msgid "Con&versation"
 msgstr "Con&versation"
@@ -26,11 +24,17 @@ msgstr "&Prompt"
 msgid "Prompt"
 msgstr "Prompt"
 
-msgid "&Send (Ctrl+Enter)"
-msgstr "&Envoyer (Ctrl+Entrée)"
+msgid "&Send ({shortcut})"
+msgstr "&Envoyer ({shortcut})"
 
-msgid "Send with the &alternative agent (Shift+Enter)"
-msgstr "Envoyer avec l'agent &alternatif (Maj+Entrée)"
+msgid "&Send"
+msgstr "&Envoyer"
+
+msgid "Send with the &alternative agent ({shortcut})"
+msgstr "Envoyer avec l'agent &alternatif ({shortcut})"
+
+msgid "Send with the &alternative agent"
+msgstr "Envoyer avec l'agent &alternatif"
 
 msgid "&Interrupt Claude"
 msgstr "&Interrompre Claude"
@@ -101,8 +105,35 @@ msgstr "Choisir le dossier de travail"
 msgid "The folder {folder} no longer exists. It was removed from the recent list."
 msgstr "Le dossier {folder} n'existe plus. Il a été retiré de la liste des récents."
 
-msgid "New conversation."
-msgstr "Nouvelle conversation."
+msgid "New conversation: {name}"
+msgstr "Nouvelle conversation : {name}"
+
+msgid "Conversation renamed: {name}"
+msgstr "Conversation renommée : {name}"
+
+msgid "New conversation branch: {name}"
+msgstr "Nouvelle branche de conversation : {name}"
+
+msgid "Conversation {number}"
+msgstr "Conversation {number}"
+
+msgid "{name} branch {number}"
+msgstr "{name} branche {number}"
+
+msgid "Rename the conversation"
+msgstr "Renommer la conversation"
+
+msgid "New conversation branch"
+msgstr "Nouvelle branche de conversation"
+
+msgid "&Name"
+msgstr "&Nom"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "The name cannot be empty."
+msgstr "Le nom ne peut pas être vide."
 
 msgid "Export the conversation"
 msgstr "Exporter la conversation"
@@ -249,6 +280,9 @@ msgstr "&Langue"
 msgid "Language"
 msgstr "Langue"
 
+msgid "At startup, &open the last workspace"
+msgstr "Au démarrage, &ouvrir le dernier espace de travail"
+
 msgid "The language change applies at the next start."
 msgstr "Le changement de langue s'applique au prochain démarrage."
 
@@ -295,6 +329,12 @@ msgstr "Reprendre une conversation"
 msgid "Interrupt Claude"
 msgstr "Interrompre Claude"
 
+msgid "Send the prompt"
+msgstr "Envoyer le prompt"
+
+msgid "Send the prompt with the alternative agent"
+msgstr "Envoyer le prompt avec l'agent alternatif"
+
 msgid "Press the new &shortcut here:"
 msgstr "Appuyez ici sur le nouveau &raccourci :"
 
@@ -315,12 +355,12 @@ msgstr "{shortcut} est le raccourci d'une commande standard et ne peut pas être
 
 msgid ""
 "{shortcut} cannot be used: a shortcut needs the Ctrl key, the Alt key or both (or be a "
-"function key), and Tab, Esc, Enter and Insert are reserved for navigation, sending and screen "
-"readers."
+"function key), Enter needs at least one modifier key, and Tab, Esc and Insert are reserved for "
+"navigation and screen readers."
 msgstr ""
 "{shortcut} ne peut pas être utilisé : un raccourci demande la touche Ctrl, la touche Alt ou "
-"les deux (ou être une touche de fonction), et Tab, Échap, Entrée et Insert sont réservées à la "
-"navigation, à l'envoi et aux lecteurs d'écran."
+"les deux (ou être une touche de fonction), Entrée demande au moins une touche de modification, "
+"et Tab, Échap et Insert sont réservées à la navigation et aux lecteurs d'écran."
 
 msgid "{shortcut} is not a valid shortcut."
 msgstr "{shortcut} n'est pas un raccourci valide."
@@ -339,3 +379,27 @@ msgstr "UI Automation (Windows)"
 
 msgid "The screen reader output cannot be used.\n{error}"
 msgstr "La sortie vers le lecteur d'écran est inutilisable.\n{error}"
+
+msgid "Task &list…"
+msgstr "Liste de &tâches…"
+
+msgid "Task list"
+msgstr "Liste de tâches"
+
+msgid "&Tasks"
+msgstr "&Tâches"
+
+msgid "Tasks"
+msgstr "Tâches"
+
+msgid "No task in this conversation yet."
+msgstr "Aucune tâche dans cette conversation pour le moment."
+
+msgid "Claude Code has no project yet."
+msgstr "Claude Code n'a pas encore de projet."
+
+msgid "Choose a project:"
+msgstr "Choisissez un projet :"
+
+msgid "Open from Claude projects"
+msgstr "Ouvrir depuis les projets Claude"

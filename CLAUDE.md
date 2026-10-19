@@ -23,7 +23,7 @@ Detailed specs live in `docs/` (English). Read the relevant spec before changing
 - `src/wxclaude/core/`: logic, models, CLI runner. **Never imports `wx`.**
 - `src/wxclaude/ui/`: wx windows and dialogs; thin, no business logic.
 - `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.
-- `docs/`: specifications, one file per topic.
+- `docs/`: specifications, one file per topic (architecture, interface, settings, accessibility). Update them when behaviour changes.
 
 ## Rules
 - **Never commit without asking the user first.** Propose the message and wait for approval.

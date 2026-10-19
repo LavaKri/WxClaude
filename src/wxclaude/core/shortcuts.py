@@ -32,9 +32,9 @@ _NAMED_KEYS = (
 _FUNCTION_KEY = re.compile(r"F([1-9]|1[0-2])")
 _LETTER_OR_DIGIT = re.compile(r"[A-Z0-9]")
 
-#: Keys that are never allowed: they move the focus or close dialogs, Enter sends the prompt
-#: (with Ctrl or Shift), and Insert is the modifier key of screen readers.
-_RESERVED_KEYS = frozenset({"Tab", "Esc", "Enter", "Insert"})
+#: Keys that are never allowed: they move the focus or close dialogs, and Insert is the modifier
+#: key of screen readers.
+_RESERVED_KEYS = frozenset({"Tab", "Esc", "Insert"})
 
 #: Shortcuts of the standard commands, which cannot be changed or reused.
 FIXED_SHORTCUTS = frozenset(
@@ -80,6 +80,12 @@ RESUME_CONVERSATION_COMMAND = ConfigurableCommand(
     "conversation.resume", N_("Resume a conversation"), "Ctrl+Shift+O"
 )
 INTERRUPT_COMMAND = ConfigurableCommand("claude.interrupt", N_("Interrupt Claude"), "Ctrl+Shift+I")
+#: The same shortcut as the task list of the Claude Code CLI.
+TASKS_COMMAND = ConfigurableCommand("tasks.list", N_("Task list"), "Ctrl+T")
+SEND_COMMAND = ConfigurableCommand("prompt.send", N_("Send the prompt"), "Ctrl+Enter")
+SEND_ALTERNATIVE_COMMAND = ConfigurableCommand(
+    "prompt.send_alternative", N_("Send the prompt with the alternative agent"), "Shift+Enter"
+)
 
 #: Every configurable command, in the order of the Shortcuts list.
 CONFIGURABLE_COMMANDS = (
@@ -87,6 +93,9 @@ CONFIGURABLE_COMMANDS = (
     NEW_CONVERSATION_COMMAND,
     RESUME_CONVERSATION_COMMAND,
     INTERRUPT_COMMAND,
+    TASKS_COMMAND,
+    SEND_COMMAND,
+    SEND_ALTERNATIVE_COMMAND,
 )
 
 
@@ -149,9 +158,10 @@ def check_shortcut(
     """Can ``command`` use ``shortcut``? ``current`` maps command ids to their shortcut.
 
     Rules: it must be well formed; a function key (F1 to F12) is allowed alone or with any
-    modifiers, any other key needs Ctrl, Alt or both (Shift may be added; a plain letter would
-    block typing); Tab, Esc, Enter and Insert are never allowed; it must not be the shortcut of a
-    standard command or the access key of a menu, nor of another configurable command.
+    modifiers; Enter needs at least one modifier (alone it adds a line break); any other key
+    needs Ctrl, Alt or both (Shift may be added; a plain letter would block typing); Tab, Esc
+    and Insert are never allowed; it must not be the shortcut of a standard command or the
+    access key of a menu, nor of another configurable command.
     """
     normalized = normalize_shortcut(shortcut)
     if normalized is None:
@@ -162,7 +172,10 @@ def check_shortcut(
     if key in _RESERVED_KEYS:
         return ShortcutCheck(ShortcutProblem.RESERVED)
     is_function_key = bool(_FUNCTION_KEY.fullmatch(key))
-    if not is_function_key and not {"Ctrl", "Alt"} & set(modifiers):
+    if key == "Enter":
+        if not modifiers:
+            return ShortcutCheck(ShortcutProblem.RESERVED)
+    elif not is_function_key and not {"Ctrl", "Alt"} & set(modifiers):
         return ShortcutCheck(ShortcutProblem.RESERVED)
     if normalized in FIXED_SHORTCUTS:
         return ShortcutCheck(ShortcutProblem.FIXED)

@@ -46,8 +46,8 @@ def shortcut_problem_message(check: ShortcutCheck, shortcut: str) -> str:
     if check.problem is ShortcutProblem.RESERVED:
         return _(
             "{shortcut} cannot be used: a shortcut needs the Ctrl key, the Alt key or both "
-            "(or be a function key), and Tab, Esc, Enter and Insert are reserved for "
-            "navigation, sending and screen readers."
+            "(or be a function key), Enter needs at least one modifier key, and Tab, Esc and "
+            "Insert are reserved for navigation and screen readers."
         ).format(shortcut=shortcut)
     return _("{shortcut} is not a valid shortcut.").format(shortcut=shortcut)
 
@@ -85,12 +85,15 @@ class OptionsDialog(wx.Dialog):
         )
         self._language.SetSelection(SUPPORTED_LANGUAGES.index(settings.language))
         note = wx.StaticText(page, label=_("The language change applies at the next start."))
+        self._reopen_last = wx.CheckBox(page, label=_("At startup, &open the last workspace"))
+        self._reopen_last.SetValue(settings.reopen_last)
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
         row.Add(self._language, 0)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(row, 0, wx.ALL, 6)
         sizer.Add(note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
+        sizer.Add(self._reopen_last, 0, wx.ALL, 6)
         page.SetSizer(sizer)
         return page
 
@@ -263,6 +266,7 @@ class OptionsDialog(wx.Dialog):
     def apply(self, settings: Settings) -> None:
         """Store the values chosen in the dialog into ``settings``."""
         settings.language = SUPPORTED_LANGUAGES[self._language.GetSelection()]
+        settings.reopen_last = self._reopen_last.GetValue()
         self._agents[self._agent_index] = self._agent_panel.agent
         settings.default_agent, settings.alternative_agent = self._agents
         for command in CONFIGURABLE_COMMANDS:

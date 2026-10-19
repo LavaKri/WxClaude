@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from wxclaude.core.agents import Agent
+from wxclaude.core.conversations import new_conversation_id
 from wxclaude.core.errors import SettingsError
 from wxclaude.core.screen_reader import default_output
 from wxclaude.core.settings import Settings
@@ -61,6 +62,34 @@ def test_the_application_starts_with_the_agents_chosen_by_the_user(tmp_path: Pat
         model="sonnet", effort="medium", permission_mode="manual"
     )
     assert settings.alternative_agent == Agent(effort="low")
+
+
+def test_the_last_workspace_and_conversation_are_reopened_by_default(tmp_path: Path) -> None:
+    settings = Settings.load(tmp_path / "settings.json")
+    assert settings.reopen_last is True
+    assert settings.conversation_counter == 1
+
+
+def test_last_session_round_trip_and_invalid_values(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    settings.reopen_last = False
+    settings.last_workspace = "C:\\work\\one"
+    settings.last_conversation_id = new_conversation_id()
+    settings.last_conversation_name = "Notes"
+    settings.conversation_counter = 7
+    settings.save()
+    loaded = Settings.load(store)
+    assert (loaded.reopen_last, loaded.last_workspace) == (False, "C:\\work\\one")
+    assert loaded.last_conversation_id == settings.last_conversation_id
+    assert (loaded.last_conversation_name, loaded.conversation_counter) == ("Notes", 7)
+    store.write_text(
+        '{"reopen_last": "yes", "conversation_counter": 0, "last_conversation_id": "x"}',
+        encoding="utf-8",
+    )
+    invalid = Settings.load(store)
+    assert (invalid.reopen_last, invalid.conversation_counter) == (True, 1)
+    assert invalid.last_conversation_id == ""
 
 
 def test_screen_reader_output_round_trip_and_unknown_value(tmp_path: Path) -> None:

@@ -3,6 +3,8 @@
 import os
 from pathlib import Path
 
+from wxclaude.i18n import _
+
 MAX_RECENT = 10
 
 
@@ -16,6 +18,12 @@ def add_recent(recent: list[str], folder: Path) -> list[str]:
 def remove_missing(recent: list[str]) -> list[str]:
     """``recent`` without the folders that no longer exist."""
     return [item for item in recent if Path(item).is_dir()]
+
+
+def workspace_label(folder: str) -> str:
+    """How a workspace is listed: its name, then where it is (``WxClaude, from C:\\Dev\\``)."""
+    name, parent = describe(folder)
+    return _("{name}, from {parent}").format(name=name, parent=parent) if parent else name
 
 
 def describe(folder: str) -> tuple[str, str]:

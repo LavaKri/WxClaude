@@ -17,7 +17,9 @@ class Announce(enum.Enum):
     """All the messages of the application; the value is a message id (translate, then format)."""
 
     WORKSPACE_OPENED = N_("Workspace: {folder}")
-    NEW_CONVERSATION = N_("New conversation.")
+    NEW_CONVERSATION = N_("New conversation: {name}")
+    CONVERSATION_RENAMED = N_("Conversation renamed: {name}")
+    CONVERSATION_BRANCHED = N_("New conversation branch: {name}")
     CONVERSATION_EXPORTED = N_("Conversation exported to {path}.")
     AGENT_UPDATED = N_("Agent updated.")
 

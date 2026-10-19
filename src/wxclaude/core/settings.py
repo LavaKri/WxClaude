@@ -7,6 +7,7 @@ from pathlib import Path
 from platformdirs import user_config_dir
 
 from wxclaude.core.agents import Agent
+from wxclaude.core.conversations import is_conversation_id
 from wxclaude.core.errors import SettingsError
 from wxclaude.core.screen_reader import default_output, output_named
 from wxclaude.core.shortcuts import (
@@ -37,6 +38,11 @@ class Settings:
     recent_workspaces: list[str] = field(default_factory=list)
     shortcuts: dict[str, str] = field(default_factory=dict)  # only the changed ones
     screen_reader_output: str = field(default_factory=lambda: default_output().id)
+    reopen_last: bool = True  # open the last workspace and conversation at startup
+    last_workspace: str = ""
+    last_conversation_id: str = ""
+    last_conversation_name: str = ""
+    conversation_counter: int = 1  # the number of the next "Conversation x" proposed
     store: Path | None = None
 
     def shortcut_for(self, command: ConfigurableCommand) -> str:
@@ -76,6 +82,16 @@ class Settings:
         recent = data.get("recent_workspaces")
         if isinstance(recent, list):
             settings.recent_workspaces = [item for item in recent if isinstance(item, str)]
+        if isinstance(data.get("reopen_last"), bool):
+            settings.reopen_last = data["reopen_last"]
+        for key in ("last_workspace", "last_conversation_name"):
+            if isinstance(data.get(key), str):
+                setattr(settings, key, data[key])
+        if is_conversation_id(data.get("last_conversation_id")):
+            settings.last_conversation_id = data["last_conversation_id"].lower()
+        counter = data.get("conversation_counter")
+        if isinstance(counter, int) and not isinstance(counter, bool) and counter >= 1:
+            settings.conversation_counter = counter
         output = data.get("screen_reader_output")
         if isinstance(output, str) and output_named(output) is not None:
             settings.screen_reader_output = output
@@ -101,6 +117,11 @@ class Settings:
             "recent_workspaces": self.recent_workspaces,
             "shortcuts": self.shortcuts,
             "screen_reader_output": self.screen_reader_output,
+            "reopen_last": self.reopen_last,
+            "last_workspace": self.last_workspace,
+            "last_conversation_id": self.last_conversation_id,
+            "last_conversation_name": self.last_conversation_name,
+            "conversation_counter": self.conversation_counter,
         }
         try:
             self.store.parent.mkdir(parents=True, exist_ok=True)
