@@ -7,11 +7,18 @@ WxClaude is a wxPython desktop front end for `claude -p --output-format stream-j
 - Worker threads (CLI reader, permission hook server) never touch wx; they post to the UI with
   `wx.CallAfter`.
 
+## Scope
+
+WxClaude runs on **one machine**: there is no server/client split, no network and no protocol of
+our own. The runner will send typed events (dataclasses) straight to the interface, through
+`wx.CallAfter`. The CLI's session file stays the reference for what was said.
+
 ## Current state
 
 Only the interface exists. Claude is not launched yet: sending a prompt echoes it in the
-conversation view. The next milestone is the runner (`claude -p`, stream-json, `--session-id` for
-the first message and `--resume` afterwards), tested first with a fake `claude`.
+conversation view. The plan, in order, is in `roadmap.md`: conversation model and history, the
+display (`conversation-display.md`), then the runner, tested first with a fake `claude`. What is
+known about the CLI is in `claude-cli.md`.
 
 ## Modules of `core/`
 

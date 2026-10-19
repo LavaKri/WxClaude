@@ -6,6 +6,7 @@ mode (`claude -p --output-format stream-json`).
 This project is self-contained: it must not reference, import or depend on any other project.
 
 Detailed specs live in `docs/` (English). Read the relevant spec before changing a feature.
+**New session: start with `docs/roadmap.md`** (decisions taken, what is done, next milestones, open questions).
 
 ## Stack
 - Python 3.14, wxPython 4.3 (native controls, for screen reader support), platformdirs.
@@ -27,6 +28,7 @@ Detailed specs live in `docs/` (English). Read the relevant spec before changing
 
 ## Rules
 - **Never commit without asking the user first.** Propose the message and wait for approval.
+- **Never use subagents** (no Agent tool, no Explore/Plan agents): do all the research and work directly with the other tools.
 - **Never chain shell commands.** One command per tool call: no `;`, `&&`, `||`, `&`, no pipes used to string commands together, no `cd x && ...`. Run independent commands as parallel tool calls and dependent ones one after the other.
 - Code, comments, docstrings, specs: English. UI default language: French; every visible string goes through `_()`; no string concatenation (use `str.format` with named fields).
 - Full type annotations; mypy strict on `core/`. `@dataclass(slots=True)`, `Protocol` for contracts, `pathlib.Path`, explicit file encodings.

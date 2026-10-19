@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "wxPython>=4.3",
     "platformdirs>=4",
+    "markdown-it-py>=3",
 ]
 
 [project.optional-dependencies]

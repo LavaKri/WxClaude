@@ -153,8 +153,65 @@ msgstr "Conversation exportée vers {path}."
 msgid "Agent updated."
 msgstr "Agent modifié."
 
-msgid "You: {text}"
-msgstr "Vous : {text}"
+msgid "You say: {preview}"
+msgstr "Vous dites : {preview}"
+
+msgid "Claude answered"
+msgstr "Claude a répondu"
+
+msgid "Answer from {model}"
+msgstr "Réponse de {model}"
+
+msgid "Answer from {model}, effort {effort}"
+msgstr "Réponse de {model}, effort {effort}"
+
+msgid "low"
+msgstr "faible"
+
+msgid "medium"
+msgstr "moyen"
+
+msgid "high"
+msgstr "élevé"
+
+msgid "very high"
+msgstr "très élevé"
+
+msgid "maximum"
+msgstr "maximum"
+
+msgid "Conversation resumed: {name}"
+msgstr "Conversation reprise : {name}"
+
+msgid "This workspace has no conversation yet."
+msgstr "Cet espace de travail n'a pas encore de conversation."
+
+msgid "Choose a conversation:"
+msgstr "Choisissez une conversation :"
+
+msgid "Resume a conversation"
+msgstr "Reprendre une conversation"
+
+msgid "Cannot read the conversation.\n{error}"
+msgstr "Impossible de lire la conversation.\n{error}"
+
+msgid "{title} ({when})"
+msgstr "{title} ({when})"
+
+msgid "{title}, title {level}"
+msgstr "{title}, titre {level}"
+
+msgid "No next heading."
+msgstr "Pas de titre suivant."
+
+msgid "No previous heading."
+msgstr "Pas de titre précédent."
+
+msgid "No next title {level}."
+msgstr "Pas de titre {level} suivant."
+
+msgid "No previous title {level}."
+msgstr "Pas de titre {level} précédent."
 
 msgid "Running Claude is not implemented yet."
 msgstr "Le lancement de Claude n'est pas encore implémenté."

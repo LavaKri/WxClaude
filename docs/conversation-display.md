@@ -1,6 +1,12 @@
 # Conversation display
 
-Specification decided with the user. Not implemented yet.
+Specification decided with the user. Implemented: `core/headings.py` (parser, navigation, UTF-16),
+`core/conversation_document.py` (text and message spans), `ui/conversation_view.py` (the field and
+its keys). Not implemented yet: the rebuild after each turn (needs the runner), the option that
+shows hidden messages, the context menu.
+
+The French wording of the titles is `Vous dites : …` and `Réponse de <model>, effort <effort>`
+(effort names: faible, moyen, élevé, très élevé, maximum); `Claude a répondu` without a model.
 
 ## The text
 

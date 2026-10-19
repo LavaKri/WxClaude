@@ -1,5 +1,6 @@
 """Main window: conversation view, prompt field, send buttons and menus."""
 
+from datetime import datetime
 from pathlib import Path
 
 import wx
@@ -7,10 +8,17 @@ import wx
 from wxclaude import __version__
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
-from wxclaude.core.claude_projects import list_projects
+from wxclaude.core.claude_projects import SessionInfo, list_projects, list_sessions
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
-from wxclaude.core.errors import ExportError, ScreenReaderOutputError, SettingsError
+from wxclaude.core.errors import (
+    ExportError,
+    ScreenReaderOutputError,
+    SessionReadError,
+    SettingsError,
+)
 from wxclaude.core.export import export_text
+from wxclaude.core.messages import Message, Role
+from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
     INTERRUPT_COMMAND,
@@ -26,10 +34,17 @@ from wxclaude.core.workspaces import add_recent, describe, remove_missing, works
 from wxclaude.i18n import _
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
+from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.options_dialog import OptionsDialog
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.tasks_dialog import TasksDialog
+
+
+def _session_label(session: SessionInfo) -> str:
+    """How a conversation is listed: its title (or the start of its id), then its last use."""
+    when = datetime.fromtimestamp(session.last_used).strftime("%Y-%m-%d %H:%M")
+    return _("{title} ({when})").format(title=session.title or session.id[:8], when=when)
 
 
 class MainWindow(wx.Frame):
@@ -50,11 +65,7 @@ class MainWindow(wx.Frame):
 
         panel = wx.Panel(self)
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
-        self._conversation = wx.TextCtrl(
-            panel,
-            style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
-            name=_("Conversation"),
-        )
+        self._conversation = ConversationView(panel, self._say)
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
         self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
@@ -126,9 +137,7 @@ class MainWindow(wx.Frame):
             (INTERRUPT_COMMAND, self._interrupt_item, _("&Interrupt Claude")),
         ]
         agent_item = conversation_menu.Append(wx.ID_ANY, _("&Modify the agent…"))
-        # These need the session history (a later milestone): never available for now.
-        for pending in (resume_item, delete_item):
-            pending.Enable(False)
+        delete_item.Enable(False)  # needs the delete feature (a later milestone)
 
         tools_menu = wx.Menu()
         tasks_item = tools_menu.Append(wx.ID_ANY, _("Task &list…"))
@@ -137,7 +146,7 @@ class MainWindow(wx.Frame):
 
         # A conversation belongs to a workspace: without a workspace only the items that open
         # one are available, and without a conversation those that need one are greyed.
-        self._needs_workspace = [new_item]
+        self._needs_workspace = [new_item, resume_item]
         self._needs_conversation = [export_item, rename_item, branch_item, agent_item, tasks_item]
 
         help_menu = wx.Menu()
@@ -157,6 +166,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_export, export_item)
         self.Bind(wx.EVT_MENU, lambda _event: self.Close(), quit_item)
         self.Bind(wx.EVT_MENU, self._on_new_conversation, new_item)
+        self.Bind(wx.EVT_MENU, self._on_resume_conversation, resume_item)
         self.Bind(wx.EVT_MENU, self._on_rename_conversation, rename_item)
         self.Bind(wx.EVT_MENU, self._on_new_branch, branch_item)
         self.Bind(wx.EVT_MENU, self._on_choose_agent, agent_item)
@@ -270,7 +280,7 @@ class MainWindow(wx.Frame):
 
     def _close_conversation(self) -> None:
         """No conversation is current any more (a conversation belongs to its workspace)."""
-        self._conversation.Clear()
+        self._conversation.clear_messages()
         self._prompt.Clear()
         self._conversation_id = ""
         self._conversation_name = ""
@@ -335,13 +345,48 @@ class MainWindow(wx.Frame):
         if name is None:
             return
         self._settings.conversation_counter = number + 1
-        self._conversation.Clear()
+        self._conversation.clear_messages()
         self._prompt.Clear()
         self._agent = self._settings.default_agent
         self._branch_count = 0
         self._start_new_conversation(name)
         self._say(Announce.NEW_CONVERSATION, name=name)
         self._prompt.SetFocus()  # enabled by now: there is a conversation
+
+    def _on_resume_conversation(self, _event: wx.CommandEvent) -> None:
+        """Choose one of the conversations Claude Code holds for the workspace and show it."""
+        if self._workspace is None:
+            return
+        sessions = list_sessions(self._workspace)
+        if not sessions:
+            self._show_error(_("This workspace has no conversation yet."))
+            return
+        labels = [_session_label(session) for session in sessions]
+        with wx.SingleChoiceDialog(
+            self, _("Choose a conversation:"), _("Resume a conversation"), labels
+        ) as dialog:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            chosen = sessions[dialog.GetSelection()]
+        try:
+            session = read_session(chosen.path)
+        except SessionReadError as error:
+            self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            return
+        name = chosen.title
+        if not name:
+            number = self._settings.conversation_counter
+            name = default_name(number)
+            self._settings.conversation_counter = number + 1
+        self._conversation.set_messages(session.messages)
+        self._prompt.Clear()
+        self._agent = Agent.from_dict(
+            {"model": session.last_model, "permission_mode": session.last_permission_mode}
+        ).over(self._settings.default_agent)
+        self._branch_count = 0
+        self._set_conversation(chosen.id, name)
+        self._say(Announce.CONVERSATION_RESUMED, name=name)
+        self._conversation.SetFocus()
 
     def _on_rename_conversation(self, _event: wx.CommandEvent) -> None:
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)
@@ -422,7 +467,8 @@ class MainWindow(wx.Frame):
 
     def _start_turn(self, text: str, _agent: Agent) -> None:
         # Placeholder until the runner exists: echo the prompt only.
-        self._conversation.AppendText(_("You: {text}").format(text=text) + "\n")
+        number = len(self._conversation.document.spans)
+        self._conversation.append_message(Message(f"local-{number}", Role.USER, text))
         self.SetStatusText(_("Running Claude is not implemented yet."))
 
     def _on_prompt_key(self, event: wx.KeyEvent) -> None:

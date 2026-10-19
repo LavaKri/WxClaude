@@ -18,10 +18,16 @@ class Announce(enum.Enum):
 
     WORKSPACE_OPENED = N_("Workspace: {folder}")
     NEW_CONVERSATION = N_("New conversation: {name}")
+    CONVERSATION_RESUMED = N_("Conversation resumed: {name}")
     CONVERSATION_RENAMED = N_("Conversation renamed: {name}")
     CONVERSATION_BRANCHED = N_("New conversation branch: {name}")
     CONVERSATION_EXPORTED = N_("Conversation exported to {path}.")
     AGENT_UPDATED = N_("Agent updated.")
+    HEADING = N_("{title}, title {level}")
+    NO_NEXT_HEADING = N_("No next heading.")
+    NO_PREVIOUS_HEADING = N_("No previous heading.")
+    NO_NEXT_HEADING_OF_LEVEL = N_("No next title {level}.")
+    NO_PREVIOUS_HEADING_OF_LEVEL = N_("No previous title {level}.")
 
 
 class MessageSink(Protocol):

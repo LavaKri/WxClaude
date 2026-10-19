@@ -2,7 +2,9 @@
 
 ## Main window
 
-- **Conversation**: read-only view of the exchange. It never takes the focus by itself.
+- **Conversation**: read-only view of the exchange. It never takes the focus by itself. How the
+  conversation will be displayed (Markdown, navigation by headings) is in
+  `conversation-display.md`; for now it only echoes what is sent.
 - **Prompt**: multi-line field. Enter adds a line break; the send shortcuts are configurable
   (default Ctrl+Enter to send, Shift+Enter to send with the alternative agent).
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and

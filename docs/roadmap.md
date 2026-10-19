@@ -40,11 +40,13 @@ Claude is **not launched yet**: sending a prompt only echoes it.
      answers for now, duplicates removed, noise flagged hidden, title, token usage, last model
      and permission mode (the effort is not in the files).
    - Not done yet: listing the sessions of a workspace (needed by "Resume a conversation").
-2. **Display**
+2. ~~**Display**~~ (done, to check by hand with NVDA and JAWS)
    - Markdown heading parser (markdown-it-py, CommonMark), UTF-16 position conversion,
      navigation (T, Shift+T, 1 to 6, Shift+digit), announcement "title text, title N".
    - `ConversationView` in the main window; message spans for context menus and copy.
-   - Enable "Resume a conversation" (list of the sessions of the workspace).
+   - "Resume a conversation" (`list_sessions` in `core/claude_projects.py`, choice dialog, the
+     history is loaded in the view; the agent takes the last model and permission mode of the file).
+   - Still to do: the context menu on a message, the option showing hidden messages.
 3. **Runner**
    - `claude -p --output-format stream-json` from the agent (`--model`, `--effort`,
      `--permission-mode`), `--session-id` for the first message, `--resume` afterwards.
