@@ -25,6 +25,7 @@ class Announce(enum.Enum):
     CONVERSATION_BRANCHED = N_("New conversation branch: {name}")
     CONVERSATION_EXPORTED = N_("Conversation exported to {path}.")
     AGENT_UPDATED = N_("Agent updated.")
+    SEARCH_FOUND = N_("{line}")
     CLAUDE_THINKING = N_("Claude is thinking.")
     CLAUDE_USING_TOOL = N_("Claude uses the tool {tool}.")
     CLAUDE_ANSWERING = N_("Claude is answering.")

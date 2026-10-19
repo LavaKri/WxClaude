@@ -523,3 +523,45 @@ msgstr "Claude n'a pas pu répondre.\n{details}"
 
 msgid "A second launch will not be able to bring this window to the front.\n{error}"
 msgstr "Un second lancement ne pourra pas ramener cette fenêtre devant.\n{error}"
+
+msgid "Find in the conversation"
+msgstr "Chercher dans la conversation"
+
+msgid "Find next"
+msgstr "Chercher le suivant"
+
+msgid "Find previous"
+msgstr "Chercher le précédent"
+
+msgid "&Find…"
+msgstr "&Chercher…"
+
+msgid "Find &next"
+msgstr "&Suivant"
+
+msgid "Find &previous"
+msgstr "&Précédent"
+
+msgid "Sear&ch"
+msgstr "Re&cherches"
+
+msgid "&Search for"
+msgstr "&Rechercher"
+
+msgid "Search for"
+msgstr "Rechercher"
+
+msgid "Match &case"
+msgstr "Respecter la &casse"
+
+msgid "&Whole words only"
+msgstr "&Mots entiers seulement"
+
+msgid "The text to search for cannot be empty."
+msgstr "Le texte à chercher ne peut pas être vide."
+
+msgid "No previous occurrence of \"{term}\"."
+msgstr "Aucune occurrence précédente de « {term} »."
+
+msgid "No next occurrence of \"{term}\"."
+msgstr "Aucune occurrence suivante de « {term} »."

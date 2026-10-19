@@ -31,9 +31,13 @@ from wxclaude.core.headings import to_utf16
 from wxclaude.core.messages import Message, Role
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
+from wxclaude.core.search import SearchOptions, find_next, find_previous, line_at
 from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
+    FIND_COMMAND,
+    FIND_NEXT_COMMAND,
+    FIND_PREVIOUS_COMMAND,
     INTERRUPT_COMMAND,
     NEW_CONVERSATION_COMMAND,
     OPEN_WORKSPACE_COMMAND,
@@ -52,6 +56,7 @@ from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.options_dialog import OptionsDialog
+from wxclaude.ui.search_dialog import SearchDialog
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.tasks_dialog import TasksDialog
 
@@ -77,6 +82,7 @@ class MainWindow(wx.Frame):
         self._turn_agent = settings.default_agent  # the agent of the message being answered
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
+        self._search_options: SearchOptions | None = None  # the last search
         self._local_messages = 0  # messages added by this run, for their identifiers
         self._recent_ids: dict[int, str] = {}
         self._command_items: list[tuple[ConfigurableCommand, wx.MenuItem, str]] = []
@@ -165,6 +171,16 @@ class MainWindow(wx.Frame):
             (INTERRUPT_COMMAND, self._interrupt_item, _("&Interrupt Claude")),
         ]
         agent_item = conversation_menu.Append(wx.ID_ANY, _("&Modify the agent…"))
+        search_menu = wx.Menu()
+        find_item = search_menu.Append(wx.ID_ANY, _("&Find…"))
+        find_next_item = search_menu.Append(wx.ID_ANY, _("Find &next"))
+        find_previous_item = search_menu.Append(wx.ID_ANY, _("Find &previous"))
+        conversation_menu.AppendSubMenu(search_menu, _("Sear&ch"))
+        self._command_items += [
+            (FIND_COMMAND, find_item, _("&Find…")),
+            (FIND_NEXT_COMMAND, find_next_item, _("Find &next")),
+            (FIND_PREVIOUS_COMMAND, find_previous_item, _("Find &previous")),
+        ]
         delete_item.Enable(False)  # needs the delete feature (a later milestone)
 
         tools_menu = wx.Menu()
@@ -182,6 +198,9 @@ class MainWindow(wx.Frame):
             agent_item,
             tasks_item,
             refresh_item,
+            find_item,
+            find_next_item,
+            find_previous_item,
         ]
 
         help_menu = wx.Menu()
@@ -203,6 +222,9 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_new_conversation, new_item)
         self.Bind(wx.EVT_MENU, self._on_resume_conversation, resume_item)
         self.Bind(wx.EVT_MENU, self._on_refresh_conversation, refresh_item)
+        self.Bind(wx.EVT_MENU, self._on_find, find_item)
+        self.Bind(wx.EVT_MENU, self._on_find_next, find_next_item)
+        self.Bind(wx.EVT_MENU, self._on_find_previous, find_previous_item)
         self.Bind(wx.EVT_MENU, self._on_rename_conversation, rename_item)
         self.Bind(wx.EVT_MENU, self._on_new_branch, branch_item)
         self.Bind(wx.EVT_MENU, self._on_choose_agent, agent_item)
@@ -481,6 +503,51 @@ class MainWindow(wx.Frame):
                     break
         self._say(Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before))
 
+    def _on_find(self, _event: wx.CommandEvent) -> None:
+        """Ask what to look for, then go to the next occurrence."""
+        with SearchDialog(self, self._search_options) as dialog:
+            if dialog.ShowModal() != wx.ID_OK:
+                return
+            self._search_options = dialog.options
+        self.search(backwards=False)
+
+    def _on_find_next(self, event: wx.CommandEvent) -> None:
+        if self._search_options is None:
+            self._on_find(event)
+        else:
+            self.search(backwards=False)
+
+    def _on_find_previous(self, event: wx.CommandEvent) -> None:
+        if self._search_options is None:
+            self._on_find(event)
+        else:
+            self.search(backwards=True)
+
+    def search(self, *, backwards: bool) -> None:
+        """Go to the next or previous occurrence of the last search term.
+
+        The search starts after the selection (before it when going backwards), so repeating it
+        walks through the occurrences. The occurrence is selected, gets the focus and its whole
+        line is announced; at the end a dialog says there is no more.
+        """
+        options = self._search_options
+        if options is None:
+            return
+        view = self._conversation
+        text = view.text
+        start, end = view.selection_indexes()
+        match = find_previous(text, options, start) if backwards else find_next(text, options, end)
+        if match is None:
+            message = (
+                _('No previous occurrence of "{term}".')
+                if backwards
+                else _('No next occurrence of "{term}".')
+            )
+            self._show_info(message.format(term=options.term))
+            return
+        view.select_range(match.start, match.end)
+        self._say(Announce.SEARCH_FOUND, line=line_at(text, match.start))
+
     def _on_rename_conversation(self, _event: wx.CommandEvent) -> None:
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)
         if name is not None:
@@ -705,6 +772,9 @@ class MainWindow(wx.Frame):
 
     def _show_error(self, message: str) -> None:
         wx.MessageBox(message, _("Error"), wx.OK | wx.ICON_ERROR, self)
+
+    def _show_info(self, message: str) -> None:
+        wx.MessageBox(message, _("Find in the conversation"), wx.OK | wx.ICON_INFORMATION, self)
 
     def _show_file_warning(self, details: str) -> None:
         """Tell the user that a file of the application was damaged (and what was done)."""

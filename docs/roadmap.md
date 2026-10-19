@@ -63,7 +63,8 @@ and the session file is read again after each turn.
      message, choice dialog, the history is loaded in the view). Opening a workspace selects its
      remembered conversation, else the most recent, else none. A file per workspace remembers
      the main agent and the name of each conversation (`settings.md`). Refresh the conversation
-     (F5). The option "Hide the system messages" shows or hides the noise of the session.
+     (F5). The option "Hide the system messages" shows or hides the noise of the session. Search
+     in the conversation (Ctrl+F, F3, Shift+F3; `interface.md`).
 3. ~~**Runner**~~ (done, to check by hand with NVDA and JAWS)
    - `claude -p --output-format stream-json --verbose` from the agent (`--model`, `--effort`,
      `--permission-mode`), the prompt through stdin, `--session-id` for the first message,

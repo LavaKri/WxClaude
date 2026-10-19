@@ -51,6 +51,7 @@ is in `claude-cli.md`.
 | `announcements.py` | `Announce` messages, `AnnouncementCenter` and the message sinks. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
 | `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
+| `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
 | `progress.py` | What is said while a turn runs, and how it ended. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 | `export.py` | Writes the conversation text to a file. |
@@ -63,6 +64,7 @@ is in `claude-cli.md`.
 | `main_window.py` | Menus, conversation view, prompt, buttons; enables what needs a workspace or a conversation. |
 | `options_dialog.py` | Options, one tab per topic. |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
+| `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
 | `tasks_dialog.py` | Task list of the conversation (empty for now). |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |

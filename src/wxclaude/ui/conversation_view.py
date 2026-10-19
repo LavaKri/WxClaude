@@ -83,6 +83,24 @@ class ConversationView(wx.TextCtrl):
         self.AppendText(added)
         self.SetInsertionPoint(caret)
 
+    @property
+    def text(self) -> str:
+        """The text of the view."""
+        return self._document.text
+
+    def selection_indexes(self) -> tuple[int, int]:
+        """The selection as Python string indexes (both the caret when nothing is selected)."""
+        start, end = self.GetSelection()
+        text = self._document.text
+        return from_utf16(text, start), from_utf16(text, end)
+
+    def select_range(self, start: int, end: int) -> None:
+        """Select the characters ``start`` to ``end`` (Python indexes) and give them the focus."""
+        text = self._document.text
+        self.SetFocus()
+        self.SetSelection(to_utf16(text, start), to_utf16(text, end))
+        self.ShowPosition(to_utf16(text, start))
+
     def shows(self, messages: list[Message]) -> bool:
         """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""
         document = ConversationDocument(show_hidden=self._document.show_hidden)

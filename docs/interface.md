@@ -25,11 +25,27 @@
 
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again and keeps the caret on its message), Rename, New
-conversation branch, Delete, Interrupt Claude (Ctrl+Shift+I), Modify the agent.
+conversation branch, Delete, Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
+submenu **Search** (see below).
 
 **Tools**: Task list (Ctrl+T, as in the CLI), Options.
 
 **Help**: About.
+
+## Search
+
+Submenu *Search* of the Conversation menu: *Find…* (Ctrl+F), *Find next* (F3), *Find
+previous* (Shift+F3); all need a conversation. They look in the text of the conversation view (what
+is displayed, titles included).
+
+- *Find…* opens a dialog: the term (the previous one is proposed and selected), *Match case*,
+  *Whole words only*. An empty term is refused. OK searches forward from the caret.
+- *Find next* / *Find previous* repeat the search of the last term in either direction; without a
+  previous term they open the dialog. The search starts after the selection (before it when going
+  backwards), so repeating it walks through the occurrences. It does not wrap around.
+- An occurrence is selected and the view gets the focus; the whole line that holds it is announced
+  (status bar and UI Automation). When there is no more occurrence in the direction asked, a
+  message dialog says so ("No next occurrence of ...", "No previous occurrence of ...").
 
 Resume lists the conversations of the workspace, the one with the most recent message first.
 Delete is always greyed for now.

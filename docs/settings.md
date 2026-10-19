@@ -59,6 +59,7 @@ Valid values: `effort` is one of `low`, `medium`, `high`, `xhigh`, `max`; `permi
 ## Shortcut commands
 
 `workspace.open` (Ctrl+O), `conversation.new` (Ctrl+N),
-`conversation.resume` (Ctrl+Shift+O), `conversation.refresh` (F5),
+`conversation.resume` (Ctrl+Shift+O), `conversation.refresh` (F5), `search.find` (Ctrl+F),
+`search.next` (F3), `search.previous` (Shift+F3),
 `claude.interrupt` (Ctrl+Shift+I), `tasks.list` (Ctrl+T), `prompt.send` (Ctrl+Enter),
 `prompt.send_alternative` (Shift+Enter).

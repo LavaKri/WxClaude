@@ -82,6 +82,9 @@ RESUME_CONVERSATION_COMMAND = ConfigurableCommand(
 REFRESH_CONVERSATION_COMMAND = ConfigurableCommand(
     "conversation.refresh", N_("Refresh the conversation"), "F5"
 )
+FIND_COMMAND = ConfigurableCommand("search.find", N_("Find in the conversation"), "Ctrl+F")
+FIND_NEXT_COMMAND = ConfigurableCommand("search.next", N_("Find next"), "F3")
+FIND_PREVIOUS_COMMAND = ConfigurableCommand("search.previous", N_("Find previous"), "Shift+F3")
 INTERRUPT_COMMAND = ConfigurableCommand("claude.interrupt", N_("Interrupt Claude"), "Ctrl+Shift+I")
 #: The same shortcut as the task list of the Claude Code CLI.
 TASKS_COMMAND = ConfigurableCommand("tasks.list", N_("Task list"), "Ctrl+T")
@@ -96,6 +99,9 @@ CONFIGURABLE_COMMANDS = (
     NEW_CONVERSATION_COMMAND,
     RESUME_CONVERSATION_COMMAND,
     REFRESH_CONVERSATION_COMMAND,
+    FIND_COMMAND,
+    FIND_NEXT_COMMAND,
+    FIND_PREVIOUS_COMMAND,
     INTERRUPT_COMMAND,
     TASKS_COMMAND,
     SEND_COMMAND,

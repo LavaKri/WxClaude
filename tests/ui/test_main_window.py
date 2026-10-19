@@ -10,7 +10,9 @@ import wx
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import RecordingMessageSink
 from wxclaude.core.conversations import is_conversation_id, new_conversation_id
+from wxclaude.core.messages import Message, Role
 from wxclaude.core.runner import ClaudeRunner
+from wxclaude.core.search import SearchOptions
 from wxclaude.core.settings import Settings
 from wxclaude.core.workspace_state import WorkspaceState
 from wxclaude.ui.main_window import MainWindow
@@ -425,3 +427,80 @@ def test_nothing_is_sent_without_a_conversation(window: MainWindow) -> None:
     window._prompt.SetValue("hello")
     window.send_prompt(alternative=False)
     assert window._conversation.GetValue() == ""
+
+
+def _search_window(conversation: MainWindow) -> tuple[MainWindow, RecordingMessageSink, list[str]]:
+    conversation._conversation.set_messages(
+        [
+            Message("1", Role.USER, "Intro.\none fish\ntwo fish"),
+            Message("2", Role.ASSISTANT, "red fish\nblue Fish", model="m"),
+        ]
+    )
+    sink = RecordingMessageSink()
+    conversation._announcements.message_sink = sink
+    infos: list[str] = []
+    conversation._show_info = infos.append  # type: ignore[method-assign]
+    return conversation, sink, infos
+
+
+def test_searching_walks_through_the_occurrences_and_announces_the_line(
+    conversation: MainWindow,
+) -> None:
+    window, sink, infos = _search_window(conversation)
+    window._search_options = SearchOptions("fish")
+    view = window._conversation
+    window.search(backwards=False)
+    assert sink.messages[-1] == "one fish"
+    assert view.selection_indexes() == (view.text.index("fish"), view.text.index("fish") + 4)
+    assert view.HasFocus()
+    window.search(backwards=False)
+    assert sink.messages[-1] == "two fish"
+    window.search(backwards=False)
+    assert sink.messages[-1] == "red fish"
+    window.search(backwards=False)
+    assert sink.messages[-1] == "blue Fish"  # the case is ignored by default
+    assert infos == []
+    window.search(backwards=False)
+    assert infos == ['No next occurrence of "fish".']
+    window.search(backwards=True)
+    assert sink.messages[-1] == "red fish"
+    assert len(infos) == 1
+
+
+def test_searching_backwards_stops_at_the_first_occurrence(conversation: MainWindow) -> None:
+    window, sink, infos = _search_window(conversation)
+    window._search_options = SearchOptions("fish", match_case=True)
+    view = window._conversation
+    view.SetInsertionPoint(len(view.text))
+    window.search(backwards=True)
+    assert sink.messages[-1] == "red fish"
+    window.search(backwards=True)
+    window.search(backwards=True)
+    assert sink.messages[-1] == "one fish"
+    window.search(backwards=True)
+    assert infos == ['No previous occurrence of "fish".']
+
+
+def test_a_term_that_is_not_there_is_reported(conversation: MainWindow) -> None:
+    window, sink, infos = _search_window(conversation)
+    window._search_options = SearchOptions("zebra")
+    window.search(backwards=False)
+    assert infos == ['No next occurrence of "zebra".']
+    assert sink.messages == []
+
+
+def test_next_without_a_previous_search_opens_the_dialog(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened: list[bool] = []
+    monkeypatch.setattr(conversation, "_on_find", lambda _event: opened.append(True))
+    conversation._on_find_next(wx.CommandEvent())
+    conversation._on_find_previous(wx.CommandEvent())
+    assert opened == [True, True]
+
+
+def test_the_search_commands_have_the_classic_shortcuts(conversation: MainWindow) -> None:
+    labels = [item.GetItemLabel() for item in conversation._needs_conversation]
+    assert "&Find…	Ctrl+F" in labels
+    assert "Find &next	F3" in labels
+    assert "Find &previous	Shift+F3" in labels
