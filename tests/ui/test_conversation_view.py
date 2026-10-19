@@ -98,3 +98,15 @@ def test_system_messages_can_be_shown_and_hidden_again(view: ConversationView) -
     view.set_show_hidden(False)
     assert "continue" not in view.GetValue()
     assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]
+
+
+def test_the_view_knows_whether_it_shows_given_messages(view: ConversationView) -> None:
+    messages = [
+        Message("1", Role.USER, "Hello"),
+        Message("2", Role.ASSISTANT, "## Part\nbody", model="m"),
+        Message("3", Role.USER, "Again 😀"),
+    ]
+    assert view.shows(messages)
+    assert not view.shows([*messages, Message("4", Role.USER, "More")])
+    messages[1] = Message("2", Role.ASSISTANT, "changed", model="m")
+    assert not view.shows(messages)

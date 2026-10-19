@@ -25,6 +25,14 @@ class Announce(enum.Enum):
     CONVERSATION_BRANCHED = N_("New conversation branch: {name}")
     CONVERSATION_EXPORTED = N_("Conversation exported to {path}.")
     AGENT_UPDATED = N_("Agent updated.")
+    CLAUDE_THINKING = N_("Claude is thinking.")
+    CLAUDE_USING_TOOL = N_("Claude uses the tool {tool}.")
+    CLAUDE_ANSWERING = N_("Claude is answering.")
+    CLAUDE_DONE = N_("Claude has answered.")
+    CLAUDE_INTERRUPTING = N_("Interrupting Claude.")
+    CLAUDE_INTERRUPTED = N_("Claude was interrupted.")
+    CLAUDE_FAILED = N_("Claude could not answer: {details}")
+    PERMISSION_DENIED = N_("Permission denied for the tool {tool}.")
     HEADING = N_("{title}, title {level}")
     NO_NEXT_HEADING = N_("No next heading.")
     NO_PREVIOUS_HEADING = N_("No previous heading.")
@@ -83,9 +91,14 @@ class AnnouncementCenter:
         self.message_sink: MessageSink = message_sink or NullMessageSink()
         self._on_error = on_error
 
+    @staticmethod
+    def text(announce: Announce, **values: object) -> str:
+        """The text of ``announce`` filled with ``values``, without saying it."""
+        return _(announce.value).format(**values)
+
     def notify(self, announce: Announce, **values: object) -> str:
         """Say ``announce`` (its text filled with ``values``) and return that text."""
-        text = _(announce.value).format(**values)
+        text = self.text(announce, **values)
         try:
             self.message_sink.show(text)
         except ScreenReaderOutputError as error:

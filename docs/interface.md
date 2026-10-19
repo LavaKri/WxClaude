@@ -4,12 +4,18 @@
 
 - **Conversation**: read-only view of the exchange. It never takes the focus by itself. How the
   conversation will be displayed (Markdown, navigation by headings) is in
-  `conversation-display.md`; for now it only echoes what is sent.
+  `conversation-display.md`. Your prompt appears as soon as it is sent, then each block of text of
+  the answer.
 - **Prompt**: multi-line field. Enter adds a line break; the send shortcuts are configurable
   (default Ctrl+Enter to send, Shift+Enter to send with the alternative agent).
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
-  *Interrupt Claude* (active only while Claude is answering).
-- Status bar: the last announcement.
+  *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
+  started). While Claude answers, Send is greyed; the prompt field stays usable.
+- Status bar: the last announcement. Progress ("Claude is thinking", "Claude uses the tool Read",
+  "Claude is answering", "Permission denied for the tool Bash") is announced if the option is on,
+  the end of a turn ("Claude has answered", "Claude was interrupted", "Claude could not answer:
+  ...") always is. A failure also opens a dialog with the details; the prompt is kept when Claude
+  cannot be started.
 - Window title: `<conversation> - <workspace> - WxClaude`, the parts that exist.
 
 ## Menus

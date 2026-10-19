@@ -48,7 +48,10 @@ and then moved over the old one (a crash never leaves a half-written file). The 
 kept as `<name>.bak`, and a file that cannot be read is renamed `<name>.corrupt`, so nothing is lost.
 At reading, a damaged file gives its backup, else the default values, and the user gets a warning
 dialog instead of a crash. Only one instance of the application runs per user (a second launch
-shows a message and quits), so two instances never write the same files.
+brings the first window to the front and quits), so two instances never write the same files.
+The running instance publishes the handle of its window in `instance.json`, next to
+`settings.json` (`{"pid": ..., "handle": ...}`); a second launch uses it only if the handle is
+still a window of that process.
 
 Valid values: `effort` is one of `low`, `medium`, `high`, `xhigh`, `max`; `permission_mode` is one of
 `manual`, `acceptEdits`, `plan`, `auto`, `dontAsk` (`bypassPermissions` is deliberately not offered).

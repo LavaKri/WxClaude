@@ -25,7 +25,7 @@ What is still to decide, to verify or to improve is in `open-questions.md`.
   (never created automatically).
 - **One process per message** (`claude -p` is started for each prompt), not one long-lived
   process.
-- **One instance** of WxClaude per user.
+- **One instance** of WxClaude per user; a second launch brings the first window to the front.
 - **Names of conversations** are kept by WxClaude only; the session files of the CLI are never
   written by WxClaude.
 - **Errors from Claude** (CLI not found or not logged in, process failure, API error such as an
@@ -44,7 +44,8 @@ agents, conversation names, workspaces (recent, from Claude projects, last one r
 UI Automation announcements, task list dialog (empty), documentation. See `interface.md`.
 Milestone 1 (below): `core/messages.py` (`Message`, `ToolUse`, `Usage`) and
 `core/session_reader.py` (`read_session`), tested on synthetic session files.
-Claude is **not launched yet**: sending a prompt only echoes it.
+Milestone 3 (below), except the permission questions: Claude is launched, the answer is shown
+and the session file is read again after each turn.
 
 ## Next milestones
 
@@ -63,13 +64,17 @@ Claude is **not launched yet**: sending a prompt only echoes it.
      remembered conversation, else the most recent, else none. A file per workspace remembers
      the main agent and the name of each conversation (`settings.md`). Refresh the conversation
      (F5). The option "Hide the system messages" shows or hides the noise of the session.
-3. **Runner**
-   - `claude -p --output-format stream-json` from the agent (`--model`, `--effort`,
-     `--permission-mode`), `--session-id` for the first message, `--resume` afterwards.
+3. ~~**Runner**~~ (done, to check by hand with NVDA and JAWS)
+   - `claude -p --output-format stream-json --verbose` from the agent (`--model`, `--effort`,
+     `--permission-mode`), the prompt through stdin, `--session-id` for the first message,
+     `--resume` afterwards (`core/runner.py`, `core/stream.py`, `core/events.py`).
    - Reader threads for stdout and stderr, events to the interface with `wx.CallAfter`.
-   - A fake `claude` for the tests. Interrupt. Busy state (Send greyed, Interrupt active).
-   - Progress in the status bar and announced. After each turn, re-read the session file to
-     catch anything missed.
+   - A fake `claude` for the tests (`tests/fakes/fake_claude.py`). Interrupt. Busy state (Send
+     greyed, Interrupt active).
+   - Progress in the status bar and announced (option). After each turn, the session file is read
+     again and the view is rebuilt if it differs.
+   - A tool that needs permission is denied by the CLI (`-p` has nobody to ask): the denial is shown
+     as progress. The question dialog is milestone 4.
 4. **Permissions**: the question dialog, "always allow" rules, deny and explain.
 5. **Details dialogs** (context menu in a message body): tools used, tables, links. **Claude
    usage** dialog (Tools menu). Task list filled from `~/.claude/tasks/<id>/*.json`.

@@ -59,7 +59,9 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-ra"
+# faulthandler prints a harmless first-chance COM exception (0x8001010d) raised by wx while it
+# dispatches the events posted by the runner threads
+addopts = "-ra -p no:faulthandler"
 markers = [
     "unit: fast tests of pure logic (no wx)",
     "ui: tests that create wx windows",

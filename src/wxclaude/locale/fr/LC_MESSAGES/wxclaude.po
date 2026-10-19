@@ -490,3 +490,36 @@ msgstr "Annoncer la &progression de Claude"
 
 msgid "WxClaude is already running."
 msgstr "WxClaude est déjà en cours d'exécution."
+
+msgid "Claude is thinking."
+msgstr "Claude réfléchit."
+
+msgid "Claude uses the tool {tool}."
+msgstr "Claude utilise l'outil {tool}."
+
+msgid "Claude is answering."
+msgstr "Claude répond."
+
+msgid "Claude has answered."
+msgstr "Claude a répondu."
+
+msgid "Interrupting Claude."
+msgstr "Interruption de Claude."
+
+msgid "Claude was interrupted."
+msgstr "Claude a été interrompu."
+
+msgid "Claude could not answer: {details}"
+msgstr "Claude n'a pas pu répondre : {details}"
+
+msgid "Permission denied for the tool {tool}."
+msgstr "Permission refusée pour l'outil {tool}."
+
+msgid "Claude cannot be started.\n{error}"
+msgstr "Claude ne peut pas être lancé.\n{error}"
+
+msgid "Claude could not answer.\n{details}"
+msgstr "Claude n'a pas pu répondre.\n{details}"
+
+msgid "A second launch will not be able to bring this window to the front.\n{error}"
+msgstr "Un second lancement ne pourra pas ramener cette fenêtre devant.\n{error}"

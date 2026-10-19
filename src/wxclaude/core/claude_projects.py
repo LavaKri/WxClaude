@@ -102,6 +102,19 @@ def _scan_session(session_file: Path) -> tuple[str, float]:
     return custom or generated, next((t for t in times if t is not None), fallback)
 
 
+def find_session_file(session_id: str, projects_dir: Path | None = None) -> Path | None:
+    """The file of the session ``session_id``, None if Claude Code holds no such session."""
+    root = projects_dir or claude_projects_dir()
+    try:
+        for entry in root.iterdir():
+            candidate = entry / f"{session_id}.jsonl"
+            if candidate.is_file():
+                return candidate
+    except OSError:
+        return None
+    return None
+
+
 def list_sessions(workspace: Path, projects_dir: Path | None = None) -> list[SessionInfo]:
     """The conversations Claude Code holds for ``workspace``, the last message most recent first."""
     root = projects_dir or claude_projects_dir()

@@ -23,3 +23,15 @@ class SessionReadError(WxClaudeError):
 
 class ScreenReaderOutputError(WxClaudeError):
     """A message cannot be sent to the screen reader (or its output cannot be set up)."""
+
+
+class ClaudeNotFoundError(WxClaudeError):
+    """The ``claude`` command cannot be found."""
+
+
+class RunnerError(WxClaudeError):
+    """Claude cannot be started, or a request cannot be turned into a command."""
+
+
+class StreamParseError(WxClaudeError):
+    """A line of the ``stream-json`` output is not valid JSON."""

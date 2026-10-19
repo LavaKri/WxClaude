@@ -23,10 +23,9 @@ Nothing at the moment.
 
 ## Improvements not done yet
 
-- A second launch of the application only shows a message; it could bring the window of the
-  first instance to the front instead.
-- The option "Announce the progress of Claude" is stored but has no effect until the runner exists.
 - Context menu on a message (copy, show the tools used, a table, a link), see
   `conversation-display.md`.
 - Delete a conversation (the menu item is greyed).
-- Rebuild of the conversation view after each turn, from the session file (needs the runner).
+- After a turn the view is rebuilt from the session file; the answer titles then show the effort
+  written in the file, and none for a model that ignores it (haiku).
+- Permission questions: with `-p` a tool that needs permission is denied (milestone 4).

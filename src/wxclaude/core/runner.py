@@ -1,0 +1,196 @@
+"""Running ``claude -p`` for one message and reporting what it does.
+
+One process per message. Three threads read and supervise it, so the interface never waits:
+one reads stdout (the ``stream-json`` lines), one reads stderr, and one writes the prompt to
+stdin, waits for the end of the process and sends the last event (``TurnEnded``). The callback
+``on_event`` is called from those threads; the interface must hand the event over to its own
+thread (``wx.CallAfter``). This module never imports ``wx``.
+"""
+
+import shutil
+import subprocess
+import sys
+import threading
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import IO
+
+from wxclaude.core.agents import Agent
+from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
+from wxclaude.core.events import RunEvent, TurnEnded
+from wxclaude.core.stream import parse_stream_line
+
+_KILL_WAIT_SECONDS = 5
+
+
+@dataclass(frozen=True, slots=True)
+class RunRequest:
+    """One message to send: the prompt, the agent, and the conversation it belongs to.
+
+    ``resume`` is False for the first message of a conversation (the session is created with
+    ``--session-id``) and True afterwards (``--resume``).
+    """
+
+    prompt: str
+    agent: Agent
+    session_id: str
+    resume: bool
+    cwd: Path
+
+
+def build_arguments(request: RunRequest) -> list[str]:
+    """The arguments of ``claude`` for ``request`` (the prompt goes through stdin)."""
+    agent = request.agent
+    if not (agent.model and agent.effort and agent.permission_mode):
+        raise RunnerError("The agent must have a model, an effort and a permission mode.")
+    return [
+        "-p",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--model",
+        agent.model,
+        "--effort",
+        agent.effort,
+        "--permission-mode",
+        agent.permission_mode,
+        "--resume" if request.resume else "--session-id",
+        request.session_id,
+    ]
+
+
+def find_claude() -> list[str]:
+    """The command that starts the CLI; raises ``ClaudeNotFoundError``."""
+    found = shutil.which("claude")
+    if found is None:
+        raise ClaudeNotFoundError("The claude command was not found in the PATH.")
+    return [found]
+
+
+class ClaudeRunner:
+    """Runs one message at a time. ``command`` replaces the ``claude`` executable (tests)."""
+
+    def __init__(self, command: Sequence[str] | None = None) -> None:
+        self._command = list(command) if command is not None else None
+        self._process: subprocess.Popen[str] | None = None
+        self._interrupted = False
+        self._lock = threading.Lock()
+
+    @property
+    def is_running(self) -> bool:
+        with self._lock:
+            return self._process is not None
+
+    def start(self, request: RunRequest, on_event: Callable[[RunEvent], None]) -> None:
+        """Start ``claude`` for ``request``; events then come through ``on_event``.
+
+        Raises ``ClaudeNotFoundError`` or ``RunnerError`` if it cannot be started, or if a
+        message is already running.
+        """
+        command = self._command if self._command is not None else find_claude()
+        argv = [*command, *build_arguments(request)]
+        with self._lock:
+            if self._process is not None:
+                raise RunnerError("Claude is already answering.")
+            try:
+                process = subprocess.Popen(
+                    argv,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=request.cwd,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            except OSError as error:
+                raise RunnerError(f"Cannot start {argv[0]}: {error}") from error
+            self._process = process
+            self._interrupted = False
+        diagnostics: list[str] = []
+        stderr_lines: list[str] = []
+        readers = [
+            threading.Thread(
+                target=self._read_stdout, args=(process.stdout, on_event, diagnostics), daemon=True
+            ),
+            threading.Thread(
+                target=self._read_stderr, args=(process.stderr, stderr_lines), daemon=True
+            ),
+        ]
+        for reader in readers:
+            reader.start()
+        threading.Thread(
+            target=self._supervise,
+            args=(process, request.prompt, readers, on_event, diagnostics, stderr_lines),
+            daemon=True,
+        ).start()
+
+    def interrupt(self) -> None:
+        """Stop the running message (nothing happens if none runs)."""
+        with self._lock:
+            process = self._process
+            if process is None:
+                return
+            self._interrupted = True
+        _kill_tree(process)
+
+    @staticmethod
+    def _read_stdout(
+        stream: IO[str] | None, on_event: Callable[[RunEvent], None], diagnostics: list[str]
+    ) -> None:
+        for line in stream or ():
+            if not line.strip():
+                continue
+            try:
+                events = parse_stream_line(line)
+            except StreamParseError as error:
+                diagnostics.append(str(error))
+                continue
+            for event in events:
+                on_event(event)
+
+    @staticmethod
+    def _read_stderr(stream: IO[str] | None, lines: list[str]) -> None:
+        lines.extend(stream or ())
+
+    def _supervise(
+        self,
+        process: subprocess.Popen[str],
+        prompt: str,
+        readers: list[threading.Thread],
+        on_event: Callable[[RunEvent], None],
+        diagnostics: list[str],
+        stderr_lines: list[str],
+    ) -> None:
+        try:
+            if process.stdin is not None:
+                process.stdin.write(prompt)
+                process.stdin.close()
+        except OSError as error:  # the process ended before reading the prompt
+            diagnostics.append(f"The prompt could not be sent: {error}")
+        for reader in readers:
+            reader.join()
+        exit_code = process.wait()
+        with self._lock:
+            interrupted = self._interrupted
+            self._process = None
+        on_event(TurnEnded(exit_code, interrupted, "".join(stderr_lines).strip(), diagnostics))
+
+
+def _kill_tree(process: subprocess.Popen[str]) -> None:
+    """End the process and the processes it started."""
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                timeout=_KILL_WAIT_SECONDS,
+            )
+        except OSError, subprocess.TimeoutExpired:
+            process.kill()
+    else:
+        process.terminate()

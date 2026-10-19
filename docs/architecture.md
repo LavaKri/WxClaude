@@ -10,15 +10,31 @@ WxClaude is a wxPython desktop front end for `claude -p --output-format stream-j
 ## Scope
 
 WxClaude runs on **one machine**: there is no server/client split, no network and no protocol of
-our own. The runner will send typed events (dataclasses) straight to the interface, through
+our own. The runner sends typed events (dataclasses) straight to the interface, through
 `wx.CallAfter`. The CLI's session file stays the reference for what was said.
 
 ## Current state
 
-Only the interface exists. Claude is not launched yet: sending a prompt echoes it in the
-conversation view. The plan, in order, is in `roadmap.md`: conversation model and history, the
-display (`conversation-display.md`), then the runner, tested first with a fake `claude`. What is
-known about the CLI is in `claude-cli.md`.
+The conversation model, the display and the runner exist: a prompt starts `claude -p` (one
+process per message), the answer appears block by block, and the session file of the CLI is read
+again at the end of the turn. The plan, in order, is in `roadmap.md`. What is known about the CLI
+is in `claude-cli.md`.
+
+## A turn
+
+1. `MainWindow` builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
+   session file exists, workspace) and calls `ClaudeRunner.start`. The view shows the prompt at
+   once and the window is busy (Send greyed, Interrupt active).
+2. `ClaudeRunner` starts the process with three threads: stdout (each line is parsed by
+   `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt to stdin
+   (UTF-8), waits for the end and sends `TurnEnded`, always the last event.
+3. Events reach the interface through `wx.CallAfter`. Text blocks are appended to the view;
+   `progress.progress_for` turns the others into progress (status bar, and announcement if the
+   option is on; the same text is not repeated).
+4. At `TurnEnded`, `progress.turn_outcome` decides done / interrupted / failed. A failure is said in
+   the status bar and shown in a dialog. Then the session file is read and the view is rebuilt if
+   the text it would hold differs from what is shown.
+5. Interrupt ends the process and its children (`taskkill /T`); closing the window does the same.
 
 ## Modules of `core/`
 
@@ -33,6 +49,9 @@ known about the CLI is in `claude-cli.md`.
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `announcements.py` | `Announce` messages, `AnnouncementCenter` and the message sinks. |
+| `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
+| `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
+| `progress.py` | What is said while a turn runs, and how it ended. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 | `export.py` | Writes the conversation text to a file. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
@@ -49,7 +68,7 @@ known about the CLI is in `claude-cli.md`.
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |
-| `single_instance.py` | Only one WxClaude per user (`wx.SingleInstanceChecker`). |
+| `single_instance.py` | Only one WxClaude per user (`wx.SingleInstanceChecker`); a second launch brings the first window to the front. |
 
 ## Workspaces and conversations
 

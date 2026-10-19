@@ -83,6 +83,11 @@ class ConversationView(wx.TextCtrl):
         self.AppendText(added)
         self.SetInsertionPoint(caret)
 
+    def shows(self, messages: list[Message]) -> bool:
+        """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""
+        document = ConversationDocument(show_hidden=self._document.show_hidden)
+        return document.rebuild(messages) == self._document.text
+
     def message_at_caret(self) -> MessageSpan | None:
         """The span of the message that holds the caret."""
         return self._document.span_at(self._caret_index())

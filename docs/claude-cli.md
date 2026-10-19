@@ -5,11 +5,11 @@ changes a lot. Only what was tested or read in the documentation is stated here.
 
 ## Running it
 
-- Non-interactive: `claude -p "<prompt>" --output-format stream-json --verbose` (the tests used
-  `--verbose`). One process per message (WxClaude does not keep a process open); the conversation continues with
+- Non-interactive: `claude -p --output-format stream-json --verbose`, the prompt written to stdin
+  as UTF-8 (verified; `--verbose` is required with `stream-json`; no length limit of a command line). One process per message (WxClaude does not keep a process open); the conversation continues with
   `--resume <id>`.
 - The application chooses the conversation id: `--session-id <uuid>` for the first message
-  (tested), `--resume <uuid>` afterwards. `--fork-session` with `--resume` creates a new id.
+  (verified: the session gets that id), `--resume <uuid>` afterwards. `--fork-session` with `--resume` creates a new id.
 - Per message: `--model` (aliases `haiku`, `sonnet`, `opus`, `fable`, or a full name), `--effort`
   (`low`, `medium`, `high`, `xhigh`, `max`), `--permission-mode` (`manual`, `acceptEdits`,
   `plan`, `auto`, `dontAsk`, `bypassPermissions`), `--allowedTools` (rules the CLI may use without

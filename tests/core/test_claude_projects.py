@@ -8,6 +8,7 @@ import pytest
 from wxclaude.core.claude_projects import (
     SessionInfo,
     choose_conversation,
+    find_session_file,
     list_projects,
     list_sessions,
 )
@@ -128,3 +129,12 @@ def test_the_remembered_conversation_is_chosen_else_the_most_recent_else_none(
     assert choose_conversation([recent, old], "gone") is recent
     assert choose_conversation([recent, old], "") is recent
     assert choose_conversation([], "old") is None
+
+
+def test_a_session_file_is_found_by_its_identifier(tmp_path: Path) -> None:
+    projects = tmp_path / "projects"
+    identifier = new_conversation_id()
+    file = _conversation_file(projects / "C--work", identifier, tmp_path)
+    assert find_session_file(identifier, projects) == file
+    assert find_session_file(new_conversation_id(), projects) is None
+    assert find_session_file(identifier, tmp_path / "nothing") is None
