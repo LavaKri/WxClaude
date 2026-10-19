@@ -19,6 +19,30 @@ _PERMISSION_LABELS = {
     "auto": N_("Automatic (auto)"),
     "dontAsk": N_("Do not ask (dontAsk)"),
 }
+_PERMISSION_IMPLICATIONS = {
+    "manual": N_("only reads run without asking."),
+    "acceptEdits": N_(
+        "reads, file edits and common file commands (mkdir, touch, mv, cp...) run without asking."
+    ),
+    "plan": N_(
+        "reads, plus the commands approved by the classifier when auto mode is available; "
+        "to explore before changing anything."
+    ),
+    "auto": N_("everything runs, with background safety checks by a classifier."),
+    "dontAsk": N_(
+        "reads in the working folders and pre-approved tools; anything that would ask is denied."
+    ),
+}
+
+
+def permission_levels_lines() -> list[str]:
+    """One line per permission level: its name, then what runs without asking."""
+    return [
+        _("{level}: {implication}").format(
+            level=_(_PERMISSION_LABELS[mode]), implication=_(_PERMISSION_IMPLICATIONS[mode])
+        )
+        for mode in PERMISSION_MODES
+    ]
 
 
 class AgentPanel(wx.Panel):
@@ -61,6 +85,16 @@ class AgentPanel(wx.Panel):
         outer = wx.BoxSizer(wx.VERTICAL)
         outer.Add(grid, 1, wx.EXPAND | wx.ALL, 6)
         self.SetSizer(outer)
+
+    def set_agent(self, agent: Agent, unset_label: str) -> None:
+        """Show ``agent`` in the fields; ``unset_label`` is the entry meaning "not specified"."""
+        for choice, values, value in (
+            (self._model, MODELS, agent.model),
+            (self._effort, EFFORTS, agent.effort),
+            (self._permission, PERMISSION_MODES, agent.permission_mode),
+        ):
+            choice.SetString(0, unset_label)
+            choice.SetSelection(self._index(values, value))
 
     @staticmethod
     def _index(values: tuple[str, ...], value: str | None) -> int:

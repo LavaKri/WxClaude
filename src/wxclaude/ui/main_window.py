@@ -6,12 +6,21 @@ import wx
 
 from wxclaude import __version__
 from wxclaude.core.agents import Agent
-from wxclaude.core.errors import ExportError, SettingsError
+from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
+from wxclaude.core.errors import ExportError, ScreenReaderOutputError, SettingsError
 from wxclaude.core.export import export_text
 from wxclaude.core.settings import Settings
+from wxclaude.core.shortcuts import (
+    INTERRUPT_COMMAND,
+    NEW_CONVERSATION_COMMAND,
+    OPEN_WORKSPACE_COMMAND,
+    RESUME_CONVERSATION_COMMAND,
+    ConfigurableCommand,
+)
 from wxclaude.core.workspaces import add_recent, describe, remove_missing
 from wxclaude.i18n import _
 from wxclaude.ui.agent_dialog import AgentDialog
+from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.options_dialog import OptionsDialog
 
 
@@ -25,6 +34,8 @@ class MainWindow(wx.Frame):
         self._agent = settings.default_agent
         self._busy = False  # True while Claude is answering (set by the runner, later)
         self._recent_ids: dict[int, str] = {}
+        self._command_items: list[tuple[ConfigurableCommand, wx.MenuItem, str]] = []
+        self._output_id: str | None = None  # the screen reader output in use
 
         panel = wx.Panel(self)
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
@@ -66,6 +77,8 @@ class MainWindow(wx.Frame):
         self._build_menu_bar()
         self.CreateStatusBar()
         self.SetStatusText(_("Ready"))
+        self._announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
+        self._apply_screen_reader_output()
         self.Bind(wx.EVT_MENU_OPEN, self._on_menu_open)
         self.Bind(wx.EVT_CLOSE, self._on_close)
         wx.CallAfter(self._prompt.SetFocus)
@@ -74,7 +87,8 @@ class MainWindow(wx.Frame):
 
     def _build_menu_bar(self) -> None:
         self._file_menu = wx.Menu()
-        open_item = self._file_menu.Append(wx.ID_ANY, _("&Open workspace…\tCtrl+O"))
+        open_item = self._file_menu.Append(wx.ID_ANY, _("&Open workspace…"))
+        self._command_items.append((OPEN_WORKSPACE_COMMAND, open_item, _("&Open workspace…")))
         projects_item = self._file_menu.Append(wx.ID_ANY, _("Open from Claude &projects…"))
         projects_item.Enable(False)  # needs the Claude history reader (later milestone)
         self._recent_menu = wx.Menu()
@@ -84,16 +98,17 @@ class MainWindow(wx.Frame):
         quit_item = self._file_menu.Append(wx.ID_EXIT, _("&Quit\tCtrl+Q"))
 
         conversation_menu = wx.Menu()
-        new_item = conversation_menu.Append(wx.ID_ANY, _("&New conversation\tCtrl+N"))
-        resume_item = conversation_menu.Append(
-            wx.ID_ANY, _("&Resume a conversation…\tCtrl+Shift+O")
-        )
+        new_item = conversation_menu.Append(wx.ID_ANY, _("&New conversation"))
+        resume_item = conversation_menu.Append(wx.ID_ANY, _("&Resume a conversation…"))
         rename_item = conversation_menu.Append(wx.ID_ANY, _("Ren&ame the conversation"))
         branch_item = conversation_menu.Append(wx.ID_ANY, _("New conversation &branch"))
         delete_item = conversation_menu.Append(wx.ID_ANY, _("&Delete the conversation"))
-        self._interrupt_item = conversation_menu.Append(
-            wx.ID_ANY, _("&Interrupt Claude\tCtrl+Shift+I")
-        )
+        self._interrupt_item = conversation_menu.Append(wx.ID_ANY, _("&Interrupt Claude"))
+        self._command_items += [
+            (NEW_CONVERSATION_COMMAND, new_item, _("&New conversation")),
+            (RESUME_CONVERSATION_COMMAND, resume_item, _("&Resume a conversation…")),
+            (INTERRUPT_COMMAND, self._interrupt_item, _("&Interrupt Claude")),
+        ]
         agent_item = conversation_menu.Append(wx.ID_ANY, _("&Modify the agent…"))
         # These need the session history and the Claude runner (later milestones).
         for pending in (resume_item, rename_item, branch_item, delete_item):
@@ -111,6 +126,7 @@ class MainWindow(wx.Frame):
         menu_bar.Append(tools_menu, _("&Tools"))
         menu_bar.Append(help_menu, _("&Help"))
         self.SetMenuBar(menu_bar)
+        self._apply_shortcuts()
 
         self.Bind(wx.EVT_MENU, self._on_open_workspace, open_item)
         self.Bind(wx.EVT_MENU, self._on_export, export_item)
@@ -120,6 +136,12 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_options, options_item)
         self.Bind(wx.EVT_MENU, self._on_about, about_item)
         self.Bind(wx.EVT_UPDATE_UI, self._on_update_interrupt, self._interrupt_item)
+
+    def _apply_shortcuts(self) -> None:
+        """Show (and activate) the shortcut of each configurable command in its menu item."""
+        for command, item, text in self._command_items:
+            shortcut = self._settings.shortcut_for(command)
+            item.SetItemLabel(f"{text}\t{shortcut}" if shortcut else text)
 
     def _on_menu_open(self, event: wx.MenuEvent) -> None:
         if event.GetMenu() is self._file_menu:
@@ -148,7 +170,7 @@ class MainWindow(wx.Frame):
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
         name, _parent = describe(str(folder))
         self.SetTitle(_("{folder} - WxClaude").format(folder=name))
-        self.SetStatusText(_("Workspace: {folder}").format(folder=folder))
+        self._say(Announce.WORKSPACE_OPENED, folder=folder)
         self._save_settings()
 
     def _on_open_workspace(self, _event: wx.CommandEvent) -> None:
@@ -182,7 +204,7 @@ class MainWindow(wx.Frame):
         self._conversation.Clear()
         self._prompt.Clear()
         self._agent = self._settings.default_agent
-        self.SetStatusText(_("New conversation."))
+        self._say(Announce.NEW_CONVERSATION)
         self._prompt.SetFocus()
 
     def _on_export(self, _event: wx.CommandEvent) -> None:
@@ -201,18 +223,20 @@ class MainWindow(wx.Frame):
         except ExportError as error:
             self._show_error(_("Cannot export the conversation.\n{error}").format(error=error))
             return
-        self.SetStatusText(_("Conversation exported to {path}.").format(path=path))
+        self._say(Announce.CONVERSATION_EXPORTED, path=path)
 
     def _on_choose_agent(self, _event: wx.CommandEvent) -> None:
         with AgentDialog(self, self._agent) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
                 self._agent = dialog.agent
-                self.SetStatusText(_("Agent updated."))
+                self._say(Announce.AGENT_UPDATED)
 
     def _on_options(self, _event: wx.CommandEvent) -> None:
         with OptionsDialog(self, self._settings) as dialog:
             if dialog.ShowModal() == wx.ID_OK:
                 dialog.apply(self._settings)
+                self._apply_shortcuts()
+                self._apply_screen_reader_output()
                 self._save_settings()
 
     def _on_about(self, _event: wx.CommandEvent) -> None:
@@ -257,6 +281,26 @@ class MainWindow(wx.Frame):
         event.Enable(self._busy)
 
     # Misc ------------------------------------------------------------------------------------
+
+    def _say(self, announce: Announce, **values: object) -> None:
+        """Show an announcement in the status bar and send it to the screen reader output."""
+        self.SetStatusText(self._announcements.notify(announce, **values))
+
+    def _apply_screen_reader_output(self) -> None:
+        """Connect the announcements to the output chosen in the options."""
+        if self._settings.screen_reader_output == self._output_id:
+            return
+        self._output_id = self._settings.screen_reader_output
+        try:
+            sink = create_sink(self._settings.screen_reader_output, self)
+        except ScreenReaderOutputError as error:
+            sink = NullMessageSink()
+            self._on_screen_reader_error(error)
+        self._announcements.message_sink.close()
+        self._announcements.message_sink = sink
+
+    def _on_screen_reader_error(self, error: ScreenReaderOutputError) -> None:
+        self._show_error(_("The screen reader output cannot be used.\n{error}").format(error=error))
 
     def _show_error(self, message: str) -> None:
         wx.MessageBox(message, _("Error"), wx.OK | wx.ICON_ERROR, self)

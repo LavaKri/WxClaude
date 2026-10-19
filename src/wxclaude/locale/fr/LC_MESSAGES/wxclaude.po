@@ -6,6 +6,8 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
+# Main window
+
 msgid "WxClaude"
 msgstr "WxClaude"
 
@@ -36,8 +38,8 @@ msgstr "&Interrompre Claude"
 msgid "Ready"
 msgstr "Prêt"
 
-msgid "&Open workspace…\tCtrl+O"
-msgstr "&Ouvrir un espace de travail…\tCtrl+O"
+msgid "&Open workspace…"
+msgstr "&Ouvrir un espace de travail…"
 
 msgid "Open from Claude &projects…"
 msgstr "Ouvrir depuis les &projets Claude…"
@@ -51,11 +53,11 @@ msgstr "&Exporter la conversation…"
 msgid "&Quit\tCtrl+Q"
 msgstr "&Quitter\tCtrl+Q"
 
-msgid "&New conversation\tCtrl+N"
-msgstr "&Nouvelle conversation\tCtrl+N"
+msgid "&New conversation"
+msgstr "&Nouvelle conversation"
 
-msgid "&Resume a conversation…\tCtrl+Shift+O"
-msgstr "&Reprendre une conversation…\tCtrl+Shift+O"
+msgid "&Resume a conversation…"
+msgstr "&Reprendre une conversation…"
 
 msgid "Ren&ame the conversation"
 msgstr "Ren&ommer la conversation"
@@ -66,14 +68,14 @@ msgstr "Nouvelle &branche de conversation"
 msgid "&Delete the conversation"
 msgstr "&Supprimer la conversation"
 
-msgid "&Interrupt Claude\tCtrl+Shift+I"
-msgstr "&Interrompre Claude\tCtrl+Shift+I"
-
 msgid "&Modify the agent…"
 msgstr "&Modifier l'agent…"
 
 msgid "&Options…"
 msgstr "&Options…"
+
+msgid "&About"
+msgstr "À &propos"
 
 msgid "&File"
 msgstr "&Fichier"
@@ -86,15 +88,6 @@ msgstr "&Outils"
 
 msgid "&Help"
 msgstr "&Aide"
-
-msgid "&About"
-msgstr "À &propos"
-
-msgid "About"
-msgstr "À propos"
-
-msgid "WxClaude {version}"
-msgstr "WxClaude {version}"
 
 msgid "{name}, from {parent}"
 msgstr "{name}, depuis {parent}"
@@ -141,6 +134,14 @@ msgstr "Erreur"
 msgid "Cannot save the settings.\n{error}"
 msgstr "Impossible d'enregistrer les réglages.\n{error}"
 
+msgid "WxClaude {version}"
+msgstr "WxClaude {version}"
+
+msgid "About"
+msgstr "À propos"
+
+# Agent
+
 msgid "Modify the agent"
 msgstr "Modifier l'agent"
 
@@ -149,15 +150,6 @@ msgstr "(non précisé : réglage de Claude Code)"
 
 msgid "(same as the conversation)"
 msgstr "(comme la conversation)"
-
-msgid "Options"
-msgstr "Options"
-
-msgid "Agent of a new conversation"
-msgstr "Agent d'une nouvelle conversation"
-
-msgid "Alternative agent"
-msgstr "Agent alternatif"
 
 msgid "&Model"
 msgstr "&Modèle"
@@ -207,9 +199,143 @@ msgstr "Automatique (auto)"
 msgid "Do not ask (dontAsk)"
 msgstr "Ne pas demander (dontAsk)"
 
-msgid ""
-"Changing the model loses the cache of the conversation: "
-"the next message is slower and costs more."
+msgid "only reads run without asking."
+msgstr "seules les lectures s'exécutent sans demander."
+
+msgid "reads, file edits and common file commands (mkdir, touch, mv, cp...) run without asking."
 msgstr ""
-"Changer de modèle fait perdre le cache de la conversation : "
+"lectures, modifications de fichiers et commandes courantes sur les fichiers (mkdir, touch, "
+"mv, cp...) s'exécutent sans demander."
+
+msgid ""
+"reads, plus the commands approved by the classifier when auto mode is available; to explore "
+"before changing anything."
+msgstr ""
+"lectures, plus les commandes approuvées par le classificateur quand le mode automatique est "
+"disponible ; pour explorer avant de modifier quoi que ce soit."
+
+msgid "everything runs, with background safety checks by a classifier."
+msgstr "tout s'exécute, avec des vérifications de sécurité en arrière-plan par un classificateur."
+
+msgid ""
+"reads in the working folders and pre-approved tools; anything that would ask is denied."
+msgstr ""
+"lectures dans les dossiers de travail et outils pré-approuvés ; tout ce qui demanderait une "
+"autorisation est refusé."
+
+msgid "{level}: {implication}"
+msgstr "{level} : {implication}"
+
+# Options
+
+msgid "Options"
+msgstr "Options"
+
+msgid "General"
+msgstr "Général"
+
+msgid "Agent"
+msgstr "Agent"
+
+msgid "Shortcuts"
+msgstr "Raccourcis"
+
+msgid "Screen reader"
+msgstr "Lecteur d'écran"
+
+msgid "&Language"
+msgstr "&Langue"
+
+msgid "Language"
+msgstr "Langue"
+
+msgid "The language change applies at the next start."
+msgstr "Le changement de langue s'applique au prochain démarrage."
+
+msgid "&Agent"
+msgstr "&Agent"
+
+msgid "Agent of a new conversation"
+msgstr "Agent d'une nouvelle conversation"
+
+msgid "Alternative agent"
+msgstr "Agent alternatif"
+
+msgid "Implications of the permission &levels"
+msgstr "Implications des &niveaux de permission"
+
+msgid ""
+"Cache: when the alternative agent changes the model, the conversation cache is lost and the "
+"next message is slower and costs more."
+msgstr ""
+"Cache : quand l'agent alternatif change le modèle, le cache de la conversation est perdu et "
 "le message suivant est plus lent et coûte plus cher."
+
+msgid "Shortcut &list:"
+msgstr "&Liste des raccourcis :"
+
+msgid "Shortcut list"
+msgstr "Liste des raccourcis"
+
+msgid "Command"
+msgstr "Commande"
+
+msgid "Shortcut"
+msgstr "Raccourci"
+
+msgid "Open workspace"
+msgstr "Ouvrir un espace de travail"
+
+msgid "New conversation"
+msgstr "Nouvelle conversation"
+
+msgid "Resume a conversation"
+msgstr "Reprendre une conversation"
+
+msgid "Interrupt Claude"
+msgstr "Interrompre Claude"
+
+msgid "Press the new &shortcut here:"
+msgstr "Appuyez ici sur le nouveau &raccourci :"
+
+msgid "Restore the &default shortcut"
+msgstr "Rétablir le raccourci par &défaut"
+
+msgid "&No shortcut"
+msgstr "A&ucun raccourci"
+
+msgid "None"
+msgstr "Aucun"
+
+msgid "{shortcut} is already used by the command \"{command}\"."
+msgstr "{shortcut} est déjà utilisé par la commande « {command} »."
+
+msgid "{shortcut} is the shortcut of a standard command and cannot be reused."
+msgstr "{shortcut} est le raccourci d'une commande standard et ne peut pas être réutilisé."
+
+msgid ""
+"{shortcut} cannot be used: a shortcut needs the Ctrl key, the Alt key or both (or be a "
+"function key), and Tab, Esc, Enter and Insert are reserved for navigation, sending and screen "
+"readers."
+msgstr ""
+"{shortcut} ne peut pas être utilisé : un raccourci demande la touche Ctrl, la touche Alt ou "
+"les deux (ou être une touche de fonction), et Tab, Échap, Entrée et Insert sont réservées à la "
+"navigation, à l'envoi et aux lecteurs d'écran."
+
+msgid "{shortcut} is not a valid shortcut."
+msgstr "{shortcut} n'est pas un raccourci valide."
+
+msgid "&Announcements"
+msgstr "&Annonces"
+
+msgid "Announcements"
+msgstr "Annonces"
+
+msgid "No output"
+msgstr "Aucune sortie"
+
+msgid "UI Automation (Windows)"
+msgstr "UI Automation (Windows)"
+
+msgid "The screen reader output cannot be used.\n{error}"
+msgstr "La sortie vers le lecteur d'écran est inutilisable.\n{error}"
