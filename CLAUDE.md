@@ -25,7 +25,7 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 - `src/wxclaude/core/`: logic, models, CLI runner. **Never imports `wx`.**
 - `src/wxclaude/ui/`: wx windows and dialogs; thin, no business logic.
 - `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.
-- `docs/`: specifications, one file per topic (architecture, interface, settings, accessibility). Update them when behaviour changes.
+- `docs/`: specifications, one file per topic (architecture, interface, settings, accessibility, focus). Update them when behaviour changes.
 
 ## Rules
 - **Never commit without asking the user first.** Propose the message and wait for approval.

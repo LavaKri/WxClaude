@@ -110,3 +110,14 @@ def test_the_view_knows_whether_it_shows_given_messages(view: ConversationView) 
     assert not view.shows([*messages, Message("4", Role.USER, "More")])
     messages[1] = Message("2", Role.ASSISTANT, "changed", model="m")
     assert not view.shows(messages)
+
+
+def test_the_focus_goes_to_the_start_of_the_last_prompt(view: ConversationView) -> None:
+    view.SetInsertionPoint(0)
+    view.focus_last_prompt()
+    assert view.HasFocus()
+    text = view.document.text
+    assert view.GetInsertionPoint() == text.index("# You say: Again")
+    view.set_messages([Message("1", Role.ASSISTANT, "only an answer", model="m")])
+    view.focus_last_prompt()
+    assert view.GetInsertionPoint() == 0  # no prompt: the start

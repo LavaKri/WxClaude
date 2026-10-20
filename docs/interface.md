@@ -2,7 +2,8 @@
 
 ## Main window
 
-- **Conversation**: read-only view of the exchange. It never takes the focus by itself. How the
+- **Conversation**: read-only view of the exchange. It takes the focus only when the user loads, sends or
+  refreshes, or searches (`focus.md`); never at the end of an answer. How the
   conversation will be displayed (Markdown, navigation by headings) is in
   `conversation-display.md`. Your prompt appears as soon as it is sent, then each block of text of
   the answer.
@@ -28,7 +29,8 @@ conversation (F5, reads the session file again and keeps the caret on its messag
 conversation branch, Delete, Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
-**Tools**: Task list (Ctrl+T, as in the CLI), Options.
+**Tools**: Task list (Ctrl+T, as in the CLI), Open the workspace folder (in the file explorer;
+needs a workspace), Options.
 
 **Help**: About.
 
@@ -43,7 +45,7 @@ is displayed, titles included).
 - *Find next* / *Find previous* repeat the search of the last term in either direction; without a
   previous term they open the dialog. The search starts after the selection (before it when going
   backwards), so repeating it walks through the occurrences. It does not wrap around.
-- An occurrence is selected and the view gets the focus; the whole line that holds it is announced
+- An occurrence is selected and the view gets the focus (`focus.md`); the whole line that holds it is announced
   (status bar and UI Automation). When there is no more occurrence in the direction asked, a
   message dialog says so ("No next occurrence of ...", "No previous occurrence of ...").
 

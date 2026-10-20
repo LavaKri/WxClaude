@@ -565,3 +565,15 @@ msgstr "Aucune occurrence précédente de « {term} »."
 
 msgid "No next occurrence of \"{term}\"."
 msgstr "Aucune occurrence suivante de « {term} »."
+
+msgid "No conversation in this workspace."
+msgstr "Aucune conversation dans cet espace de travail."
+
+msgid "Open the workspace &folder"
+msgstr "Ouvrir le &dossier de l'espace de travail"
+
+msgid "The folder {folder} no longer exists."
+msgstr "Le dossier {folder} n'existe plus."
+
+msgid "The folder {folder} cannot be opened in the file explorer."
+msgstr "Le dossier {folder} ne peut pas être ouvert dans l'explorateur de fichiers."

@@ -504,3 +504,126 @@ def test_the_search_commands_have_the_classic_shortcuts(conversation: MainWindow
     assert "&Find…	Ctrl+F" in labels
     assert "Find &next	F3" in labels
     assert "Find &previous	Shift+F3" in labels
+
+
+def _last_prompt_start(window: MainWindow) -> int:
+    view = window._conversation
+    return view.text.rindex("# You say:")
+
+
+def test_a_loaded_conversation_puts_the_focus_on_my_last_message(
+    wx_app: wx.App, tmp_path: Path, claude_config: Path
+) -> None:
+    _session(claude_config, tmp_path, prompt="Last question")
+    settings = _settings(tmp_path / "config" / "settings.json")
+    settings.last_workspace = str(tmp_path)
+    window = MainWindow(settings)  # at startup
+    try:
+        assert window._conversation.HasFocus()
+        assert window._conversation.GetInsertionPoint() == _last_prompt_start(window)
+        window._prompt.SetFocus()
+        window._conversation.SetInsertionPoint(0)
+        window._on_refresh_conversation(wx.CommandEvent())  # F5
+        assert window._conversation.HasFocus()
+        assert window._conversation.GetInsertionPoint() == _last_prompt_start(window)
+    finally:
+        window.Destroy()
+        wx.SafeYield()
+
+
+def test_opening_a_workspace_puts_the_focus_on_my_last_message(
+    window: MainWindow, tmp_path: Path, claude_config: Path
+) -> None:
+    other = tmp_path / "other"
+    other.mkdir()
+    _session(claude_config, other, prompt="Question")
+    window._prompt.SetFocus()
+    window.open_workspace(other)
+    assert window._conversation.HasFocus()
+    assert window._conversation.GetInsertionPoint() == _last_prompt_start(window)
+
+
+def test_sending_puts_the_focus_on_the_prompt_just_sent(conversation: MainWindow) -> None:
+    wx.Yield()  # the focus of the startup first
+    conversation._prompt.SetFocus()
+    conversation._prompt.SetValue("hello")
+    conversation.send_prompt(alternative=False)
+    view = conversation._conversation
+    assert view.HasFocus()
+    assert view.GetInsertionPoint() == view.text.rindex("# You say: hello")
+    _wait_until_idle(conversation)
+    assert view.HasFocus()  # the end of the answer does not move it
+
+
+def test_a_workspace_without_conversation_focuses_the_view_and_says_so(
+    conversation: MainWindow, tmp_path: Path
+) -> None:
+    sink = RecordingMessageSink()
+    conversation._announcements.message_sink = sink
+    empty = tmp_path / "empty-workspace"
+    empty.mkdir()
+    conversation._prompt.SetFocus()
+    conversation.open_workspace(empty)
+    assert conversation._conversation.HasFocus()
+    assert not conversation._prompt.IsEnabled()
+    assert not conversation._send_button.IsEnabled() or not conversation.can_send
+    assert sink.messages[-1] == "No conversation in this workspace."
+
+
+def test_the_focus_comes_back_after_a_dialog(conversation: MainWindow) -> None:
+    conversation.Show()  # the focus only exists in a window that is shown
+    wx.Yield()
+    conversation._prompt.SetFocus()
+    wx.CallAfter(lambda: wx.GetTopLevelWindows()[-1].EndModal(wx.ID_CANCEL))
+    conversation._on_find(wx.CommandEvent())  # opens the Find dialog, closed at once
+    wx.Yield()
+    assert conversation._prompt.HasFocus()
+
+
+def _folder_tools(window: MainWindow, monkeypatch: pytest.MonkeyPatch, *, accepted: bool = True):
+    opened: list[Path] = []
+
+    def launch(folder: Path) -> bool:
+        opened.append(folder)
+        return accepted
+
+    monkeypatch.setattr(window, "_launch_folder", launch)
+    errors = _Errors(window)
+    return opened, errors
+
+
+def test_the_workspace_folder_is_opened_in_the_file_explorer(
+    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened, errors = _folder_tools(window, monkeypatch)
+    window.open_workspace(tmp_path)
+    window._on_open_workspace_folder(wx.CommandEvent())
+    assert opened == [tmp_path]
+    assert errors.messages == []
+
+
+def test_a_workspace_folder_that_is_gone_or_refused_is_reported(
+    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path / "soon-gone"
+    folder.mkdir()
+    opened, errors = _folder_tools(window, monkeypatch, accepted=False)
+    window.open_workspace(folder)
+    window._on_open_workspace_folder(wx.CommandEvent())
+    assert opened == [folder]
+    assert "cannot be opened" in errors.messages[0]
+    folder.rmdir()
+    window._on_open_workspace_folder(wx.CommandEvent())
+    assert opened == [folder]  # not tried again
+    assert "no longer exists" in errors.messages[1]
+
+
+def test_the_folder_item_needs_a_workspace(window: MainWindow, tmp_path: Path) -> None:
+    folder_item = next(
+        item
+        for item in window._needs_workspace
+        if item.GetItemLabel() == "Open the workspace &folder"
+    )
+    assert not folder_item.IsEnabled()
+    window.open_workspace(tmp_path)
+    assert folder_item.IsEnabled()

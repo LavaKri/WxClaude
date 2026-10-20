@@ -14,7 +14,7 @@ from wxclaude.core.headings import (
     previous_heading,
     to_utf16,
 )
-from wxclaude.core.messages import Message
+from wxclaude.core.messages import Message, Role
 from wxclaude.i18n import _
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
@@ -100,6 +100,17 @@ class ConversationView(wx.TextCtrl):
         self.SetFocus()
         self.SetSelection(to_utf16(text, start), to_utf16(text, end))
         self.ShowPosition(to_utf16(text, start))
+
+    def focus_last_prompt(self) -> None:
+        """Give the focus to the view, the caret at the start of the last prompt of the user."""
+        position = 0
+        for span in reversed(self._document.spans):
+            if span.message.role is Role.USER:
+                position = to_utf16(self._document.text, span.start)
+                break
+        self.SetFocus()
+        self.SetInsertionPoint(position)
+        self.ShowPosition(position)
 
     def shows(self, messages: list[Message]) -> bool:
         """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""

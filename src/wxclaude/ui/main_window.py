@@ -27,7 +27,6 @@ from wxclaude.core.errors import (
 )
 from wxclaude.core.events import AssistantText, RunEvent, TurnEnded, TurnResult
 from wxclaude.core.export import export_text
-from wxclaude.core.headings import to_utf16
 from wxclaude.core.messages import Message, Role
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
@@ -186,11 +185,12 @@ class MainWindow(wx.Frame):
         tools_menu = wx.Menu()
         tasks_item = tools_menu.Append(wx.ID_ANY, _("Task &list…"))
         self._command_items.append((TASKS_COMMAND, tasks_item, _("Task &list…")))
+        folder_item = tools_menu.Append(wx.ID_ANY, _("Open the workspace &folder"))
         options_item = tools_menu.Append(wx.ID_ANY, _("&Options…"))
 
         # A conversation belongs to a workspace: without a workspace only the items that open
         # one are available, and without a conversation those that need one are greyed.
-        self._needs_workspace = [new_item, resume_item]
+        self._needs_workspace = [new_item, resume_item, folder_item]
         self._needs_conversation = [
             export_item,
             rename_item,
@@ -217,6 +217,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_open_workspace, open_item)
         self.Bind(wx.EVT_MENU, self._on_open_project, projects_item)
         self.Bind(wx.EVT_MENU, self._on_tasks, tasks_item)
+        self.Bind(wx.EVT_MENU, self._on_open_workspace_folder, folder_item)
         self.Bind(wx.EVT_MENU, self._on_export, export_item)
         self.Bind(wx.EVT_MENU, lambda _event: self.Close(), quit_item)
         self.Bind(wx.EVT_MENU, self._on_new_conversation, new_item)
@@ -302,7 +303,7 @@ class MainWindow(wx.Frame):
         with wx.SingleChoiceDialog(
             self, _("Choose a project:"), _("Open from Claude projects"), labels
         ) as dialog:
-            if dialog.ShowModal() == wx.ID_OK:
+            if self._modal(dialog) == wx.ID_OK:
                 self.open_workspace(projects[dialog.GetSelection()].folder)
 
     def _on_open_workspace(self, _event: wx.CommandEvent) -> None:
@@ -313,7 +314,7 @@ class MainWindow(wx.Frame):
             defaultPath=default,
             style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
         ) as dialog:
-            if dialog.ShowModal() == wx.ID_OK:
+            if self._modal(dialog) == wx.ID_OK:
                 self.open_workspace(Path(dialog.GetPath()))
 
     def _on_recent(self, event: wx.CommandEvent) -> None:
@@ -335,7 +336,7 @@ class MainWindow(wx.Frame):
     def _ask_conversation_name(self, title: str, proposal: str) -> str | None:
         """Ask for a conversation name, the proposal being selected; None if cancelled."""
         with ConversationNameDialog(self, title, proposal) as dialog:
-            return dialog.name if dialog.ShowModal() == wx.ID_OK else None
+            return dialog.name if self._modal(dialog) == wx.ID_OK else None
 
     def _set_conversation(self, conversation_id: str, name: str) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
@@ -419,6 +420,10 @@ class MainWindow(wx.Frame):
         chosen = choose_conversation(sessions, self._state.current_conversation)
         if chosen is not None:
             self._load_conversation(chosen)
+            return
+        # Nothing to talk to: the prompt and the buttons are greyed, the (empty) view says why.
+        self._conversation.focus_last_prompt()
+        self._say(Announce.NO_CONVERSATION)
 
     def _load_conversation(self, chosen: SessionInfo) -> bool:
         """Show the conversation ``chosen`` and make it current; False if it cannot be read."""
@@ -444,6 +449,7 @@ class MainWindow(wx.Frame):
         self._prompt.Clear()
         self._branch_count = 0
         self._set_conversation(chosen.id, name)
+        self._conversation.focus_last_prompt()
         self._say(Announce.CONVERSATION_RESUMED, name=name)
         return True
 
@@ -473,11 +479,10 @@ class MainWindow(wx.Frame):
         with wx.SingleChoiceDialog(
             self, _("Choose a conversation:"), _("Resume a conversation"), labels
         ) as dialog:
-            if dialog.ShowModal() != wx.ID_OK:
+            if self._modal(dialog) != wx.ID_OK:
                 return
             chosen = sessions[dialog.GetSelection()]
-        if self._load_conversation(chosen):
-            self._conversation.SetFocus()
+        self._load_conversation(chosen)
 
     def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:
         """Read the session file again: messages added since (by the CLI) appear."""
@@ -494,19 +499,14 @@ class MainWindow(wx.Frame):
             return
         view = self._conversation
         before = len(view.document.spans)
-        span = view.message_at_caret()
         view.set_messages(session.messages)
-        if span is not None:
-            for new_span in view.document.spans:
-                if new_span.message.id == span.message.id:
-                    view.SetInsertionPoint(to_utf16(view.document.text, new_span.start))
-                    break
+        view.focus_last_prompt()
         self._say(Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before))
 
     def _on_find(self, _event: wx.CommandEvent) -> None:
         """Ask what to look for, then go to the next occurrence."""
         with SearchDialog(self, self._search_options) as dialog:
-            if dialog.ShowModal() != wx.ID_OK:
+            if self._modal(dialog) != wx.ID_OK:
                 return
             self._search_options = dialog.options
         self.search(backwards=False)
@@ -573,7 +573,7 @@ class MainWindow(wx.Frame):
             wildcard=_("Text files (*.txt)|*.txt|Markdown files (*.md)|*.md"),
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dialog:
-            if dialog.ShowModal() != wx.ID_OK:
+            if self._modal(dialog) != wx.ID_OK:
                 return
             path = Path(dialog.GetPath())
         try:
@@ -585,14 +585,14 @@ class MainWindow(wx.Frame):
 
     def _on_choose_agent(self, _event: wx.CommandEvent) -> None:
         with AgentDialog(self, self._agent) as dialog:
-            if dialog.ShowModal() == wx.ID_OK:
+            if self._modal(dialog) == wx.ID_OK:
                 self._agent = dialog.agent
                 self._remember_conversation()
                 self._say(Announce.AGENT_UPDATED)
 
     def _on_options(self, _event: wx.CommandEvent) -> None:
         with OptionsDialog(self, self._settings) as dialog:
-            if dialog.ShowModal() == wx.ID_OK:
+            if self._modal(dialog) == wx.ID_OK:
                 dialog.apply(self._settings)
                 self._conversation.set_show_hidden(not self._settings.hide_system_messages)
                 self._apply_shortcuts()
@@ -600,16 +600,35 @@ class MainWindow(wx.Frame):
                 self._save_settings()
 
     def _focus_main_field(self) -> None:
-        """The prompt when there is a conversation, else the conversation view."""
-        (self._prompt if self._conversation_id else self._conversation).SetFocus()
+        """At startup the focus is on the conversation view, at the last prompt if there is one."""
+        self._conversation.focus_last_prompt()
+
+    def _on_open_workspace_folder(self, _event: wx.CommandEvent) -> None:
+        """Show the folder of the workspace in the file explorer."""
+        folder = self._workspace
+        if folder is None:
+            return
+        if not folder.is_dir():
+            self._show_error(_("The folder {folder} no longer exists.").format(folder=folder))
+        elif not self._launch_folder(folder):
+            self._show_error(
+                _("The folder {folder} cannot be opened in the file explorer.").format(
+                    folder=folder
+                )
+            )
+
+    @staticmethod
+    def _launch_folder(folder: Path) -> bool:
+        """Open ``folder`` with the default application (the file explorer); False if refused."""
+        return bool(wx.LaunchDefaultApplication(str(folder)))
 
     def _on_tasks(self, _event: wx.CommandEvent) -> None:
         with TasksDialog(self) as dialog:
-            dialog.ShowModal()
+            self._modal(dialog)
 
     def _on_about(self, _event: wx.CommandEvent) -> None:
         message = _("WxClaude {version}").format(version=__version__)
-        wx.MessageBox(message, _("About"), wx.OK | wx.ICON_INFORMATION, self)
+        self._message_box(message, _("About"), wx.ICON_INFORMATION)
 
     # Prompt ----------------------------------------------------------------------------------
 
@@ -626,6 +645,7 @@ class MainWindow(wx.Frame):
             return
         if self._start_turn(text, self.agent_for(alternative=alternative)):
             self._prompt.Clear()
+            self._conversation.focus_last_prompt()  # the prompt that was just sent
 
     def _start_turn(self, text: str, agent: Agent) -> bool:
         """Start Claude on ``text``; False (with the error shown) if it cannot be started."""
@@ -770,19 +790,39 @@ class MainWindow(wx.Frame):
     def _on_screen_reader_error(self, error: ScreenReaderOutputError) -> None:
         self._show_error(_("The screen reader output cannot be used.\n{error}").format(error=error))
 
+    def _modal(self, dialog: wx.Dialog) -> int:
+        """Show ``dialog``; when it closes the focus is back where it was (docs/focus.md)."""
+        focused = wx.Window.FindFocus()
+        try:
+            return int(dialog.ShowModal())
+        finally:
+            wx.CallAfter(self._restore_focus, focused)  # once the dialog is destroyed
+
+    def _restore_focus(self, focused: wx.Window | None) -> None:
+        """Put the focus back on ``focused`` unless it was deliberately moved inside the window."""
+        if self._closing or not self or not focused:
+            return
+        current = wx.Window.FindFocus()
+        if current is None or not self.IsDescendant(current):
+            focused.SetFocus()
+
+    def _message_box(self, message: str, caption: str, icon: int) -> None:
+        """A message with an OK button; the focus comes back where it was."""
+        with wx.MessageDialog(self, message, caption, wx.OK | icon) as dialog:
+            self._modal(dialog)
+
     def _show_error(self, message: str) -> None:
-        wx.MessageBox(message, _("Error"), wx.OK | wx.ICON_ERROR, self)
+        self._message_box(message, _("Error"), wx.ICON_ERROR)
 
     def _show_info(self, message: str) -> None:
-        wx.MessageBox(message, _("Find in the conversation"), wx.OK | wx.ICON_INFORMATION, self)
+        self._message_box(message, _("Find in the conversation"), wx.ICON_INFORMATION)
 
     def _show_file_warning(self, details: str) -> None:
         """Tell the user that a file of the application was damaged (and what was done)."""
-        wx.MessageBox(
+        self._message_box(
             _("A configuration file could not be read.\n{details}").format(details=details),
             _("Warning"),
-            wx.OK | wx.ICON_WARNING,
-            self,
+            wx.ICON_WARNING,
         )
 
     def _save_state(self) -> None:

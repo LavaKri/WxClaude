@@ -1,7 +1,8 @@
 # Roadmap
 
 Start here in a new session. Read `CLAUDE.md` (rules), then this file, then the spec of the feature
-you work on (`conversation-display.md`, `claude-cli.md`, `interface.md`, `settings.md`).
+you work on (`conversation-display.md`, `claude-cli.md`, `interface.md`, `settings.md`,
+`focus.md`).
 What is still to decide, to verify or to improve is in `open-questions.md`.
 
 ## Decisions taken

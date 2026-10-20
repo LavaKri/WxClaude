@@ -18,6 +18,7 @@ class Announce(enum.Enum):
 
     WORKSPACE_OPENED = N_("Workspace: {folder}")
     NEW_CONVERSATION = N_("New conversation: {name}")
+    NO_CONVERSATION = N_("No conversation in this workspace.")
     CONVERSATION_RESUMED = N_("Conversation resumed: {name}")
     CONVERSATION_REFRESHED = N_("Conversation refreshed. New messages: {count}.")
     CONVERSATION_NOT_SAVED = N_("This conversation has no history yet.")
