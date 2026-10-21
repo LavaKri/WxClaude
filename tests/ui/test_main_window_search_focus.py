@@ -36,44 +36,44 @@ def test_searching_walks_through_the_occurrences_and_announces_the_line(
     conversation: MainWindow,
 ) -> None:
     window, sink, infos = _search_window(conversation)
-    window._search_options = SearchOptions("fish")
+    window._search.options = SearchOptions("fish")
     view = window._conversation
-    window.search(backwards=False)
+    window._search.search(backwards=False)
     assert sink.messages[-1] == "one fish"
     assert view.selection_indexes() == (view.text.index("fish"), view.text.index("fish") + 4)
     assert view.HasFocus()
-    window.search(backwards=False)
+    window._search.search(backwards=False)
     assert sink.messages[-1] == "two fish"
-    window.search(backwards=False)
+    window._search.search(backwards=False)
     assert sink.messages[-1] == "red fish"
-    window.search(backwards=False)
+    window._search.search(backwards=False)
     assert sink.messages[-1] == "blue Fish"  # the case is ignored by default
     assert infos == []
-    window.search(backwards=False)
+    window._search.search(backwards=False)
     assert infos == ['No next occurrence of "fish".']
-    window.search(backwards=True)
+    window._search.search(backwards=True)
     assert sink.messages[-1] == "red fish"
     assert len(infos) == 1
 
 
 def test_searching_backwards_stops_at_the_first_occurrence(conversation: MainWindow) -> None:
     window, sink, infos = _search_window(conversation)
-    window._search_options = SearchOptions("fish", match_case=True)
+    window._search.options = SearchOptions("fish", match_case=True)
     view = window._conversation
     view.SetInsertionPoint(len(view.text))
-    window.search(backwards=True)
+    window._search.search(backwards=True)
     assert sink.messages[-1] == "red fish"
-    window.search(backwards=True)
-    window.search(backwards=True)
+    window._search.search(backwards=True)
+    window._search.search(backwards=True)
     assert sink.messages[-1] == "one fish"
-    window.search(backwards=True)
+    window._search.search(backwards=True)
     assert infos == ['No previous occurrence of "fish".']
 
 
 def test_a_term_that_is_not_there_is_reported(conversation: MainWindow) -> None:
     window, sink, infos = _search_window(conversation)
-    window._search_options = SearchOptions("zebra")
-    window.search(backwards=False)
+    window._search.options = SearchOptions("zebra")
+    window._search.search(backwards=False)
     assert infos == ['No next occurrence of "zebra".']
     assert sink.messages == []
 
@@ -82,9 +82,9 @@ def test_next_without_a_previous_search_opens_the_dialog(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     opened: list[bool] = []
-    monkeypatch.setattr(conversation, "_on_find", lambda _event: opened.append(True))
-    conversation._on_find_next(wx.CommandEvent())
-    conversation._on_find_previous(wx.CommandEvent())
+    monkeypatch.setattr(conversation._search, "find", lambda: opened.append(True))
+    conversation._search.find_next()
+    conversation._search.find_previous()
     assert opened == [True, True]
 
 
@@ -164,6 +164,6 @@ def test_the_focus_comes_back_after_a_dialog(conversation: MainWindow) -> None:
     wx.Yield()
     conversation._prompt.SetFocus()
     wx.CallAfter(lambda: wx.GetTopLevelWindows()[-1].EndModal(wx.ID_CANCEL))
-    conversation._on_find(wx.CommandEvent())  # opens the Find dialog, closed at once
+    conversation._search.find()  # opens the Find dialog, closed at once
     wx.Yield()
     assert conversation._prompt.HasFocus()

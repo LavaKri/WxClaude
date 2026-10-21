@@ -42,7 +42,6 @@ from wxclaude.core.messages import Message, Role
 from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
-from wxclaude.core.search import SearchOptions, find_next, find_previous, line_at
 from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
@@ -74,7 +73,7 @@ from wxclaude.ui.menus import SEPARATOR, MenuEntry, MenuRegistry, Needs, add_ent
 from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.permission_dialog import PermissionDialog
 from wxclaude.ui.preferences_dialog import PreferencesDialog
-from wxclaude.ui.search_dialog import SearchDialog
+from wxclaude.ui.search_controller import SearchController
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.tasks_dialog import TasksDialog
 from wxclaude.ui.usage_dialog import UsageDialog
@@ -108,7 +107,6 @@ class MainWindow(wx.Frame):
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
-        self._search_options: SearchOptions | None = None  # the last search
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
         self._local_messages = 0  # messages added by this run, for their identifiers
         self._recent_ids: dict[int, str] = {}
@@ -121,6 +119,13 @@ class MainWindow(wx.Frame):
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
         self._conversation = ConversationView(
             panel, self._say, self._on_message_action, self._show_position
+        )
+        # The window's own methods are looked up at each call, so that they can be replaced.
+        self._search = SearchController(
+            self._conversation,
+            lambda dialog: self._modal(dialog),
+            lambda announce, **values: self._say(announce, **values),
+            lambda message: self._show_info(message),
         )
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
@@ -257,10 +262,18 @@ class MainWindow(wx.Frame):
     def _search_entries(self) -> list[MenuEntry | None]:
         conversation = Needs.CONVERSATION
         return [
-            MenuEntry(_("&Find…"), self._on_find, FIND_COMMAND, conversation),
-            MenuEntry(_("Find &next"), self._on_find_next, FIND_NEXT_COMMAND, conversation),
+            MenuEntry(_("&Find…"), lambda _event: self._search.find(), FIND_COMMAND, conversation),
             MenuEntry(
-                _("Find &previous"), self._on_find_previous, FIND_PREVIOUS_COMMAND, conversation
+                _("Find &next"),
+                lambda _event: self._search.find_next(),
+                FIND_NEXT_COMMAND,
+                conversation,
+            ),
+            MenuEntry(
+                _("Find &previous"),
+                lambda _event: self._search.find_previous(),
+                FIND_PREVIOUS_COMMAND,
+                conversation,
             ),
         ]
 
@@ -550,51 +563,6 @@ class MainWindow(wx.Frame):
         view.set_messages(session.messages)
         view.focus_last_prompt()
         self._say(Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before))
-
-    def _on_find(self, _event: wx.CommandEvent) -> None:
-        """Ask what to look for, then go to the next occurrence."""
-        with SearchDialog(self, self._search_options) as dialog:
-            if self._modal(dialog) != wx.ID_OK:
-                return
-            self._search_options = dialog.options
-        self.search(backwards=False)
-
-    def _on_find_next(self, event: wx.CommandEvent) -> None:
-        if self._search_options is None:
-            self._on_find(event)
-        else:
-            self.search(backwards=False)
-
-    def _on_find_previous(self, event: wx.CommandEvent) -> None:
-        if self._search_options is None:
-            self._on_find(event)
-        else:
-            self.search(backwards=True)
-
-    def search(self, *, backwards: bool) -> None:
-        """Go to the next or previous occurrence of the last search term.
-
-        The search starts after the selection (before it when going backwards), so repeating it
-        walks through the occurrences. The occurrence is selected, gets the focus and its whole
-        line is announced; at the end a dialog says there is no more.
-        """
-        options = self._search_options
-        if options is None:
-            return
-        view = self._conversation
-        text = view.text
-        start, end = view.selection_indexes()
-        match = find_previous(text, options, start) if backwards else find_next(text, options, end)
-        if match is None:
-            message = (
-                _('No previous occurrence of "{term}".')
-                if backwards
-                else _('No next occurrence of "{term}".')
-            )
-            self._show_info(message.format(term=options.term))
-            return
-        view.select_range(match.start, match.end)
-        self._say(Announce.SEARCH_FOUND, line=line_at(text, match.start))
 
     def _on_rename_conversation(self, _event: wx.CommandEvent) -> None:
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)

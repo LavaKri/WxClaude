@@ -86,6 +86,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs); `add_entries` appends and binds them. |
+| `search_controller.py` | `SearchController`: Find, Find next and Find previous in the conversation view; keeps the last search. |
 | `desktop.py` | The clipboard, the browser and the file explorer; each function says whether the desktop refused. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
