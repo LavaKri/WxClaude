@@ -739,3 +739,221 @@ msgstr "Espace de travail"
 
 msgid "Change the tools only in the &local file, which is not versioned"
 msgstr "Modifier les outils seulement dans le fichier &local, non versionné"
+
+# Claude tab of the Preferences, position in the conversation
+
+msgid "Claude"
+msgstr "Claude"
+
+msgid "&Automatic search for claude-p"
+msgstr "&Recherche automatique de claude-p"
+
+msgid "&Path of claude-p"
+msgstr "&Chemin de claude-p"
+
+msgid "Path of claude-p"
+msgstr "Chemin de claude-p"
+
+msgid "&Select…"
+msgstr "&Sélection…"
+
+msgid "Select the claude executable"
+msgstr "Sélectionner l'exécutable de claude"
+
+msgid "Programs (*.exe;*.cmd;*.bat)|*.exe;*.cmd;*.bat|All files (*.*)|*.*"
+msgstr "Programmes (*.exe;*.cmd;*.bat)|*.exe;*.cmd;*.bat|Tous les fichiers (*.*)|*.*"
+
+msgid "The file {path} does not exist."
+msgstr "Le fichier {path} n'existe pas."
+
+msgid "Give the path of claude-p, or turn the automatic search on."
+msgstr "Indiquez le chemin de claude-p, ou activez la recherche automatique."
+
+msgid "Message {number} of {total}"
+msgstr "Message {number} sur {total}"
+
+# Details of the messages (context menu and dialogs)
+
+msgid "Show the &tools used…"
+msgstr "Afficher les &outils utilisés…"
+
+msgid "Show the t&able…"
+msgstr "Afficher le t&ableau…"
+
+msgid "Show the &links…"
+msgstr "Afficher les &liens…"
+
+msgid "&Copy the message"
+msgstr "&Copier le message"
+
+msgid "Message copied to the clipboard."
+msgstr "Message copié dans le presse-papiers."
+
+msgid "Copied to the clipboard."
+msgstr "Copié dans le presse-papiers."
+
+msgid "The clipboard cannot be used."
+msgstr "Le presse-papiers ne peut pas être utilisé."
+
+msgid "Tools used"
+msgstr "Outils utilisés"
+
+msgid "&Tools used"
+msgstr "&Outils utilisés"
+
+msgid "&Details"
+msgstr "&Détails"
+
+msgid "Details"
+msgstr "Détails"
+
+msgid "Table"
+msgstr "Tableau"
+
+msgid "&Rows"
+msgstr "&Lignes"
+
+msgid "Rows"
+msgstr "Lignes"
+
+msgid "Copy the &table"
+msgstr "Copier le &tableau"
+
+msgid "The table has no row."
+msgstr "Le tableau n'a aucune ligne."
+
+msgid "Links"
+msgstr "Liens"
+
+msgid "&Links"
+msgstr "&Liens"
+
+msgid "&Open in the browser"
+msgstr "&Ouvrir dans le navigateur"
+
+msgid "Copy the &address"
+msgstr "Copier l'&adresse"
+
+msgid "This kind of address is not opened from here: {url}"
+msgstr "Ce type d'adresse ne s'ouvre pas depuis ici : {url}"
+
+msgid "The address {url} cannot be opened."
+msgstr "L'adresse {url} ne peut pas être ouverte."
+
+msgid "{header}: {cell}"
+msgstr "{header} : {cell}"
+
+msgid "Empty row"
+msgstr "Ligne vide"
+
+msgid "{text}, {url}"
+msgstr "{text}, {url}"
+
+msgid "failed"
+msgstr "échec"
+
+msgid "Tool: {name}"
+msgstr "Outil : {name}"
+
+msgid "The tool failed."
+msgstr "L'outil a échoué."
+
+msgid "Result:"
+msgstr "Résultat :"
+
+# Tasks
+
+msgid "&Description"
+msgstr "&Description"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Unreadable task files: {names}"
+msgstr "Fichiers de tâches illisibles : {names}"
+
+msgid "Cannot read the tasks.\n{error}"
+msgstr "Impossible de lire les tâches.\n{error}"
+
+msgid "pending"
+msgstr "à faire"
+
+msgid "in progress"
+msgstr "en cours"
+
+msgid "completed"
+msgstr "terminée"
+
+msgid "blocked by {tasks}"
+msgstr "bloquée par {tasks}"
+
+# Usage of Claude
+
+msgid "Claude &usage…"
+msgstr "&Utilisation de Claude…"
+
+msgid "Claude usage"
+msgstr "Utilisation de Claude"
+
+msgid "&Usage"
+msgstr "&Utilisation"
+
+msgid "Usage"
+msgstr "Utilisation"
+
+msgid "5-hour window"
+msgstr "fenêtre de 5 heures"
+
+msgid "weekly window"
+msgstr "fenêtre de la semaine"
+
+msgid "weekly window of Opus"
+msgstr "fenêtre de la semaine pour Opus"
+
+msgid "weekly window of Sonnet"
+msgstr "fenêtre de la semaine pour Sonnet"
+
+msgid "No subscription usage information yet: it arrives with the next answer."
+msgstr "Pas encore d'information sur l'utilisation de l'abonnement : elle arrive avec la prochaine réponse."
+
+msgid "Limit status: {status}."
+msgstr "État de la limite : {status}."
+
+msgid "Gauges updated at {when}."
+msgstr "Jauges mises à jour à {when}."
+
+msgid "{percent} % used"
+msgstr "{percent} % utilisés"
+
+msgid "resets at {when}"
+msgstr "se réinitialise à {when}"
+
+msgid "No message sent yet in this conversation since it was opened here."
+msgstr "Aucun message envoyé dans cette conversation depuis qu'elle est ouverte ici."
+
+msgid "Last message, tokens: {tokens}."
+msgstr "Dernier message, jetons : {tokens}."
+
+msgid "Last message: {details}."
+msgstr "Dernier message : {details}."
+
+msgid "Conversation since it was opened here, tokens: {tokens}."
+msgstr "Conversation depuis son ouverture ici, jetons : {tokens}."
+
+msgid "Conversation since it was opened here: {details}."
+msgstr "Conversation depuis son ouverture ici : {details}."
+
+msgid "{input} in, {output} out, {read} read from the cache, {written} written to the cache"
+msgstr "{input} en entrée, {output} en sortie, {read} lus dans le cache, {written} écrits dans le cache"
+
+msgid "cost {cost} dollars at list price"
+msgstr "coût {cost} dollars au tarif public"
+
+msgid "duration {seconds} seconds"
+msgstr "durée {seconds} secondes"
+
+msgid "turns: {count}"
+msgstr "tours : {count}"
+
+msgid "messages: {count}"
+msgstr "messages : {count}"

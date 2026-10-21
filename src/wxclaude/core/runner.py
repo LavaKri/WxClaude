@@ -68,8 +68,15 @@ def build_arguments(request: RunRequest) -> list[str]:
     ]
 
 
-def find_claude() -> list[str]:
-    """The command that starts the CLI; raises ``ClaudeNotFoundError``."""
+def find_claude(path: str = "") -> list[str]:
+    """The command that starts the CLI; raises ``ClaudeNotFoundError``.
+
+    Without ``path`` the ``claude`` command is looked for in the PATH; with it, that file is used.
+    """
+    if path:
+        if not Path(path).is_file():
+            raise ClaudeNotFoundError(f"The file {path} does not exist.")
+        return [path]
     found = shutil.which("claude")
     if found is None:
         raise ClaudeNotFoundError("The claude command was not found in the PATH.")
@@ -112,6 +119,7 @@ class ClaudeRunner:
 
     def __init__(self, command: Sequence[str] | None = None) -> None:
         self._command = list(command) if command is not None else None
+        self.claude_path = ""  # the claude executable chosen by hand; '' looks in the PATH
         self._process: subprocess.Popen[str] | None = None
         self._stdin: _Stdin | None = None
         self._interrupted = False
@@ -128,7 +136,7 @@ class ClaudeRunner:
         Raises ``ClaudeNotFoundError`` or ``RunnerError`` if it cannot be started, or if a
         message is already running.
         """
-        command = self._command if self._command is not None else find_claude()
+        command = self._command if self._command is not None else find_claude(self.claude_path)
         argv = [*command, *build_arguments(request)]
         with self._lock:
             if self._process is not None:

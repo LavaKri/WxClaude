@@ -55,6 +55,33 @@ def write_session(session_id: str, prompt: str, answer: str, model: str, effort:
         },
         {
             "type": "assistant",
+            "uuid": f"t-{time.time_ns()}",
+            "effort": effort,
+            "timestamp": now,
+            "message": {
+                "role": "assistant",
+                "model": model,
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "t1",
+                        "name": "Read",
+                        "input": {"file_path": "n.txt"},
+                    }
+                ],
+            },
+        },
+        {
+            "type": "user",
+            "uuid": f"r-{time.time_ns()}",
+            "timestamp": now,
+            "message": {
+                "role": "user",
+                "content": [{"type": "tool_result", "tool_use_id": "t1", "content": "x"}],
+            },
+        },
+        {
+            "type": "assistant",
             "uuid": f"a-{time.time_ns()}",
             "effort": effort,
             "timestamp": now,

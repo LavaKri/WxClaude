@@ -16,7 +16,7 @@ from wxclaude.core.events import (
     TurnEnded,
     TurnResult,
 )
-from wxclaude.core.runner import ClaudeRunner, RunRequest, build_arguments
+from wxclaude.core.runner import ClaudeRunner, RunRequest, build_arguments, find_claude
 
 pytestmark = pytest.mark.unit
 
@@ -163,3 +163,14 @@ def test_a_missing_executable_is_reported(tmp_path: Path, monkeypatch: pytest.Mo
         ClaudeRunner().start(_request(tmp_path), Collector())
     with pytest.raises(RunnerError):
         ClaudeRunner([str(tmp_path / "nothing")]).start(_request(tmp_path), Collector())
+
+
+def test_a_chosen_claude_file_is_used_instead_of_the_path(tmp_path: Path) -> None:
+    claude = tmp_path / "claude.exe"
+    claude.write_text("", encoding="utf-8")
+    assert find_claude(str(claude)) == [str(claude)]
+
+
+def test_a_chosen_claude_file_that_is_missing_is_reported(tmp_path: Path) -> None:
+    with pytest.raises(ClaudeNotFoundError, match="does not exist"):
+        find_claude(str(tmp_path / "nowhere.exe"))

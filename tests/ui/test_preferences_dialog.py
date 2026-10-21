@@ -24,9 +24,10 @@ def dialog(wx_app: wx.App, settings: Settings):
 
 def test_tabs_are_in_the_expected_order(dialog: PreferencesDialog) -> None:
     notebook = dialog._notebook
-    assert notebook.GetPageCount() == 5
-    assert [notebook.GetPageText(index) for index in range(5)] == [
+    assert notebook.GetPageCount() == 6
+    assert [notebook.GetPageText(index) for index in range(6)] == [
         "General",
+        "Claude",
         "Workspace",
         "Agent",
         "Shortcuts",
@@ -96,3 +97,60 @@ def test_the_screen_reader_output_can_be_chosen(
 def test_a_taken_shortcut_is_refused(dialog: PreferencesDialog) -> None:
     check = dialog.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+N")
     assert check.problem is ShortcutProblem.TAKEN
+
+
+def test_claude_is_searched_automatically_by_default_and_the_path_is_greyed(
+    dialog: PreferencesDialog,
+) -> None:
+    assert dialog.claude_auto_search.GetValue()
+    assert not dialog.claude_path.IsEnabled()
+    assert not dialog.claude_browse.IsEnabled()
+    dialog.claude_auto_search.SetValue(False)
+    dialog._update_claude_path()
+    assert dialog.claude_path.IsEnabled()
+    assert dialog.claude_browse.IsEnabled()
+
+
+def test_the_claude_path_is_applied_to_the_settings(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
+    dialog.claude_auto_search.SetValue(False)
+    dialog.claude_path.SetValue("  C:/tools/claude.exe ")
+    dialog.apply(settings)
+    assert not settings.claude_auto_search
+    assert settings.claude_path == "C:/tools/claude.exe"
+
+
+def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
+    dialog: PreferencesDialog, tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shown: list[str] = []
+
+    class Warning:
+        def __init__(self, _parent, message, *_args) -> None:
+            shown.append(message)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def ShowModal(self) -> int:  # noqa: N802
+            return wx.ID_OK
+
+    monkeypatch.setattr(wx, "MessageDialog", Warning)
+    dialog.claude_auto_search.SetValue(False)
+    dialog.claude_path.SetValue("")
+    event = wx.CommandEvent(wx.wxEVT_BUTTON, wx.ID_OK)
+    skipped: list[bool] = []
+    event.Skip = lambda *_a: skipped.append(True)  # type: ignore[method-assign]
+    dialog._on_ok(event)
+    assert skipped == []
+    assert dialog._notebook.GetSelection() == 1
+    assert shown == ["Give the path of claude-p, or turn the automatic search on."]
+    claude = tmp_path / "claude.exe"
+    claude.write_text("", encoding="utf-8")
+    dialog.claude_path.SetValue(str(claude))
+    dialog._on_ok(event)
+    assert skipped == [True]

@@ -105,11 +105,15 @@ One JSON object per line:
 - `assistant`: `message.content[]` with **one block per message** (`thinking`, `tool_use` or
   `text`), `message.model`.
 - `user`: carries the `tool_result` blocks (`tool_use_id`, `is_error`, `content`).
-- `rate_limit_event`: `rate_limit_info` (`status`, `rateLimitType`, `utilization`, `resetsAt`,
-  `surpassedThreshold`, `isUsingOverage`, windows such as the 5-hour and the weekly gauge).
+- `rate_limit_event` (verified, one per message): `rate_limit_info` with `status` (`allowed`),
+  `rateLimitType` (the window just used, `five_hour`), `resetsAt` (seconds since the epoch),
+  `overageStatus`, `isUsingOverage` and `unifiedWindows`: an object with one entry per gauge,
+  `{"five_hour": {"utilization": 0.74, "resetsAt": ...}, "seven_day": {...}}`. WxClaude reads
+  `utilization` as a fraction (0.74 = 74 %), see `open-questions.md`.
 - `result`: `result` (final text), `subtype`, `usage` (`input_tokens`, `output_tokens`,
-  `cache_creation_input_tokens`, `cache_read_input_tokens`), `duration_ms`, `total_cost_usd`,
-  `num_turns`, `permission_denials`.
+  `cache_creation_input_tokens`, `cache_read_input_tokens`, plus details), `duration_ms`,
+  `total_cost_usd` (a cost at list price, whatever the subscription), `num_turns`,
+  `modelUsage` (per model, with `contextWindow`), `permission_denials`.
 - `prompt_suggestion`: a predicted next prompt, after `result`.
 - The effort is **not** reported by the stream: use the one that was requested.
 - Read stdout and stderr continuously (a full pipe blocks the CLI), lines can be very long, and
@@ -137,5 +141,7 @@ the entries instead. One JSON object per line; interesting entries have `type` `
   `last-prompt`, `mode`, `cost-state`, `atis-latch`. Entries with `isMeta` or `isSidechain` are
   not part of the conversation. The `permissionMode` field is on user entries.
 - The reader (`read_session`) skips lines that are not valid JSON (the CLI may be writing one).
-- Tasks of a session: `~/.claude/tasks/<session-id>/*.json` with `id`, `subject`, `description`,
-  `status` (`pending`, `in_progress`, `completed`), `blockedBy`.
+- Tasks of a session (verified on a real folder): `~/.claude/tasks/<session-id>/<id>.json` with
+  `id`, `subject`, `description`, `activeForm`, `status` (`pending`, `in_progress`, `completed`),
+  `blocks` and `blockedBy` (lists of identifiers), `metadata` (free); the folder also holds a
+  `.lock` file, which is not a task. WxClaude only reads them.

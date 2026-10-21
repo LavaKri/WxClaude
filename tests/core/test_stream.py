@@ -7,6 +7,7 @@ from wxclaude.core.events import (
     AssistantText,
     PermissionDenied,
     RateLimit,
+    RateWindow,
     SessionInit,
     Thinking,
     ToolResult,
@@ -91,10 +92,28 @@ def test_rate_limit() -> None:
             "status": "allowed",
             "rateLimitType": "five_hour",
             "resetsAt": 5,
-            "unifiedWindows": {"five_hour": {"utilization": 0.25}},
+            "unifiedWindows": {
+                "five_hour": {"utilization": 0.25, "resetsAt": 5},
+                "seven_day": {"utilization": 0.5, "resetsAt": 9},
+            },
         },
     }
-    assert _parse(entry) == [RateLimit("allowed", "five_hour", 0.25, 5)]
+    assert _parse(entry) == [
+        RateLimit(
+            "allowed",
+            "five_hour",
+            (RateWindow("five_hour", 0.25, 5), RateWindow("seven_day", 0.5, 9)),
+        )
+    ]
+
+
+def test_rate_limit_without_windows_keeps_the_window_that_was_used() -> None:
+    entry = {
+        "type": "rate_limit_event",
+        "rate_limit_info": {"status": "rejected", "rateLimitType": "seven_day", "resetsAt": 7},
+    }
+    expected = RateLimit("rejected", "seven_day", (RateWindow("seven_day", None, 7),))
+    assert _parse(entry) == [expected]
 
 
 def test_result() -> None:

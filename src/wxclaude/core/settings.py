@@ -44,6 +44,8 @@ class Settings:
     hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
     announce_progress: bool = True  # say what Claude is doing while it answers
     local_tools_only: bool = False  # never modify the versioned settings of a project
+    claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
+    claude_path: str = ""  # the claude executable chosen by hand (used without the auto search)
     last_workspace: str = ""
     conversation_counter: int = 1  # the number of the next "Conversation x" proposed
     store: Path | None = None
@@ -93,10 +95,18 @@ class Settings:
         reopen_last = data.get("reopen_last")
         if isinstance(reopen_last, bool):
             settings.reopen_last = reopen_last
-        for key in ("hide_system_messages", "announce_progress", "local_tools_only"):
+        for key in (
+            "hide_system_messages",
+            "announce_progress",
+            "local_tools_only",
+            "claude_auto_search",
+        ):
             flag = data.get(key)
             if isinstance(flag, bool):
                 setattr(settings, key, flag)
+        claude_path = data.get("claude_path")
+        if isinstance(claude_path, str):
+            settings.claude_path = claude_path
         last_workspace = data.get("last_workspace")
         if isinstance(last_workspace, str):
             settings.last_workspace = last_workspace
@@ -132,6 +142,8 @@ class Settings:
             "hide_system_messages": self.hide_system_messages,
             "announce_progress": self.announce_progress,
             "local_tools_only": self.local_tools_only,
+            "claude_auto_search": self.claude_auto_search,
+            "claude_path": self.claude_path,
             "last_workspace": self.last_workspace,
             "conversation_counter": self.conversation_counter,
         }

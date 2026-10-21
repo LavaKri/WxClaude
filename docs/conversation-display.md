@@ -77,17 +77,48 @@ UTF-16 units, so convert between Python indexes and field positions (an emoji ta
 
 ## Other information in dialogs
 
-The message model keeps what is not displayed (tools used, tool results, thinking, usage). In the
-body of a message the context menu (Applications key, Shift+F10) offers an item to show it in a
-dialog: "Show the tools used", and the same mechanism for a **table** or a **link** found by the
-parser at the caret position.
+The message model keeps what is not displayed (tools used, tool results, thinking, usage). The
+context menu of the view (Applications key, Shift+F10) works on the message that holds the caret and
+offers, in this order, only what applies, then always *Copy the message* (its Markdown text):
+
+- **Show the tools used…** when the message has tools (an answer gets them from the session file once
+  the turn is over). A dialog lists the tools, one per line (`Bash, git status, failed`: name, what
+  it worked on, and "failed" if it did), and a read-only field gives everything about the selected
+  one (each argument, then the result).
+- **Show the table…** when the caret is on a line of a table (`core/details.py`, the parser with the
+  `table` rule; a table inside a code block is not one). The dialog lists the rows, one per line
+  (`Name: a.txt, Size: 3`, empty cells left out), and *Copy the table* puts its Markdown on the
+  clipboard.
+- **Show the links…** when the message has a link (`[text](address)` or `<address>`). The dialog
+  lists them (`text, address`) with the link of the caret's line selected (else the first);
+  *Open in the browser* only hands `http://`, `https://` and `mailto:` addresses to the system (any
+  other kind is refused with an error; the parser itself does not make links of `file:` or
+  `javascript:`), *Copy the address* copies it.
+
+The native menu of the field (undo, redo, cut, paste...) is never shown: the rich text field opens it
+by itself for Shift+F10 and for the Applications key when the key goes up, so the view handles
+Shift+F10 when it goes down and swallows both keys when they go up (the Applications key and the
+right click still reach `EVT_CONTEXT_MENU`, checked with real key and mouse events). Without a
+message at the caret (empty conversation) no menu opens. After an action the focus returns to the
+view (`focus.md`).
 
 ## Progress and usage
 
 - **Progress** goes to the status bar (not focusable) and is announced through UI Automation
   (option Screen reader > "Announce the progress of Claude"); there is no shortcut of ours to read
-  it again, screen readers have their own for the status bar. Two status fields: the action, the
-  current task.
-- **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U` (subscription gauges, tokens of
-  the last turn and of the session, cost). Data arrives with the answers.
+  it again, screen readers have their own for the status bar. Two status fields: the first gives the
+  position of the caret in the conversation, `Message 3 of 8` (French: `Message 3 sur 8`); only the
+  prompts of the user are counted, an answer belongs to the prompt it follows, and the field is empty
+  while the conversation has no prompt (the number is 0 before the first prompt, for example when
+  the system messages are shown and an answer opens the conversation). It follows the keyboard, the
+  mouse, the jumps by headings and the search, and is not announced. The second field holds the
+  last announcement.
+- **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
+  field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
+  used, resets at 16:00`, from the `rate_limit_event` lines; the time alone for today, else date and
+  time), the limit status when it is not `allowed`, when the gauges were updated, then the tokens, the cost at
+  list price, the duration and the turns of the last message, and the totals of the conversation
+  since it was opened in WxClaude (sum of the `result` lines received; they start again when another
+  conversation becomes current, the gauges belong to the account and stay). Data arrives with the
+  answers: before the first one the dialog says so. Facts that are unknown are not written.
 - **Errors** are not part of the conversation text: status bar and a dialog.

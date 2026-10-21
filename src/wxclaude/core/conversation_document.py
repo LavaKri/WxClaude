@@ -60,10 +60,14 @@ def title_level(message: Message) -> int:
     return 1 if message.role is Role.USER else 2
 
 
+def message_header(message: Message) -> str:
+    """The title line of ``message`` as written in the document, with its line break."""
+    return f"{'#' * title_level(message)} {message_title(message)}\n"
+
+
 def render_message(message: Message) -> str:
     """The text a message adds to the document: its title, its text and a blank line."""
-    hashes = "#" * title_level(message)
-    return f"{hashes} {message_title(message)}\n{message.text}\n\n"
+    return f"{message_header(message)}{message.text}\n\n"
 
 
 class ConversationDocument:
@@ -105,6 +109,22 @@ class ConversationDocument:
         for message in messages:
             self.append(message)
         return self._text
+
+    def prompt_position(self, position: int) -> tuple[int, int]:
+        """Where ``position`` is among the prompts of the user: (its number, how many there are).
+
+        Only the prompts shown are counted; an answer belongs to the prompt it follows. The number
+        is 0 before the first prompt.
+        """
+        starts = [span.start for span in self._spans if span.message.role is Role.USER]
+        return bisect_right(starts, position), len(starts)
+
+    def body_line(self, span: MessageSpan, position: int) -> int:
+        """The line of the text of the message that holds ``position``; -1 on its title."""
+        body_start = span.start + len(message_header(span.message))
+        if position < body_start:
+            return -1
+        return self._text.count("\n", body_start, position)
 
     def span_at(self, position: int) -> MessageSpan | None:
         """The span of the message that holds the character index ``position``."""

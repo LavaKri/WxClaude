@@ -104,6 +104,25 @@ def test_the_conversation_and_progress_options_default_to_true_and_round_trip(
     assert (invalid.hide_system_messages, invalid.announce_progress) == (True, True)
 
 
+def test_the_claude_path_options_default_to_the_automatic_search_and_round_trip(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert settings.claude_auto_search
+    assert settings.claude_path == ""
+    settings.claude_auto_search = False
+    settings.claude_path = "C:/tools/claude.exe"
+    settings.save()
+    again = Settings.load(store)
+    assert not again.claude_auto_search
+    assert again.claude_path == "C:/tools/claude.exe"
+    store.write_text('{"claude_auto_search": "no", "claude_path": 3}', encoding="utf-8")
+    invalid = Settings.load(store)
+    assert invalid.claude_auto_search
+    assert invalid.claude_path == ""
+
+
 def test_the_default_agent_is_always_complete(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     store.write_text('{"default_agent": {"model": "opus"}}', encoding="utf-8")

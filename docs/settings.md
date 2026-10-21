@@ -12,6 +12,8 @@ invalid values fall back to their default; unknown keys are ignored.
 | `shortcuts` | Only the shortcuts that differ from the default, by command id; `""` is no shortcut | empty |
 | `screen_reader_output` | `none` or `uia` | `uia` on Windows |
 | `reopen_last` | At startup, open the last workspace | `true` |
+| `claude_auto_search` | Look for `claude` in the PATH | `true` |
+| `claude_path` | The `claude` executable chosen by hand, used when the automatic search is off | empty |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |
 | `announce_progress` | Announce the progress of Claude while it answers | `true` |
@@ -78,5 +80,5 @@ Valid values: `effort` is one of `low`, `medium`, `high`, `xhigh`, `max`; `permi
 `workspace.open` (Ctrl+O), `conversation.new` (Ctrl+N),
 `conversation.resume` (Ctrl+Shift+O), `conversation.refresh` (F5), `search.find` (Ctrl+F),
 `search.next` (F3), `search.previous` (Shift+F3),
-`claude.interrupt` (Ctrl+Shift+I), `tasks.list` (Ctrl+T), `prompt.send` (Ctrl+Enter),
-`prompt.send_alternative` (Shift+Enter).
+`claude.interrupt` (Ctrl+Shift+I), `tasks.list` (Ctrl+T), `claude.usage` (Ctrl+Shift+U),
+`prompt.send` (Ctrl+Enter), `prompt.send_alternative` (Shift+Enter).

@@ -6,13 +6,22 @@ the file it belongs to and delete it from this one.
 
 ## To decide
 
-Nothing at the moment.
+- **Dialogue mode with claude-p** (list in the Claude tab of the Preferences). WxClaude only has one
+  mode today: the CLI waits for the answer to its permission question (stdio control protocol). The
+  other mode of the project the idea comes from is "stop Claude, then resume it after the answer"
+  (the CLI denies, the application resumes with the tool allowed): it would have to be built to
+  be offered.
 
 ## To verify
 
 - **UI Automation notifications and JAWS.** They reach NVDA and Narrator; test JAWS, with a focusable
   progress field as a fallback if they do not.
 - **Reading the usage gauge without sending a message** (no way found yet).
+- **Unit of the gauges.** `utilization` of `rate_limit_event` is read as a fraction (0.74 shown as
+  74 %); compare with `/usage` in the CLI.
+- **Cost of a resumed message.** The usage dialog adds the `total_cost_usd` of each `result` to get
+  the cost of the conversation; check on a resumed message that it only covers that message and not
+  the whole session.
 - **Title entry of a generated title**: the reader expects an `ai-title` entry with an `aiTitle`
   field; only `custom-title` / `customTitle` was seen in real files.
 - **Effort in the session files**: only `low` and `medium` were seen. Are `xhigh` and `max` written
@@ -29,8 +38,11 @@ Nothing at the moment.
 
 ## Improvements not done yet
 
-- Context menu on a message (copy, show the tools used, a table, a link), see
-  `conversation-display.md`.
+- Details dialogs: the thinking and the token usage of one answer are kept by the model but not
+  shown yet; the usage dialog cannot show the context window filled (`modelUsage.contextWindow`
+  is in the `result` line).
+- Task list: it is a snapshot when the dialog opens (no refresh while it is open), and the current
+  task is not shown in the status bar yet.
 - Delete a conversation (the menu item is greyed).
 - After a turn the view is rebuilt from the session file; the answer titles then show the effort
   written in the file, and none for a model that ignores it (haiku).
@@ -48,8 +60,8 @@ Nothing at the moment.
   find in the official documentation).
 - **Environment variables of Claude Code** (the `env` key of the settings files, for example
   `CLAUDE_CODE_USE_POWERSHELL_TOOL=0`, `CLAUDE_CODE_DISABLE_WEB_FETCH=1`):
-  - In Preferences, a tab "Claude" for the variables that only the general file
-    (`~/.claude/settings.json`) handles.
+  - In the Claude tab of the Preferences (it exists: path of `claude`), the variables that only the
+    general file (`~/.claude/settings.json`) handles.
   - In the Workspace settings dialog, a tab "Environment variables": a simple list of the variables
     with their state, a button to enable / disable or to give a value, a read-only text field that
     explains the selected variable, and the target file (Settings or SettingsLocal, as in the tab

@@ -10,9 +10,11 @@ improve is in `open-questions.md`.
 WxClaude works end to end: a prompt starts `claude -p` (one process per message), the answer is
 shown, the session file of the CLI is the reference for the history, the permission questions of
 Claude are asked to the user, and the permission rules are edited in the settings files of Claude
-Code. 254 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`. The
-real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
-message, a permission question, and the allow / ask / deny rules of `.claude/settings.local.json`.
+Code; the details of a message (tools, tables, links), the task list and the usage of Claude are
+shown in dialogs. 324 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
+message, a permission question, the allow / ask / deny rules of `.claude/settings.local.json`, and
+the `rate_limit_event` and `result` lines that feed the usage dialog.
 **Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`).
 
 ## Decisions taken
@@ -49,7 +51,10 @@ message, a permission question, and the allow / ask / deny rules of `.claude/set
   `.claude/settings.local.json`; the general file is only read), not in WxClaude's own files, so the
   CLI shares them. "Always allow" writes in the personal file. The preference "Change the tools only
   in the local file" protects the versioned one.
-- **Usage dialog**: `Ctrl+Shift+U` (to build).
+- **Usage dialog**: `Ctrl+Shift+U`, fed by the stream (`rate_limit_event`, `result`), nothing is
+  asked of the CLI for it.
+- **Details of a message** are opened from the context menu of the view, never displayed in the
+  text (`conversation-display.md`); only web and mail addresses are handed to the system.
 - **"Options" is named "Preferences"**; the per-workspace settings are "Workspace settings".
 - **No migration** of older settings files: only the keys described in `settings.md` are read.
 - **No subagents** when working on this project (see `CLAUDE.md`).
@@ -66,24 +71,27 @@ message, a permission question, and the allow / ask / deny rules of `.claude/set
 4. **Permissions**: the question dialog (allow, always allow, deny with an explanation), "always
    allow" written in `.claude/settings.local.json`, and the **Workspace settings** dialog (tab Tools)
    that edits the allow / ask / deny rules of the settings files.
-5. Around them: skeleton and menus, Preferences (General, Workspace, Agent, Shortcuts, Screen
-   reader), configurable shortcuts, agents, conversation names, workspaces (recent, from Claude
+5. **Details dialogs** (`core/details.py`, `ui/details_dialogs.py`, context menu of
+   `ConversationView`): tools used, tables, links, copy a message. **Claude usage** dialog
+   (`core/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
+   (`core/tasks.py`, `ui/tasks_dialog.py`). All three dialogs share `ui/list_dialog.py`.
+   The context menu of the conversation is always ours (the native one of the field is never
+   shown, see `conversation-display.md`).
+6. Around them: skeleton and menus, Preferences (General, Claude, Workspace, Agent, Shortcuts,
+   Screen reader), the Claude tab (automatic search of `claude`, or its path chosen by hand), the
+   status bar with the position among the prompts (`Message 3 of 8`), configurable shortcuts, agents, conversation names, workspaces (recent, from Claude
    projects, last one reopened, one state file each), robust JSON files, single instance, UI
    Automation announcements, open the workspace folder.
 
 ## Next milestones
 
-5. **Details dialogs** (context menu in a message body): tools used, tables, links. **Claude usage**
-   dialog (Tools menu, `Ctrl+Shift+U`; the data arrives with the answers: `rate_limit_event`,
-   `result`). **Task list** filled from `~/.claude/tasks/<id>/*.json` (the dialog exists and is
-   empty). `core/messages.py` already keeps tools, thinking and usage per message.
 6. **Rename, branch (`--fork-session`), delete**, export. Rename and branch exist but are
    provisional: a rename only changes the name kept by WxClaude, a branch only starts a new
    conversation identifier with the text still on screen. Delete is greyed.
 7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
    manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
-   settings and the tab "Claude" of the Preferences, the tools announced by the CLI added to the list,
+   settings, the dialogue mode with claude-p in the Claude tab of the Preferences, the tools announced by the CLI added to the list,
    and the other settings of the `.claude` files.
 
 ## Working notes for a new session

@@ -75,13 +75,22 @@ class PermissionRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class RateWindow:
+    """One usage gauge: a window (``five_hour``, ``seven_day``...), how full it is (a fraction
+    between 0 and 1) and when it resets (seconds since the epoch)."""
+
+    name: str
+    utilization: float | None
+    resets_at: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class RateLimit:
-    """The state of a usage gauge (the 5-hour or the weekly window)."""
+    """The state of the usage gauges of the subscription, with the window that was just used."""
 
     status: str
     limit_type: str
-    utilization: float | None
-    resets_at: int | None
+    windows: tuple[RateWindow, ...]
 
 
 @dataclass(frozen=True, slots=True)

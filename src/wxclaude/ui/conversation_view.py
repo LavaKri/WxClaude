@@ -6,6 +6,7 @@ import wx
 
 from wxclaude.core.announcements import Announce
 from wxclaude.core.conversation_document import ConversationDocument, MessageSpan
+from wxclaude.core.details import DetailAction, message_details
 from wxclaude.core.headings import (
     Heading,
     from_utf16,
@@ -19,6 +20,22 @@ from wxclaude.i18n import _
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
 _HEADING_KEY = ord("T")
+#: The labels of the context menu (translated when the menu opens, not at import).
+_MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
+    DetailAction.TOOLS: lambda: _("Show the &tools used…"),
+    DetailAction.TABLE: lambda: _("Show the t&able…"),
+    DetailAction.LINKS: lambda: _("Show the &links…"),
+    DetailAction.COPY_MESSAGE: lambda: _("&Copy the message"),
+}
+
+
+def _is_shift_f10(event: wx.KeyEvent) -> bool:
+    return event.GetKeyCode() == wx.WXK_F10 and event.ShiftDown() and not event.ControlDown()
+
+
+def _is_menu_key(event: wx.KeyEvent) -> bool:
+    """The keys that ask for a context menu: Applications, and Shift+F10."""
+    return event.GetKeyCode() == wx.WXK_WINDOWS_MENU or _is_shift_f10(event)
 
 
 class ConversationView(wx.TextCtrl):
@@ -26,18 +43,34 @@ class ConversationView(wx.TextCtrl):
 
     The screen reader does not read the line when the application moves the caret, so every jump
     is announced through ``say``. The view never takes the focus by itself.
+
+    The context menu (Applications key, Shift+F10) offers what the message at the caret holds
+    (its tools, the table or the links in it) and to copy it; the choice is handed to ``on_action``
+    with the message and the line of its text that holds the caret (-1 on its title).
     """
 
-    def __init__(self, parent: wx.Window, say: Callable[..., None]) -> None:
+    def __init__(
+        self,
+        parent: wx.Window,
+        say: Callable[..., None],
+        on_action: Callable[[DetailAction, Message, int], None] | None = None,
+        on_position: Callable[[int, int], None] | None = None,
+    ) -> None:
         super().__init__(
             parent,
             style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
             name=_("Conversation"),
         )
         self._say = say
+        self._on_action = on_action
+        self._on_position = on_position
+        self._position: tuple[int, int] | None = None  # the last one reported
         self._document = ConversationDocument()
         self._messages: list[Message] = []  # all of them, the hidden ones too
         self.Bind(wx.EVT_KEY_DOWN, self._on_key)
+        self.Bind(wx.EVT_KEY_UP, self._on_key_up)
+        self.Bind(wx.EVT_LEFT_UP, self._on_mouse)
+        self.Bind(wx.EVT_CONTEXT_MENU, self._on_context_menu)
 
     @property
     def document(self) -> ConversationDocument:
@@ -48,11 +81,13 @@ class ConversationView(wx.TextCtrl):
         self._messages = list(messages)
         self.ChangeValue(self._document.rebuild(self._messages))
         self.SetInsertionPoint(0)
+        self.report_position()
 
     def clear_messages(self) -> None:
         self._messages = []
         self._document.clear()
         self.ChangeValue("")
+        self.report_position()
 
     def set_show_hidden(self, show: bool) -> None:
         """Show or hide the system messages (noise); the caret stays on its message."""
@@ -72,6 +107,7 @@ class ConversationView(wx.TextCtrl):
                 0,
             )
         self.SetInsertionPoint(position)
+        self.report_position()
 
     def append_message(self, message: Message) -> None:
         """Add a complete message at the end; the caret stays where the user left it."""
@@ -82,6 +118,7 @@ class ConversationView(wx.TextCtrl):
         caret = self.GetInsertionPoint()
         self.AppendText(added)
         self.SetInsertionPoint(caret)
+        self.report_position()
 
     @property
     def text(self) -> str:
@@ -100,6 +137,7 @@ class ConversationView(wx.TextCtrl):
         self.SetFocus()
         self.SetSelection(to_utf16(text, start), to_utf16(text, end))
         self.ShowPosition(to_utf16(text, start))
+        self.report_position()
 
     def focus_last_prompt(self) -> None:
         """Give the focus to the view, the caret at the start of the last prompt of the user."""
@@ -111,20 +149,92 @@ class ConversationView(wx.TextCtrl):
         self.SetFocus()
         self.SetInsertionPoint(position)
         self.ShowPosition(position)
+        self.report_position()
 
     def shows(self, messages: list[Message]) -> bool:
         """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""
         document = ConversationDocument(show_hidden=self._document.show_hidden)
         return document.rebuild(messages) == self._document.text
 
+    def adopt_details(self, messages: list[Message]) -> None:
+        """Take ``messages`` as the data when they give the text the view already shows.
+
+        The field is not touched (the caret and the focus stay): only what the messages hold
+        without displaying it (tools, usage) is new. Messages shown live have none.
+        """
+        if not self.shows(messages):
+            return
+        self._messages = list(messages)
+        self._document.rebuild(self._messages)
+
     def message_at_caret(self) -> MessageSpan | None:
         """The span of the message that holds the caret."""
         return self._document.span_at(self._caret_index())
 
+    def report_position(self) -> None:
+        """Tell ``on_position`` which prompt the caret is in, (number, total), when it changed."""
+        if self._on_position is None or not self:
+            return
+        position = self._document.prompt_position(self._caret_index())
+        if position != self._position:
+            self._position = position
+            self._on_position(*position)
+
+    def _on_mouse(self, event: wx.MouseEvent) -> None:
+        event.Skip()
+        wx.CallAfter(self.report_position)  # once the control has moved the caret
+
     def _caret_index(self) -> int:
         return from_utf16(self._document.text, self.GetInsertionPoint())
 
+    def _on_context_menu(self, event: wx.ContextMenuEvent) -> None:
+        """Right click or Applications key. The native menu of the field (undo, redo, cut,
+        paste...) is never shown: it has nothing to do in a read-only view."""
+        if event.GetPosition() == wx.DefaultPosition:
+            self._open_menu(self._caret_position())
+        else:
+            self._open_menu(self.ScreenToClient(event.GetPosition()))
+
+    def _open_menu(self, position: wx.Point) -> None:
+        """Pop up the menu of the message at the caret at ``position`` (client coordinates);
+        nothing opens when no message holds the caret."""
+        span = self.message_at_caret()
+        if span is None or self._on_action is None:
+            return
+        line = self._document.body_line(span, self._caret_index())
+        menu = wx.Menu()
+        for action in message_details(span.message).actions(line):
+            item = menu.Append(wx.ID_ANY, _MENU_LABELS[action]())
+            menu.Bind(wx.EVT_MENU, self._menu_handler(action, span.message, line), item)
+        self.PopupMenu(menu, position)
+        menu.Destroy()
+
+    def _menu_handler(
+        self, action: DetailAction, message: Message, line: int
+    ) -> Callable[[wx.CommandEvent], None]:
+        def handle(_event: wx.CommandEvent) -> None:
+            if self._on_action is not None:
+                wx.CallAfter(self._on_action, action, message, line)  # once the menu is closed
+
+        return handle
+
+    def _caret_position(self) -> wx.Point:
+        """Where the menu opens when the keyboard asks for it: at the caret."""
+        position = self.PositionToCoords(self.GetInsertionPoint())
+        return wx.Point(0, 0) if position == wx.DefaultPosition else position
+
+    def _on_key_up(self, event: wx.KeyEvent) -> None:
+        # The rich text field would open its own menu when the key goes up. Shift+F10 opened ours
+        # when it went down; the Applications key asks for it through EVT_CONTEXT_MENU.
+        if not _is_menu_key(event):
+            event.Skip()
+
     def _on_key(self, event: wx.KeyEvent) -> None:
+        wx.CallAfter(self.report_position)  # once the control has moved the caret
+        if _is_shift_f10(event):
+            # The rich text field opens its own menu for this key without telling anyone.
+            self._open_menu(self._caret_position())
+            return
         if event.ControlDown() or event.AltDown() or event.MetaDown():
             event.Skip()
             return
@@ -163,4 +273,5 @@ class ConversationView(wx.TextCtrl):
         position = to_utf16(self._document.text, heading.start)
         self.SetInsertionPoint(position)
         self.ShowPosition(position)
+        self.report_position()
         self._say(Announce.HEADING, title=heading.title, level=heading.level)

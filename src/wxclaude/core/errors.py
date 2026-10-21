@@ -25,6 +25,10 @@ class SessionReadError(WxClaudeError):
     """A session file of the Claude Code CLI cannot be read."""
 
 
+class TaskReadError(WxClaudeError):
+    """The folder holding the tasks of a session cannot be read."""
+
+
 class ScreenReaderOutputError(WxClaudeError):
     """A message cannot be sent to the screen reader (or its output cannot be set up)."""
 

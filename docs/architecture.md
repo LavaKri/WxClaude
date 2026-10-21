@@ -35,7 +35,9 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
    option is on; the same text is not repeated).
 4. At `TurnEnded`, `progress.turn_outcome` decides done / interrupted / failed. A failure is said in
    the status bar and shown in a dialog. Then the session file is read and the view is rebuilt if
-   the text it would hold differs from what is shown.
+   the text it would hold differs from what is shown; if it is the same, the view only takes the
+   messages from the file (`adopt_details`) so that they carry their tools. `RateLimit` and
+   `TurnResult` events feed the `UsageTracker`.
 5. When Claude asks a permission (`PermissionRequest`), the window answers with `ClaudeRunner.allow`
    or `deny`: at once if the rule was allowed earlier in this message, else after the question
    dialog. *Always allow* writes an allow rule in `.claude/settings.local.json`
@@ -64,6 +66,9 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |
 | `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
+| `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
+| `usage.py` | `UsageTracker`: subscription gauges and tokens / cost spent, as lines of the usage dialog. |
+| `tasks.py` | The tasks Claude wrote for a session (`<config>/tasks/<id>/*.json`), read only. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 | `export.py` | Writes the conversation text to a file. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
@@ -73,14 +78,15 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | Module | Role |
 |---|---|
 | `main_window.py` | Menus, prompt, buttons; the runner events, the permission questions, the focus rules (`_modal`); enables what needs a workspace or a conversation. |
-| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`. |
+| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py` | Preferences, one tab per topic. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
 | `permission_dialog.py` | The permission question of Claude. |
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
-| `tasks_dialog.py` | Task list of the conversation (the dialog exists, the list is empty: milestone 5). |
+| `list_dialog.py` | `ListDialog`: a list of lines, the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
+| `tasks_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; tools used, rows of a table and links of a message; usage of Claude. |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |

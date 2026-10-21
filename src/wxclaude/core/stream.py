@@ -12,6 +12,7 @@ from wxclaude.core.events import (
     PermissionDenied,
     PermissionRequest,
     RateLimit,
+    RateWindow,
     RunEvent,
     SessionInit,
     Thinking,
@@ -138,13 +139,16 @@ def _rate_limit(entry: dict[str, object]) -> list[RunEvent]:
     info = entry.get("rate_limit_info")
     if not isinstance(info, dict):
         return []
-    windows = info.get("unifiedWindows")
+    raw_windows = info.get("unifiedWindows")
     limit_type = _text(info.get("rateLimitType"))
-    window = windows.get(limit_type) if isinstance(windows, dict) else None
-    utilization = _number(window.get("utilization")) if isinstance(window, dict) else None
-    return [
-        RateLimit(_text(info.get("status")), limit_type, utilization, _int(info.get("resetsAt")))
-    ]
+    windows = tuple(
+        RateWindow(name, _number(raw.get("utilization")), _int(raw.get("resetsAt")))
+        for name, raw in (raw_windows.items() if isinstance(raw_windows, dict) else [])
+        if isinstance(raw, dict)
+    )
+    if not windows and limit_type:
+        windows = (RateWindow(limit_type, None, _int(info.get("resetsAt"))),)
+    return [RateLimit(_text(info.get("status")), limit_type, windows)]
 
 
 def _result(entry: dict[str, object]) -> list[RunEvent]:

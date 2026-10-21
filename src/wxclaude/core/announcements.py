@@ -35,6 +35,8 @@ class Announce(enum.Enum):
     CLAUDE_INTERRUPTED = N_("Claude was interrupted.")
     CLAUDE_FAILED = N_("Claude could not answer: {details}")
     PERMISSION_DENIED = N_("Permission denied for the tool {tool}.")
+    MESSAGE_COPIED = N_("Message copied to the clipboard.")
+    TEXT_COPIED = N_("Copied to the clipboard.")
     WORKSPACE_SETTINGS_SAVED = N_("Workspace settings saved.")
     PERMISSION_ASKED = N_("Claude asks permission for the tool {tool}.")
     PERMISSION_GRANTED = N_("Permission granted for the tool {tool}.")

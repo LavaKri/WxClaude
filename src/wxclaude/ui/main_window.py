@@ -17,6 +17,7 @@ from wxclaude.core.claude_projects import (
 )
 from wxclaude.core.claude_settings import ToolSettings, allow_always
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
+from wxclaude.core.details import DetailAction, Link, message_details
 from wxclaude.core.errors import (
     ClaudeNotFoundError,
     ClaudeSettingsError,
@@ -26,10 +27,12 @@ from wxclaude.core.errors import (
     ScreenReaderOutputError,
     SessionReadError,
     SettingsError,
+    TaskReadError,
 )
 from wxclaude.core.events import (
     AssistantText,
     PermissionRequest,
+    RateLimit,
     RunEvent,
     TurnEnded,
     TurnResult,
@@ -54,21 +57,30 @@ from wxclaude.core.shortcuts import (
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
     TASKS_COMMAND,
+    USAGE_COMMAND,
     ConfigurableCommand,
 )
+from wxclaude.core.tasks import load_tasks
+from wxclaude.core.usage import UsageTracker
 from wxclaude.core.workspace_state import WorkspaceState
 from wxclaude.core.workspaces import add_recent, describe, remove_missing, workspace_label
 from wxclaude.i18n import _
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
+from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
 from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.permission_dialog import PermissionDialog
 from wxclaude.ui.preferences_dialog import PreferencesDialog
 from wxclaude.ui.search_dialog import SearchDialog
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.tasks_dialog import TasksDialog
+from wxclaude.ui.usage_dialog import UsageDialog
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
+
+_POSITION_FIELD = 0
+_MESSAGE_FIELD = 1
+_POSITION_WIDTH = 150
 
 
 def _session_label(session: SessionInfo) -> str:
@@ -87,6 +99,7 @@ class MainWindow(wx.Frame):
         self._state: WorkspaceState | None = None  # what is remembered about the workspace
         self._agent = settings.default_agent
         self._runner = runner or ClaudeRunner()
+        self._apply_claude_path()
         self._busy = False  # True while Claude is answering
         self._closing = False
         self._turn_agent = settings.default_agent  # the agent of the message being answered
@@ -94,6 +107,7 @@ class MainWindow(wx.Frame):
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._search_options: SearchOptions | None = None  # the last search
+        self._usage = UsageTracker()  # gauges and spending, fed by the answers
         self._local_messages = 0  # messages added by this run, for their identifiers
         self._recent_ids: dict[int, str] = {}
         self._command_items: list[tuple[ConfigurableCommand, wx.MenuItem, str]] = []
@@ -104,7 +118,9 @@ class MainWindow(wx.Frame):
 
         panel = wx.Panel(self)
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
-        self._conversation = ConversationView(panel, self._say)
+        self._conversation = ConversationView(
+            panel, self._say, self._on_message_action, self._show_position
+        )
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
         self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
@@ -135,8 +151,9 @@ class MainWindow(wx.Frame):
         panel.SetSizer(sizer)
 
         self._build_menu_bar()
-        self.CreateStatusBar()
-        self.SetStatusText(_("Ready"))
+        status_bar = self.CreateStatusBar(2)  # the position in the conversation, then the messages
+        status_bar.SetStatusWidths([_POSITION_WIDTH, -1])
+        self._set_status(_("Ready"))
         self._announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
         self._apply_screen_reader_output()
         self.Bind(wx.EVT_MENU_OPEN, self._on_menu_open)
@@ -197,6 +214,8 @@ class MainWindow(wx.Frame):
         tools_menu = wx.Menu()
         tasks_item = tools_menu.Append(wx.ID_ANY, _("Task &list…"))
         self._command_items.append((TASKS_COMMAND, tasks_item, _("Task &list…")))
+        usage_item = tools_menu.Append(wx.ID_ANY, _("Claude &usage…"))
+        self._command_items.append((USAGE_COMMAND, usage_item, _("Claude &usage…")))
         folder_item = tools_menu.Append(wx.ID_ANY, _("Open the workspace &folder"))
         workspace_settings_item = tools_menu.Append(wx.ID_ANY, _("Workspace &settings…"))
         preferences_item = tools_menu.Append(wx.ID_ANY, _("&Preferences…"))
@@ -230,6 +249,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_open_workspace, open_item)
         self.Bind(wx.EVT_MENU, self._on_open_project, projects_item)
         self.Bind(wx.EVT_MENU, self._on_tasks, tasks_item)
+        self.Bind(wx.EVT_MENU, self._on_usage, usage_item)
         self.Bind(wx.EVT_MENU, self._on_open_workspace_folder, folder_item)
         self.Bind(wx.EVT_MENU, self._on_workspace_settings, workspace_settings_item)
         self.Bind(wx.EVT_MENU, self._on_export, export_item)
@@ -354,6 +374,8 @@ class MainWindow(wx.Frame):
 
     def _set_conversation(self, conversation_id: str, name: str) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
+        if conversation_id != self._conversation_id:
+            self._usage.start_conversation()
         self._conversation_id = conversation_id
         self._set_conversation_name(name)  # also remembers the conversation
         self._refresh_enabled()
@@ -365,6 +387,7 @@ class MainWindow(wx.Frame):
         self._conversation_id = ""
         self._conversation_name = ""
         self._branch_count = 0
+        self._usage.start_conversation()
         self._update_title()
         self._refresh_enabled()
 
@@ -611,6 +634,7 @@ class MainWindow(wx.Frame):
                 self._conversation.set_show_hidden(not self._settings.hide_system_messages)
                 self._apply_shortcuts()
                 self._apply_screen_reader_output()
+                self._apply_claude_path()
                 self._save_settings()
 
     def _focus_main_field(self) -> None:
@@ -637,8 +661,75 @@ class MainWindow(wx.Frame):
         return bool(wx.LaunchDefaultApplication(str(folder)))
 
     def _on_tasks(self, _event: wx.CommandEvent) -> None:
-        with TasksDialog(self) as dialog:
+        """The tasks Claude wrote for this conversation (read from its task folder)."""
+        try:
+            tasks = load_tasks(self._conversation_id)
+        except TaskReadError as error:
+            self._show_error(_("Cannot read the tasks.\n{error}").format(error=error))
+            return
+        with TasksDialog(self, tasks) as dialog:
             self._modal(dialog)
+
+    def _on_usage(self, _event: wx.CommandEvent) -> None:
+        """The gauges of the subscription and the tokens spent, as far as the answers told."""
+        with UsageDialog(self, self._usage.lines(datetime.now())) as dialog:
+            self._modal(dialog)
+
+    def _on_message_action(self, action: DetailAction, message: Message, line: int) -> None:
+        """An item of the context menu of the conversation view."""
+        details = message_details(message)
+        if action is DetailAction.COPY_MESSAGE:
+            self._copy_to_clipboard(message.text, Announce.MESSAGE_COPIED)
+        elif action is DetailAction.TOOLS:
+            with ToolsDialog(self, details.tools) as tools_dialog:
+                self._modal(tools_dialog)
+        elif action is DetailAction.TABLE:
+            table = details.table_at(line)
+            if table is None:
+                return
+            with TableDialog(self, table) as table_dialog:
+                if self._modal(table_dialog) == wx.ID_COPY:
+                    self._copy_to_clipboard(table.source, Announce.TEXT_COPIED)
+        elif action is DetailAction.LINKS and details.links:
+            with LinksDialog(self, details.links, details.link_index_at(line)) as links_dialog:
+                answer = self._modal(links_dialog)
+                index = links_dialog.selection
+            if index < 0:
+                return
+            if answer == wx.ID_OPEN:
+                self._open_link(details.links[index])
+            elif answer == wx.ID_COPY:
+                self._copy_to_clipboard(details.links[index].url, Announce.TEXT_COPIED)
+
+    def _open_link(self, link: Link) -> None:
+        """Open a web or mail address in the default application; any other kind is refused."""
+        if not link.can_open:
+            self._show_error(
+                _("This kind of address is not opened from here: {url}").format(url=link.url)
+            )
+        elif not self._launch_url(link.url):
+            self._show_error(_("The address {url} cannot be opened.").format(url=link.url))
+
+    @staticmethod
+    def _launch_url(url: str) -> bool:
+        """Open ``url`` with the default browser (or mail program); False if refused."""
+        return bool(wx.LaunchDefaultBrowser(url))
+
+    def _copy_to_clipboard(self, text: str, announce: Announce) -> None:
+        if self._set_clipboard(text):
+            self._say(announce)
+        else:
+            self._show_error(_("The clipboard cannot be used."))
+
+    @staticmethod
+    def _set_clipboard(text: str) -> bool:
+        """Put ``text`` on the clipboard; False if the clipboard cannot be opened."""
+        if not wx.TheClipboard.Open():
+            return False
+        try:
+            return bool(wx.TheClipboard.SetData(wx.TextDataObject(text)))
+        finally:
+            wx.TheClipboard.Close()
 
     def _on_about(self, _event: wx.CommandEvent) -> None:
         message = _("WxClaude {version}").format(version=__version__)
@@ -711,8 +802,11 @@ class MainWindow(wx.Frame):
         elif isinstance(event, PermissionRequest):
             self._on_permission_request(event)
             return
+        elif isinstance(event, RateLimit):
+            self._usage.record_rate_limit(event, datetime.now())
         elif isinstance(event, TurnResult):
             self._turn_result = event
+            self._usage.record_result(event)
         elif isinstance(event, TurnEnded):
             self._finish_turn(event)
             return
@@ -726,7 +820,7 @@ class MainWindow(wx.Frame):
         if rule and rule in self._turn_allowed:
             decision = Decision(Choice.ALLOW)
         else:
-            self.SetStatusText(
+            self._set_status(
                 self._announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
             )
             decision = self._ask_permission(request)
@@ -786,7 +880,7 @@ class MainWindow(wx.Frame):
         if self._settings.announce_progress:
             self._say(progress.announce, **progress.values)
         else:
-            self.SetStatusText(text)
+            self._set_status(text)
 
     def _finish_turn(self, ended: TurnEnded) -> None:
         self._busy = False
@@ -816,7 +910,9 @@ class MainWindow(wx.Frame):
             self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
             return
         view = self._conversation
-        if not view.shows(session.messages):
+        if view.shows(session.messages):
+            view.adopt_details(session.messages)  # the messages shown live have no tools yet
+        else:
             caret = view.GetInsertionPoint()
             view.set_messages(session.messages)
             view.SetInsertionPoint(min(caret, view.GetLastPosition()))
@@ -847,7 +943,21 @@ class MainWindow(wx.Frame):
 
     def _say(self, announce: Announce, **values: object) -> None:
         """Show an announcement in the status bar and send it to the screen reader output."""
-        self.SetStatusText(self._announcements.notify(announce, **values))
+        self._set_status(self._announcements.notify(announce, **values))
+
+    def _set_status(self, text: str) -> None:
+        """The message field of the status bar (the first field is the position)."""
+        self.SetStatusText(text, _MESSAGE_FIELD)
+
+    def _show_position(self, number: int, total: int) -> None:
+        """First field of the status bar: the prompt the caret is in, 'Message 3 of 8'."""
+        text = _("Message {number} of {total}").format(number=number, total=total) if total else ""
+        self.SetStatusText(text, _POSITION_FIELD)
+
+    def _apply_claude_path(self) -> None:
+        """Tell the runner which claude executable to start: the chosen file, or the PATH."""
+        settings = self._settings
+        self._runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
 
     def _apply_screen_reader_output(self) -> None:
         """Connect the announcements to the output chosen in the options."""

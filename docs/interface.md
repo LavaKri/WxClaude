@@ -12,7 +12,8 @@
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
   *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
   started). While Claude answers, Send is greyed; the prompt field stays usable.
-- Status bar: the last announcement. Progress ("Claude is thinking", "Claude uses the tool Read",
+- Status bar, two fields: the position of the caret among your prompts (`Message 3 of 8`), then the
+  last announcement. Progress ("Claude is thinking", "Claude uses the tool Read",
   "Claude is answering", "Permission denied for the tool Bash") is announced if the option is on,
   the end of a turn ("Claude has answered", "Claude was interrupted", "Claude could not answer:
   ...") always is. A failure also opens a dialog with the details; the prompt is kept when Claude
@@ -30,8 +31,21 @@ the last prompt), Rename, New conversation branch (provisional: a new identifier
 Delete (greyed until it is built), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
-**Tools**: Task list (Ctrl+T, as in the CLI), Open the workspace folder (in the file explorer;
-needs a workspace), Workspace settings (needs a workspace), Preferences.
+**Tools**: Task list (Ctrl+T, as in the CLI), Claude usage (Ctrl+Shift+U), Open the workspace folder
+(in the file explorer; needs a workspace), Workspace settings (needs a workspace), Preferences.
+
+The context menu of the conversation (tools used, table, links, copy) is in
+`conversation-display.md`, with the usage dialog.
+
+## Task list
+
+*Tools > Task list…* shows the tasks Claude wrote for the current conversation, read from
+`<config>/tasks/<conversation id>/*.json` (read only; `CLAUDE_CONFIG_DIR` is honoured). A list, one
+task per line in number order: number, subject, state (*pending*, *in progress*, *completed*) and,
+when it still waits for tasks that are not completed, `blocked by 3 4`; for example `2, Build, pending,
+blocked by 1`. A read-only field below gives the description of the selected task. A file that is not
+a readable task is named on the last line of the list. Without any task the list says so. The
+dialog shows what the folder holds when it opens; it is not refreshed while it is open.
 
 **Help**: About.
 
@@ -127,6 +141,10 @@ effort or the permission mode does not.
 ## Preferences
 
 - **General**: language (applies at the next start); at startup, open the last workspace.
+- **Claude** (after General): *Automatic search for claude-p* (checked by default: `claude` is looked
+  for in the PATH); *Path of claude-p* and *Select…* (file dialog), both greyed while the search is
+  automatic. OK is refused, with the focus on the path, if the search is off and the path is empty
+  or not a file. The dialogue mode with claude-p (a list) is not built yet, see `open-questions.md`.
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested.", is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).

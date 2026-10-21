@@ -121,3 +121,30 @@ def test_the_focus_goes_to_the_start_of_the_last_prompt(view: ConversationView) 
     view.set_messages([Message("1", Role.ASSISTANT, "only an answer", model="m")])
     view.focus_last_prompt()
     assert view.GetInsertionPoint() == 0  # no prompt: the start
+
+
+def test_the_position_in_the_prompts_is_reported_when_the_caret_moves() -> None:
+    frame = wx.Frame(None)
+    reported: list[tuple[int, int]] = []
+    view = ConversationView(
+        frame, lambda *_a, **_k: None, None, lambda n, t: reported.append((n, t))
+    )
+    view.set_messages(
+        [
+            Message("1", Role.USER, "One"),
+            Message("2", Role.ASSISTANT, "Answer", model="m"),
+            Message("3", Role.USER, "Two"),
+        ]
+    )
+    assert reported[-1] == (1, 2)
+    view.SetInsertionPoint(view.GetLastPosition())
+    view.report_position()
+    assert reported[-1] == (2, 2)
+    view.report_position()
+    assert reported.count((2, 2)) == 1  # not repeated while it does not change
+    view.append_message(Message("4", Role.USER, "Three"))
+    assert reported[-1] == (3, 3)  # the caret, at the old end, now starts the new prompt
+    view.clear_messages()
+    assert reported[-1] == (0, 0)
+    frame.Destroy()
+    wx.SafeYield()

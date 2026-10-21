@@ -1,5 +1,7 @@
 """Preferences dialog, one tab per topic."""
 
+from pathlib import Path
+
 import wx
 
 from wxclaude.core.screen_reader import available_outputs, default_output, output_named
@@ -61,6 +63,7 @@ class PreferencesDialog(wx.Dialog):
         )
         self._notebook = wx.Notebook(self, name=_("Preferences"))
         self._notebook.AddPage(self._general_page(settings), _("General"))
+        self._notebook.AddPage(self._claude_page(settings), _("Claude"))
         self._notebook.AddPage(self._workspace_page(settings), _("Workspace"))
         self._notebook.AddPage(self._agent_page(settings), _("Agent"))
         self._notebook.AddPage(self._shortcuts_page(settings), _("Shortcuts"))
@@ -71,6 +74,7 @@ class PreferencesDialog(wx.Dialog):
         sizer.Add(self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL), 0, wx.EXPAND | wx.ALL, 6)
         self.SetSizerAndFit(sizer)
         self.SetSize(wx.Size(720, 640))
+        self.Bind(wx.EVT_BUTTON, self._on_ok, id=wx.ID_OK)
         self._notebook.SetFocus()
 
     # General ---------------------------------------------------------------------------------
@@ -97,6 +101,65 @@ class PreferencesDialog(wx.Dialog):
         sizer.Add(self._reopen_last, 0, wx.ALL, 6)
         page.SetSizer(sizer)
         return page
+
+    # Claude ----------------------------------------------------------------------------------
+
+    def _claude_page(self, settings: Settings) -> wx.Panel:
+        page = wx.Panel(self._notebook)
+        self.claude_auto_search = wx.CheckBox(page, label=_("&Automatic search for claude-p"))
+        self.claude_auto_search.SetValue(settings.claude_auto_search)
+        path_label = wx.StaticText(page, label=_("&Path of claude-p"))
+        self.claude_path = wx.TextCtrl(page, value=settings.claude_path, name=_("Path of claude-p"))
+        self.claude_browse = wx.Button(page, label=_("&Select…"))
+        self.claude_auto_search.Bind(wx.EVT_CHECKBOX, lambda _event: self._update_claude_path())
+        self.claude_browse.Bind(wx.EVT_BUTTON, lambda _event: self._on_browse_claude())
+        row = wx.BoxSizer(wx.HORIZONTAL)
+        row.Add(self.claude_path, 1, wx.EXPAND | wx.RIGHT, 6)
+        row.Add(self.claude_browse, 0)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(self.claude_auto_search, 0, wx.ALL, 8)
+        sizer.Add(path_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        sizer.Add(row, 0, wx.EXPAND | wx.ALL, 8)
+        page.SetSizer(sizer)
+        self._update_claude_path()
+        return page
+
+    def _update_claude_path(self) -> None:
+        """The path is only used (and editable) without the automatic search."""
+        manual = not self.claude_auto_search.GetValue()
+        self.claude_path.Enable(manual)
+        self.claude_browse.Enable(manual)
+
+    def _on_browse_claude(self) -> None:
+        current = Path(self.claude_path.GetValue())
+        with wx.FileDialog(
+            self,
+            _("Select the claude executable"),
+            defaultDir=str(current.parent) if current.parent.is_dir() else "",
+            wildcard=_("Programs (*.exe;*.cmd;*.bat)|*.exe;*.cmd;*.bat|All files (*.*)|*.*"),
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+        ) as dialog:
+            if dialog.ShowModal() == wx.ID_OK:
+                self.claude_path.SetValue(dialog.GetPath())
+
+    def _on_ok(self, event: wx.CommandEvent) -> None:
+        """Refuse a manual path that is not a file (the focus goes to it)."""
+        if not self.claude_auto_search.GetValue():
+            path = self.claude_path.GetValue().strip()
+            if not path or not Path(path).is_file():
+                self._notebook.SetSelection(1)
+                self.claude_path.SetFocus()
+                message = (
+                    _("The file {path} does not exist.").format(path=path)
+                    if path
+                    else _("Give the path of claude-p, or turn the automatic search on.")
+                )
+                with wx.MessageDialog(
+                    self, message, _("Preferences"), wx.OK | wx.ICON_WARNING
+                ) as dialog:
+                    dialog.ShowModal()
+                return
+        event.Skip()
 
     # Workspace -------------------------------------------------------------------------------
 
@@ -287,6 +350,8 @@ class PreferencesDialog(wx.Dialog):
         """Store the values chosen in the dialog into ``settings``."""
         settings.language = SUPPORTED_LANGUAGES[self._language.GetSelection()]
         settings.reopen_last = self._reopen_last.GetValue()
+        settings.claude_auto_search = self.claude_auto_search.GetValue()
+        settings.claude_path = self.claude_path.GetValue().strip()
         settings.hide_system_messages = self._hide_system_messages.GetValue()
         settings.local_tools_only = self._local_tools_only.GetValue()
         settings.announce_progress = self._announce_progress.GetValue()
