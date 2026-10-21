@@ -2,6 +2,9 @@ from pathlib import Path
 
 import pytest
 import wx
+from main_window_support import _runner, _settings
+
+from wxclaude.ui.main_window import MainWindow
 
 
 @pytest.fixture(scope="session")
@@ -16,3 +19,19 @@ def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "claude-config"
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
     return folder
+
+
+@pytest.fixture
+def window(wx_app: wx.App):
+    window = MainWindow(_settings(), _runner())
+    yield window
+    window.Destroy()
+    wx.SafeYield()
+
+
+@pytest.fixture
+def conversation(window: MainWindow, tmp_path: Path) -> MainWindow:
+    """A window with a workspace and a conversation, as after "New conversation"."""
+    window.open_workspace(tmp_path)
+    window._start_new_conversation("Notes")
+    return window
