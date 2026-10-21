@@ -4,6 +4,7 @@ from collections.abc import Sequence
 
 import wx
 
+from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
 
 
@@ -13,12 +14,13 @@ class UsageDialog(wx.Dialog):
 
     def __init__(self, parent: wx.Window, lines: Sequence[str]) -> None:
         super().__init__(parent, title=_("Claude usage"), style=wx.DEFAULT_DIALOG_STYLE)
-        label = wx.StaticText(self, label=_("&Usage"))
+        text = _("&Usage")
+        label = wx.StaticText(self, label=text)
         self._report = wx.TextCtrl(
             self,
             value="\n".join(lines),
             style=wx.TE_READONLY | wx.TE_MULTILINE,
-            name=_("Usage"),
+            name=accessible_name(text),
         )
         self._report.SetMinSize(
             wx.Size(self._report.GetCharWidth() * 80, self._report.GetCharHeight() * 10)

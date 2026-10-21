@@ -6,7 +6,9 @@ verified yet for the current interface).
 The general rules (keyboard only, accessible names, initial focus, label before its control, no
 unexpected focus change, native controls first, no colour alone, greyed rather than hidden,
 information in the text of a line) are in `working-rules.md`, section "Accessible interfaces". What
-follows is specific to WxClaude.
+follows is specific to WxClaude. The accessible name of a control is derived from its label
+(`core/labels.py`), except for the few controls whose name is shorter or different (the
+explanation field of the permission question, the shortcut list, the unnamed read-only fields).
 
 - Where the focus and the caret go in every case (a dialog closes, the conversation is loaded,
   refreshed or searched, an answer ends...) is in `focus.md`.

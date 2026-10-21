@@ -20,11 +20,9 @@ class ToolsDialog(ListDialog):
             ListSpec(
                 _("Tools used"),
                 list_label=_("&Tools used"),
-                list_name=_("Tools used"),
                 lines=[tool_line(tool) for tool in tools],
                 details=[tool_detail(tool) for tool in tools],
                 details_label=_("&Details"),
-                details_name=_("Details"),
             ),
         )
 
@@ -38,7 +36,6 @@ class TableDialog(ListDialog):
         spec = ListSpec(
             _("Table"),
             list_label=_("&Rows"),
-            list_name=_("Rows"),
             lines=rows or [_("The table has no row.")],
         )
         super().__init__(parent, spec, [(wx.ID_COPY, _("Copy the &table"))])
@@ -53,7 +50,6 @@ class LinksDialog(ListDialog):
         spec = ListSpec(
             _("Links"),
             list_label=_("&Links"),
-            list_name=_("Links"),
             lines=[link.label() for link in links],
             selection=selected,
         )

@@ -2,6 +2,7 @@
 
 import wx
 
+from wxclaude.core.labels import accessible_name
 from wxclaude.core.search import SearchOptions
 from wxclaude.i18n import _
 
@@ -13,8 +14,9 @@ class SearchDialog(wx.Dialog):
         super().__init__(parent, title=_("Find in the conversation"))
         previous = options or SearchOptions("")
         # The label is created right before its field so that screen readers pair them.
-        label = wx.StaticText(self, label=_("&Search for"))
-        self._term = wx.TextCtrl(self, value=previous.term, name=_("Search for"))
+        text = _("&Search for")
+        label = wx.StaticText(self, label=text)
+        self._term = wx.TextCtrl(self, value=previous.term, name=accessible_name(text))
         self._term.SetMinSize(wx.Size(self._term.GetCharWidth() * 40, -1))
         self._match_case = wx.CheckBox(self, label=_("Match &case"))
         self._match_case.SetValue(previous.match_case)

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import wx
 
+from wxclaude.core.labels import accessible_name
 from wxclaude.core.screen_reader import available_outputs, default_output, output_named
 from wxclaude.core.settings import SUPPORTED_LANGUAGES, Settings
 from wxclaude.core.shortcuts import (
@@ -82,11 +83,12 @@ class PreferencesDialog(wx.Dialog):
     def _general_page(self, settings: Settings) -> wx.Panel:
         page = wx.Panel(self._notebook)
         # The label is created right before its control so that screen readers pair them.
-        label = wx.StaticText(page, label=_("&Language"))
+        text = _("&Language")
+        label = wx.StaticText(page, label=text)
         self._language = wx.Choice(
             page,
             choices=[_LANGUAGE_NAMES[code] for code in SUPPORTED_LANGUAGES],
-            name=_("Language"),
+            name=accessible_name(text),
         )
         self._language.SetSelection(SUPPORTED_LANGUAGES.index(settings.language))
         note = wx.StaticText(page, label=_("The language change applies at the next start."))
@@ -108,8 +110,11 @@ class PreferencesDialog(wx.Dialog):
         page = wx.Panel(self._notebook)
         self.claude_auto_search = wx.CheckBox(page, label=_("&Automatic search for claude-p"))
         self.claude_auto_search.SetValue(settings.claude_auto_search)
-        path_label = wx.StaticText(page, label=_("&Path of claude-p"))
-        self.claude_path = wx.TextCtrl(page, value=settings.claude_path, name=_("Path of claude-p"))
+        path_text = _("&Path of claude-p")
+        path_label = wx.StaticText(page, label=path_text)
+        self.claude_path = wx.TextCtrl(
+            page, value=settings.claude_path, name=accessible_name(path_text)
+        )
         self.claude_browse = wx.Button(page, label=_("&Select…"))
         self.claude_auto_search.Bind(wx.EVT_CHECKBOX, lambda _event: self._update_claude_path())
         self.claude_browse.Bind(wx.EVT_BUTTON, lambda _event: self._on_browse_claude())
@@ -185,11 +190,12 @@ class PreferencesDialog(wx.Dialog):
         self._unset_labels = [None, _("(same as the conversation)")]
         self._agent_index = 0
 
-        list_label = wx.StaticText(page, label=_("&Agent"))
+        agent_text = _("&Agent")
+        list_label = wx.StaticText(page, label=agent_text)
         self._agent_list = wx.ListBox(
             page,
             choices=[_("Agent of a new conversation"), _("Alternative agent")],
-            name=_("Agent"),
+            name=accessible_name(agent_text),
         )
         self._agent_list.SetMinSize(wx.Size(-1, self._agent_list.GetCharHeight() * 2 + 12))
         self._agent_list.SetSelection(0)
@@ -329,9 +335,12 @@ class PreferencesDialog(wx.Dialog):
     def _screen_reader_page(self, settings: Settings) -> wx.Panel:
         page = wx.Panel(self._notebook)
         self._outputs = available_outputs()
-        label = wx.StaticText(page, label=_("&Announcements"))
+        announce_text = _("&Announcements")
+        label = wx.StaticText(page, label=announce_text)
         self.output_choice = wx.Choice(
-            page, choices=[_(output.label) for output in self._outputs], name=_("Announcements")
+            page,
+            choices=[_(output.label) for output in self._outputs],
+            name=accessible_name(announce_text),
         )
         current = output_named(settings.screen_reader_output) or default_output()
         self.output_choice.SetSelection(self._outputs.index(current))

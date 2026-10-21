@@ -27,10 +27,8 @@ class TasksDialog(ListDialog):
             ListSpec(
                 _("Task list"),
                 list_label=_("&Tasks"),
-                list_name=_("Tasks"),
                 lines=lines,
                 details=descriptions,
                 details_label=_("&Description"),
-                details_name=_("Description"),
             ),
         )

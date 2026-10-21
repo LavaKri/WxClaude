@@ -12,6 +12,7 @@ from wxclaude.core.claude_settings import (
     approval_label,
 )
 from wxclaude.core.errors import ClaudeSettingsError
+from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
 
 
@@ -59,68 +60,78 @@ class WorkspaceSettingsDialog(wx.Dialog):
     # Tools -----------------------------------------------------------------------------------
 
     def _tools_page(self, parent: wx.Window) -> wx.Panel:
+        """The page of the tools; the controls are created in the order the Tab key visits them."""
         page = wx.Panel(parent)
-        # Each label is created right before its control so that screen readers pair them.
-        target_label = wx.StaticText(page, label=_("&Target file"))
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        self._add_target(page, sizer)
+        self._add_tools(page, sizer)
+        self._add_rules(page, sizer)
+        self._add_new_rule(page, sizer)
+        page.SetSizer(sizer)
+        return page
+
+    # Each label is created right before its control so that screen readers pair them.
+
+    def _add_target(self, page: wx.Panel, sizer: wx.BoxSizer) -> None:
+        text = _("&Target file")
+        sizer.Add(wx.StaticText(page, label=text), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self._target = wx.Choice(
             page,
             choices=[self._target_name(source) for source in self._targets],
-            name=_("Target file"),
+            name=accessible_name(text),
         )
         self._target.SetSelection(0)
         self._target.Bind(wx.EVT_CHOICE, lambda _event: self._refresh())
+        sizer.Add(self._target, 0, wx.EXPAND | wx.ALL, 8)
         self._note = _read_only_field(page, 4, _("Where the changes are saved"))
+        sizer.Add(self._note, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
-        tools_label = wx.StaticText(page, label=_("&Tools"))
-        self._tools = wx.ListBox(page, name=_("Tools"))
+    def _add_tools(self, page: wx.Panel, sizer: wx.BoxSizer) -> None:
+        text = _("&Tools")
+        sizer.Add(wx.StaticText(page, label=text), 0, wx.LEFT | wx.RIGHT, 8)
+        self._tools = wx.ListBox(page, name=accessible_name(text))
         self._tools.SetMinSize(wx.Size(-1, self._tools.GetCharHeight() * 8 + 12))
         self._tools.Bind(wx.EVT_LISTBOX, lambda _event: self._refresh_buttons())
+        sizer.Add(self._tools, 1, wx.EXPAND | wx.ALL, 8)
         self._deny = wx.Button(page, label=_("De&ny"))
         self._ask = wx.Button(page, label=_("A&sk"))
         self._allow = wx.Button(page, label=_("&Allow"))
         self._deny.Bind(wx.EVT_BUTTON, lambda _event: self.apply_approval(Approval.DENY))
         self._ask.Bind(wx.EVT_BUTTON, lambda _event: self.apply_approval(Approval.ASK))
         self._allow.Bind(wx.EVT_BUTTON, lambda _event: self.apply_approval(Approval.ALLOW))
-
-        rules_label = wx.StaticText(page, label=_("&Rules of the target file"))
-        self._rules_list = wx.ListBox(page, name=_("Rules of the target file"))
-        self._rules_list.SetMinSize(wx.Size(-1, self._rules_list.GetCharHeight() * 6 + 12))
-        self._rules_list.Bind(wx.EVT_LISTBOX, lambda _event: self._refresh_buttons())
-        self._remove = wx.Button(page, label=_("Re&move"))
-        self._remove.Bind(wx.EVT_BUTTON, lambda _event: self.remove_selected_rule())
-
-        new_label = wx.StaticText(page, label=_("Rule to a&dd"))
-        self._new_rule = wx.TextCtrl(page, name=_("Rule to add"))
-        approval_label_ = wx.StaticText(page, label=_("A&pproval of the rule"))
-        self._new_approval = wx.Choice(
-            page,
-            choices=[approval_label(approval) for approval in Approval],
-            name=_("Approval of the rule"),
-        )
-        self._new_approval.SetSelection(list(Approval).index(Approval.ALLOW))
-        self._add = wx.Button(page, label=_("Add the ru&le"))
-        self._add.Bind(wx.EVT_BUTTON, lambda _event: self._on_add())
-
         buttons = wx.BoxSizer(wx.HORIZONTAL)
         for button in (self._deny, self._ask, self._allow):
             buttons.Add(button, 0, wx.RIGHT, 6)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(target_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(self._target, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(self._note, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        sizer.Add(tools_label, 0, wx.LEFT | wx.RIGHT, 8)
-        sizer.Add(self._tools, 1, wx.EXPAND | wx.ALL, 8)
         sizer.Add(buttons, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        sizer.Add(rules_label, 0, wx.LEFT | wx.RIGHT, 8)
+
+    def _add_rules(self, page: wx.Panel, sizer: wx.BoxSizer) -> None:
+        text = _("&Rules of the target file")
+        sizer.Add(wx.StaticText(page, label=text), 0, wx.LEFT | wx.RIGHT, 8)
+        self._rules_list = wx.ListBox(page, name=accessible_name(text))
+        self._rules_list.SetMinSize(wx.Size(-1, self._rules_list.GetCharHeight() * 6 + 12))
+        self._rules_list.Bind(wx.EVT_LISTBOX, lambda _event: self._refresh_buttons())
         sizer.Add(self._rules_list, 1, wx.EXPAND | wx.ALL, 8)
+        self._remove = wx.Button(page, label=_("Re&move"))
+        self._remove.Bind(wx.EVT_BUTTON, lambda _event: self.remove_selected_rule())
         sizer.Add(self._remove, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        sizer.Add(new_label, 0, wx.LEFT | wx.RIGHT, 8)
+
+    def _add_new_rule(self, page: wx.Panel, sizer: wx.BoxSizer) -> None:
+        rule_text = _("Rule to a&dd")
+        sizer.Add(wx.StaticText(page, label=rule_text), 0, wx.LEFT | wx.RIGHT, 8)
+        self._new_rule = wx.TextCtrl(page, name=accessible_name(rule_text))
         sizer.Add(self._new_rule, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(approval_label_, 0, wx.LEFT | wx.RIGHT, 8)
+        approval_text = _("A&pproval of the rule")
+        sizer.Add(wx.StaticText(page, label=approval_text), 0, wx.LEFT | wx.RIGHT, 8)
+        self._new_approval = wx.Choice(
+            page,
+            choices=[approval_label(approval) for approval in Approval],
+            name=accessible_name(approval_text),
+        )
+        self._new_approval.SetSelection(list(Approval).index(Approval.ALLOW))
         sizer.Add(self._new_approval, 0, wx.EXPAND | wx.ALL, 8)
+        self._add = wx.Button(page, label=_("Add the ru&le"))
+        self._add.Bind(wx.EVT_BUTTON, lambda _event: self._on_add())
         sizer.Add(self._add, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        page.SetSizer(sizer)
-        return page
 
     @staticmethod
     def _target_name(source: Source) -> str:

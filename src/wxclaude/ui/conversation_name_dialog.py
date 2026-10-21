@@ -2,6 +2,7 @@
 
 import wx
 
+from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
 
 
@@ -11,8 +12,9 @@ class ConversationNameDialog(wx.Dialog):
     def __init__(self, parent: wx.Window, title: str, name: str) -> None:
         super().__init__(parent, title=title)
         # The label is created right before its field so that screen readers pair them.
-        label = wx.StaticText(self, label=_("&Name"))
-        self._name = wx.TextCtrl(self, value=name, name=_("Name"))
+        text = _("&Name")
+        label = wx.StaticText(self, label=text)
+        self._name = wx.TextCtrl(self, value=name, name=accessible_name(text))
         self._name.SetMinSize(wx.Size(self._name.GetCharWidth() * 40, -1))
 
         sizer = wx.BoxSizer(wx.VERTICAL)

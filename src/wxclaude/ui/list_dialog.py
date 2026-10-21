@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 import wx
 
+from wxclaude.core.labels import accessible_name
 from wxclaude.core.list_spec import ListSpec
 
 
@@ -32,7 +33,10 @@ class ListDialog(wx.Dialog):
         # Each label is created right before its control so that screen readers pair them.
         label = wx.StaticText(self, label=spec.list_label)
         self._list = wx.ListBox(
-            self, choices=list(spec.lines), style=wx.LB_SINGLE, name=spec.list_name
+            self,
+            choices=list(spec.lines),
+            style=wx.LB_SINGLE,
+            name=accessible_name(spec.list_label),
         )
         self._list.SetMinSize(
             wx.Size(self._list.GetCharWidth() * 70, self._list.GetCharHeight() * 8)
@@ -45,7 +49,9 @@ class ListDialog(wx.Dialog):
         if self._details is not None:
             details_text = wx.StaticText(self, label=spec.details_label)
             self._text = wx.TextCtrl(
-                self, style=wx.TE_MULTILINE | wx.TE_READONLY, name=spec.details_name
+                self,
+                style=wx.TE_MULTILINE | wx.TE_READONLY,
+                name=accessible_name(spec.details_label),
             )
             self._text.SetMinSize(
                 wx.Size(self._text.GetCharWidth() * 70, self._text.GetCharHeight() * 8)

@@ -3,6 +3,7 @@
 import wx
 
 from wxclaude.core.agents import EFFORTS, MODELS, PERMISSION_MODES, Agent
+from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import N_, _
 
 _EFFORT_LABELS = {
@@ -65,13 +66,13 @@ class AgentPanel(wx.Panel):
         grid = wx.FlexGridSizer(2, 6, 6)
         grid.AddGrowableCol(1)
         grid.Add(wx.StaticText(self, label=model_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._model = wx.Choice(self, name=_("Model"))
+        self._model = wx.Choice(self, name=accessible_name(model_text))
         grid.Add(self._model, 1, wx.EXPAND)
         grid.Add(wx.StaticText(self, label=effort_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._effort = wx.Choice(self, name=_("Effort"))
+        self._effort = wx.Choice(self, name=accessible_name(effort_text))
         grid.Add(self._effort, 1, wx.EXPAND)
         grid.Add(wx.StaticText(self, label=permission_text), 0, wx.ALIGN_CENTER_VERTICAL)
-        self._permission = wx.Choice(self, name=_("Permission mode"))
+        self._permission = wx.Choice(self, name=accessible_name(permission_text))
         grid.Add(self._permission, 1, wx.EXPAND)
         self._unset = unset_label is not None
         self.set_agent(agent, unset_label)

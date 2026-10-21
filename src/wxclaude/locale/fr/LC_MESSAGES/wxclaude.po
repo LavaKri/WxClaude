@@ -126,9 +126,6 @@ msgstr "Nouvelle branche de conversation"
 msgid "&Name"
 msgstr "&Nom"
 
-msgid "Name"
-msgstr "Nom"
-
 msgid "The name cannot be empty."
 msgstr "Le nom ne peut pas être vide."
 
@@ -328,9 +325,6 @@ msgstr "Lecteur d'écran"
 msgid "&Language"
 msgstr "&Langue"
 
-msgid "Language"
-msgstr "Langue"
-
 msgid "At startup, &open the last workspace"
 msgstr "Au démarrage, &ouvrir le dernier espace de travail"
 
@@ -419,9 +413,6 @@ msgstr "{shortcut} n'est pas un raccourci valide."
 msgid "&Announcements"
 msgstr "&Annonces"
 
-msgid "Announcements"
-msgstr "Annonces"
-
 msgid "No output"
 msgstr "Aucune sortie"
 
@@ -439,9 +430,6 @@ msgstr "Liste de tâches"
 
 msgid "&Tasks"
 msgstr "&Tâches"
-
-msgid "Tasks"
-msgstr "Tâches"
 
 msgid "No task in this conversation yet."
 msgstr "Aucune tâche dans cette conversation pour le moment."
@@ -542,9 +530,6 @@ msgstr "Re&cherches"
 msgid "&Search for"
 msgstr "&Rechercher"
 
-msgid "Search for"
-msgstr "Rechercher"
-
 msgid "Match &case"
 msgstr "Respecter la &casse"
 
@@ -577,9 +562,6 @@ msgstr "Claude demande une permission"
 
 msgid "&Request"
 msgstr "&Demande"
-
-msgid "Request"
-msgstr "Demande"
 
 msgid "&Explanation for Claude, if you deny"
 msgstr "E&xplication pour Claude, en cas de refus"
@@ -665,9 +647,6 @@ msgstr "Outils"
 msgid "&Target file"
 msgstr "&Fichier cible"
 
-msgid "Target file"
-msgstr "Fichier cible"
-
 msgid "Where the changes are saved"
 msgstr "Où les modifications sont enregistrées"
 
@@ -686,20 +665,11 @@ msgstr "&Demander"
 msgid "&Rules of the target file"
 msgstr "Règ&les du fichier cible"
 
-msgid "Rules of the target file"
-msgstr "Règles du fichier cible"
-
 msgid "Rule to a&dd"
 msgstr "Règles à a&jouter"
 
-msgid "Rule to add"
-msgstr "Règles à ajouter"
-
 msgid "A&pproval of the rule"
 msgstr "A&pprobation de la règle"
-
-msgid "Approval of the rule"
-msgstr "Approbation de la règle"
 
 msgid "Add the ru&le"
 msgstr "Ajouter la rè&gle"
@@ -751,9 +721,6 @@ msgstr "&Recherche automatique de claude-p"
 msgid "&Path of claude-p"
 msgstr "&Chemin de claude-p"
 
-msgid "Path of claude-p"
-msgstr "Chemin de claude-p"
-
 msgid "&Select…"
 msgstr "&Sélection…"
 
@@ -804,17 +771,11 @@ msgstr "&Outils utilisés"
 msgid "&Details"
 msgstr "&Détails"
 
-msgid "Details"
-msgstr "Détails"
-
 msgid "Table"
 msgstr "Tableau"
 
 msgid "&Rows"
 msgstr "&Lignes"
-
-msgid "Rows"
-msgstr "Lignes"
 
 msgid "Copy the &table"
 msgstr "Copier le &tableau"
@@ -866,9 +827,6 @@ msgstr "Résultat :"
 msgid "&Description"
 msgstr "&Description"
 
-msgid "Description"
-msgstr "Description"
-
 msgid "Unreadable task files: {names}"
 msgstr "Fichiers de tâches illisibles : {names}"
 
@@ -897,9 +855,6 @@ msgstr "Utilisation de Claude"
 
 msgid "&Usage"
 msgstr "&Utilisation"
-
-msgid "Usage"
-msgstr "Utilisation"
 
 msgid "5-hour window"
 msgstr "fenêtre de 5 heures"

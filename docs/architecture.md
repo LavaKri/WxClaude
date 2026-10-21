@@ -66,6 +66,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
 | `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |
 | `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
+| `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
 | `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
 | `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |

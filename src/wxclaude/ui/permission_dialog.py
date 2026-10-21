@@ -3,6 +3,7 @@
 import wx
 
 from wxclaude.core.events import PermissionRequest
+from wxclaude.core.labels import accessible_name
 from wxclaude.core.permissions import Choice, Decision, describe_request
 from wxclaude.i18n import _
 
@@ -20,12 +21,13 @@ class PermissionDialog(wx.Dialog):
         super().__init__(parent, title=_("Claude asks for permission"))
         self._answer = wx.ID_NO
         # Each label is created right before its control so that screen readers pair them.
-        request_label = wx.StaticText(self, label=_("&Request"))
+        request_text = _("&Request")
+        request_label = wx.StaticText(self, label=request_text)
         self._request = wx.TextCtrl(
             self,
             value=describe_request(request),
             style=wx.TE_MULTILINE | wx.TE_READONLY,
-            name=_("Request"),
+            name=accessible_name(request_text),
         )
         self._request.SetMinSize(
             wx.Size(self._request.GetCharWidth() * 70, self._request.GetCharHeight() * 8)

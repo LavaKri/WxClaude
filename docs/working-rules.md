@@ -88,6 +88,9 @@ sentence that says why, and tell the user when it is done.
 - Everything is usable from the keyboard alone. Every control has an accessible name and every
   dialog a defined initial focus.
 - A label is created right before its control, so that screen readers pair them.
+- The accessible name of a control is its label without the access key marker: the text is
+  written once and the name is derived from it. A control whose name must differ from its
+  label is the exception, and its name is written out.
 - No unexpected change of focus. Where the focus and the caret go in each case is written down
   and every new feature follows a rule or adds its case.
 - Native controls first. A read-only field is a multi-line text field, which the Tab key reaches.
