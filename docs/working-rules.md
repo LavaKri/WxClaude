@@ -10,7 +10,7 @@ arguments, complexity) live in the configuration of those tools, not here.
 - One responsibility per file. If its purpose cannot be said in one sentence without "and", it does
   too much. Split by reason to change, not by size: what changes together stays together.
 - A source file rarely goes over 400 lines and never over 600. When a file gets close, split it
-  before adding to it. A class rarely goes over 300 lines.
+  before adding to it. A class rarely goes over 300 lines (see "Splitting a class").
 - A new feature gets its own module. A big file, such as a main window, only receives the wiring.
 - Do not split too fine: ten files of forty lines that call each other cost more to read than one.
   Do not split by technical kind (a file of "constants", a file of "utilities"): split by subject.
@@ -21,6 +21,22 @@ arguments, complexity) live in the configuration of those tools, not here.
 - Worker threads never touch the interface; they hand their results over to the interface thread.
 - Shared state is explicit: components receive a context object or callbacks, they do not reach
   into each other's attributes.
+
+## Splitting a class
+
+1. **Find the groups first.** Group the methods by the attributes they use. A group that uses only
+   part of the state of the class can be extracted. Section comments inside a class mark the groups.
+2. **Extract by composition.** The class owns the new object and calls it. No mixin, no base class
+   made only to share code: they split the file but not the state, which stays tied together.
+3. **Hand over only what is needed.** The new class receives, in its constructor, a state object or
+   callbacks. It never receives the whole original object.
+4. **One reason to change per class** (for example menus, the events of a run, the conversations).
+5. **Logic that touches no control of the interface** goes to the logic layer and is tested without
+   a window.
+6. **One extraction at a time.** The complete suite passes before and after, with one commit per
+   extraction. A move never comes with a change of behaviour.
+7. **Warning signs.** The new class calls the old one back in every direction; a "manager" class that
+   collects what was left over; a split made by line count instead of by subject.
 
 ## When a tool says the code is too big or too complex
 

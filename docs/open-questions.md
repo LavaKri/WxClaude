@@ -38,6 +38,26 @@ the file it belongs to and delete it from this one.
 
 ## Improvements not done yet
 
+- **Automatic checks still to write** (each one a test run by `pytest`, tried on a small tree or
+  dialog made for the purpose and on the real code). In this order:
+  1. Direction of the imports: nothing in `core/` imports `wx` or `wxclaude.ui` (read with `ast`).
+  2. No circular dependency between modules (graph of the imports, search for a cycle).
+  3. Accessible name: every control of every dialog has one (a name equal to the default name of
+     wx, such as `text` or `listBox`, counts as none).
+  4. Initial focus: every dialog has a control that holds it, and it is not the dialog itself.
+  5. Access keys: unique inside a dialog (one page of a notebook at a time), in French and English.
+  6. Translations: every text given to `_()` is in the catalog, no entry is unused, the compiled
+     file is up to date.
+  7. No concatenation inside `_()`: its argument is a text literal.
+  8. Documents: every module of `core/` and `ui/` is named in `architecture.md`.
+  9. Classes with too many attributes or methods: same method as the size test (limits, and a
+     list of known exceptions that may not grow).
+
+  Not checkable by a tool: whether a split makes sense, whether a data object holds only data
+  (check 1 only keeps it from importing `wx`), and code duplicated between files (Pylint's
+  `duplicate-code` could do it if it becomes a problem).
+- **Split the large classes and files**, now only held at their present size by
+  `tests/test_code_size.py` (the main window and `PreferencesDialog`), following `working-rules.md`.
 - **Split the main window** (`ui/main_window.py`, over 1000 lines): its constructor and its menu
   are too long for the checks, which are switched off for this one file in `pyproject.toml`
   (`per-file-ignores`); remove that exception once it is split, following `working-rules.md`.
