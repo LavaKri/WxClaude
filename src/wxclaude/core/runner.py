@@ -1,12 +1,16 @@
 """Running ``claude -p`` for one message and reporting what it does.
 
-One process per message. Three threads read and supervise it, so the interface never waits:
-one reads stdout (the ``stream-json`` lines), one reads stderr, and one writes the prompt to
-stdin, waits for the end of the process and sends the last event (``TurnEnded``). The callback
-``on_event`` is called from those threads; the interface must hand the event over to its own
-thread (``wx.CallAfter``). This module never imports ``wx``.
+One process per message. Its input is ``stream-json``: the prompt is one JSON line, and stdin stays
+open while Claude works so the answers to its permission questions can be written (the CLI is
+started with ``--permission-prompt-tool stdio``); stdin is closed when the result line has been
+read, which ends the process. Three threads read and supervise it, so the interface never waits:
+one reads stdout (the ``stream-json`` lines), one reads stderr, and one writes the prompt, waits for
+the end of the process and sends the last event (``TurnEnded``). The callback ``on_event`` is called
+from those threads; the interface must hand the event over to its own thread (``wx.CallAfter``).
+This module never imports ``wx``.
 """
 
+import json
 import shutil
 import subprocess
 import sys
@@ -18,7 +22,7 @@ from typing import IO
 
 from wxclaude.core.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
-from wxclaude.core.events import RunEvent, TurnEnded
+from wxclaude.core.events import PermissionRequest, RunEvent, TurnEnded, TurnResult
 from wxclaude.core.stream import parse_stream_line
 
 _KILL_WAIT_SECONDS = 5
@@ -46,9 +50,13 @@ def build_arguments(request: RunRequest) -> list[str]:
         raise RunnerError("The agent must have a model, an effort and a permission mode.")
     return [
         "-p",
+        "--input-format",
+        "stream-json",
         "--output-format",
         "stream-json",
         "--verbose",
+        "--permission-prompt-tool",
+        "stdio",
         "--model",
         agent.model,
         "--effort",
@@ -68,12 +76,44 @@ def find_claude() -> list[str]:
     return [found]
 
 
+class _Stdin:
+    """The standard input of the process: JSON lines written from several threads, closed once."""
+
+    def __init__(self, stream: IO[str] | None) -> None:
+        self._stream = stream
+        self._lock = threading.Lock()
+        self._closed = stream is None
+
+    def write(self, entry: dict[str, object]) -> None:
+        """Write ``entry`` as a line; raises ``RunnerError`` if the input is closed or broken."""
+        with self._lock:
+            if self._closed or self._stream is None:
+                raise RunnerError("Claude is not waiting for an answer.")
+            try:
+                self._stream.write(json.dumps(entry) + "\n")
+                self._stream.flush()
+            except OSError as error:
+                raise RunnerError(f"Claude cannot be reached: {error}") from error
+
+    def close(self) -> None:
+        """Close the input (the CLI then ends); harmless the second time or if it is broken."""
+        with self._lock:
+            if self._closed or self._stream is None:
+                return
+            self._closed = True
+            try:
+                self._stream.close()
+            except OSError:
+                return  # the process is gone: there is nothing left to close
+
+
 class ClaudeRunner:
     """Runs one message at a time. ``command`` replaces the ``claude`` executable (tests)."""
 
     def __init__(self, command: Sequence[str] | None = None) -> None:
         self._command = list(command) if command is not None else None
         self._process: subprocess.Popen[str] | None = None
+        self._stdin: _Stdin | None = None
         self._interrupted = False
         self._lock = threading.Lock()
 
@@ -108,12 +148,15 @@ class ClaudeRunner:
             except OSError as error:
                 raise RunnerError(f"Cannot start {argv[0]}: {error}") from error
             self._process = process
+            self._stdin = stdin = _Stdin(process.stdin)
             self._interrupted = False
         diagnostics: list[str] = []
         stderr_lines: list[str] = []
         readers = [
             threading.Thread(
-                target=self._read_stdout, args=(process.stdout, on_event, diagnostics), daemon=True
+                target=self._read_stdout,
+                args=(process.stdout, stdin, on_event, diagnostics),
+                daemon=True,
             ),
             threading.Thread(
                 target=self._read_stderr, args=(process.stderr, stderr_lines), daemon=True
@@ -123,9 +166,33 @@ class ClaudeRunner:
             reader.start()
         threading.Thread(
             target=self._supervise,
-            args=(process, request.prompt, readers, on_event, diagnostics, stderr_lines),
+            args=(process, stdin, request.prompt, readers, on_event, diagnostics, stderr_lines),
             daemon=True,
         ).start()
+
+    def allow(self, request: PermissionRequest) -> None:
+        """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""
+        self._answer(request, {"behavior": "allow", "updatedInput": request.input})
+
+    def deny(self, request: PermissionRequest, message: str) -> None:
+        """Refuse the tool of ``request``; ``message`` is what Claude is told (the explanation)."""
+        self._answer(request, {"behavior": "deny", "message": message})
+
+    def _answer(self, request: PermissionRequest, body: dict[str, object]) -> None:
+        with self._lock:
+            stdin = self._stdin
+        if stdin is None:
+            raise RunnerError("Claude is not waiting for an answer.")
+        stdin.write(
+            {
+                "type": "control_response",
+                "response": {
+                    "subtype": "success",
+                    "request_id": request.request_id,
+                    "response": body,
+                },
+            }
+        )
 
     def interrupt(self) -> None:
         """Stop the running message (nothing happens if none runs)."""
@@ -138,7 +205,10 @@ class ClaudeRunner:
 
     @staticmethod
     def _read_stdout(
-        stream: IO[str] | None, on_event: Callable[[RunEvent], None], diagnostics: list[str]
+        stream: IO[str] | None,
+        stdin: _Stdin,
+        on_event: Callable[[RunEvent], None],
+        diagnostics: list[str],
     ) -> None:
         for line in stream or ():
             if not line.strip():
@@ -150,6 +220,8 @@ class ClaudeRunner:
                 continue
             for event in events:
                 on_event(event)
+                if isinstance(event, TurnResult):
+                    stdin.close()  # nothing more to say: the CLI can end
 
     @staticmethod
     def _read_stderr(stream: IO[str] | None, lines: list[str]) -> None:
@@ -158,6 +230,7 @@ class ClaudeRunner:
     def _supervise(
         self,
         process: subprocess.Popen[str],
+        stdin: _Stdin,
         prompt: str,
         readers: list[threading.Thread],
         on_event: Callable[[RunEvent], None],
@@ -165,17 +238,17 @@ class ClaudeRunner:
         stderr_lines: list[str],
     ) -> None:
         try:
-            if process.stdin is not None:
-                process.stdin.write(prompt)
-                process.stdin.close()
-        except OSError as error:  # the process ended before reading the prompt
-            diagnostics.append(f"The prompt could not be sent: {error}")
+            stdin.write({"type": "user", "message": {"role": "user", "content": prompt}})
+        except RunnerError as error:  # the process ended before reading the prompt
+            diagnostics.append(str(error))
         for reader in readers:
             reader.join()
+        stdin.close()
         exit_code = process.wait()
         with self._lock:
             interrupted = self._interrupted
             self._process = None
+            self._stdin = None
         on_event(TurnEnded(exit_code, interrupted, "".join(stderr_lines).strip(), diagnostics))
 
 

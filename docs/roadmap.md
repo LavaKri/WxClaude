@@ -1,9 +1,19 @@
 # Roadmap
 
 Start here in a new session. Read `CLAUDE.md` (rules), then this file, then the spec of the feature
-you work on (`conversation-display.md`, `claude-cli.md`, `interface.md`, `settings.md`,
-`focus.md`).
-What is still to decide, to verify or to improve is in `open-questions.md`.
+you work on (`architecture.md`, `interface.md`, `conversation-display.md`, `focus.md`,
+`claude-cli.md`, `settings.md`, `accessibility.md`). What is still to decide, to verify or to
+improve is in `open-questions.md`.
+
+## Where the project stands
+
+WxClaude works end to end: a prompt starts `claude -p` (one process per message), the answer is
+shown, the session file of the CLI is the reference for the history, the permission questions of
+Claude are asked to the user, and the permission rules are edited in the settings files of Claude
+Code. 254 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`. The
+real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
+message, a permission question, and the allow / ask / deny rules of `.claude/settings.local.json`.
+**Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`).
 
 ## Decisions taken
 
@@ -25,7 +35,8 @@ What is still to decide, to verify or to improve is in `open-questions.md`.
   the last one) selects and loads its remembered conversation, else its most recent one, else none
   (never created automatically).
 - **One process per message** (`claude -p` is started for each prompt), not one long-lived
-  process.
+  process. Its input is `stream-json` and stays open while Claude works, to answer the permission
+  questions (`--permission-prompt-tool stdio`).
 - **One instance** of WxClaude per user; a second launch brings the first window to the front.
 - **Names of conversations** are kept by WxClaude only; the session files of the CLI are never
   written by WxClaude.
@@ -33,52 +44,55 @@ What is still to decide, to verify or to improve is in `open-questions.md`.
   overload or a reached limit, result with an error) go to the status bar and to a dialog, never
   into the conversation text.
 - **Titles**: prompts are level 1, answers level 2 (`conversation-display.md`); the wording is kept.
-- **Usage dialog**: `Ctrl+Shift+U`.
+- **Focus and caret** follow four general rules and a few particular cases (`focus.md`).
+- **Permission rules live in the settings files of Claude Code** (`.claude/settings.json`,
+  `.claude/settings.local.json`; the general file is only read), not in WxClaude's own files, so the
+  CLI shares them. "Always allow" writes in the personal file. The preference "Change the tools only
+  in the local file" protects the versioned one.
+- **Usage dialog**: `Ctrl+Shift+U` (to build).
+- **"Options" is named "Preferences"**; the per-workspace settings are "Workspace settings".
 - **No migration** of older settings files: only the keys described in `settings.md` are read.
 - **No subagents** when working on this project (see `CLAUDE.md`).
 - Nothing in the code or docs may refer to another project.
 
 ## Done
 
-Skeleton, menus, options (General, Conversation, Agent, Shortcuts, Screen reader), configurable shortcuts,
-agents, conversation names, workspaces (recent, from Claude projects, last one reopened),
-UI Automation announcements, task list dialog (empty), documentation. See `interface.md`.
-Milestone 1 (below): `core/messages.py` (`Message`, `ToolUse`, `Usage`) and
-`core/session_reader.py` (`read_session`), tested on synthetic session files.
-Milestone 3 (below), except the permission questions: Claude is launched, the answer is shown
-and the session file is read again after each turn.
+1. **Conversation model and history** (`core/messages.py`, `core/session_reader.py`).
+2. **Display**: Markdown heading parser and navigation, `ConversationView`, resume a conversation,
+   refresh (F5), hidden system messages option, search (Ctrl+F, F3, Shift+F3), the focus rules.
+3. **Runner**: `claude -p` in `stream-json`, reader threads, typed events, a fake `claude` for the
+   tests (`tests/fakes/fake_claude.py`), interrupt, busy state, progress announced, the session file
+   read again after each turn.
+4. **Permissions**: the question dialog (allow, always allow, deny with an explanation), "always
+   allow" written in `.claude/settings.local.json`, and the **Workspace settings** dialog (tab Tools)
+   that edits the allow / ask / deny rules of the settings files.
+5. Around them: skeleton and menus, Preferences (General, Workspace, Agent, Shortcuts, Screen
+   reader), configurable shortcuts, agents, conversation names, workspaces (recent, from Claude
+   projects, last one reopened, one state file each), robust JSON files, single instance, UI
+   Automation announcements, open the workspace folder.
 
 ## Next milestones
 
-1. ~~**Conversation model and history**~~ (done, `core/`, no wx)
-   - `Message` (id, role, text, model, effort, hidden flag, details kept but not displayed:
-     tools, tool results, thinking, usage).
-   - Reader of the session files (`~/.claude/projects/<folder>/<id>.jsonl`): only prompts and
-     answers for now, duplicates removed, noise flagged hidden, title, token usage, last model
-     and permission mode; the effort of each answer is the `effort` field of its entry.
-2. ~~**Display**~~ (done, to check by hand with NVDA and JAWS)
-   - Markdown heading parser (markdown-it-py, CommonMark), UTF-16 position conversion,
-     navigation (T, Shift+T, 1 to 6, Shift+digit), announcement "title text, title N".
-   - `ConversationView` in the main window; message spans for context menus and copy.
-   - "Resume a conversation" (`list_sessions` in `core/claude_projects.py`, sorted by last
-     message, choice dialog, the history is loaded in the view). Opening a workspace selects its
-     remembered conversation, else the most recent, else none. A file per workspace remembers
-     the main agent and the name of each conversation (`settings.md`). Refresh the conversation
-     (F5). The option "Hide the system messages" shows or hides the noise of the session. Search
-     in the conversation (Ctrl+F, F3, Shift+F3; `interface.md`).
-3. ~~**Runner**~~ (done, to check by hand with NVDA and JAWS)
-   - `claude -p --output-format stream-json --verbose` from the agent (`--model`, `--effort`,
-     `--permission-mode`), the prompt through stdin, `--session-id` for the first message,
-     `--resume` afterwards (`core/runner.py`, `core/stream.py`, `core/events.py`).
-   - Reader threads for stdout and stderr, events to the interface with `wx.CallAfter`.
-   - A fake `claude` for the tests (`tests/fakes/fake_claude.py`). Interrupt. Busy state (Send
-     greyed, Interrupt active).
-   - Progress in the status bar and announced (option). After each turn, the session file is read
-     again and the view is rebuilt if it differs.
-   - A tool that needs permission is denied by the CLI (`-p` has nobody to ask): the denial is shown
-     as progress. The question dialog is milestone 4.
-4. **Permissions**: the question dialog, "always allow" rules, deny and explain.
-5. **Details dialogs** (context menu in a message body): tools used, tables, links. **Claude
-   usage** dialog (Tools menu). Task list filled from `~/.claude/tasks/<id>/*.json`.
-6. **Rename, branch (`--fork-session`), delete**, export.
-7. **Packaging** (PyInstaller) and manual checks with NVDA and JAWS.
+5. **Details dialogs** (context menu in a message body): tools used, tables, links. **Claude usage**
+   dialog (Tools menu, `Ctrl+Shift+U`; the data arrives with the answers: `rate_limit_event`,
+   `result`). **Task list** filled from `~/.claude/tasks/<id>/*.json` (the dialog exists and is
+   empty). `core/messages.py` already keeps tools, thinking and usage per message.
+6. **Rename, branch (`--fork-session`), delete**, export. Rename and branch exist but are
+   provisional: a rename only changes the name kept by WxClaude, a branch only starts a new
+   conversation identifier with the text still on screen. Delete is greyed.
+7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
+   manual checks with NVDA and JAWS.
+8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
+   settings and the tab "Claude" of the Preferences, the tools announced by the CLI added to the list,
+   and the other settings of the `.claude` files.
+
+## Working notes for a new session
+
+- Commands, layout and rules are in `CLAUDE.md`. One shell command per call, never chained.
+- Manual tests with the real CLI use `haiku` with effort `low`; the protocol facts that were verified
+  are in `claude-cli.md` (do not guess the stream: look at it).
+- The tests of the UI create real wx windows; a fake `claude` replaces the CLI everywhere in the
+  tests (`FAKE_CLAUDE` scenarios, see the top of `tests/fakes/fake_claude.py`), and `CLAUDE_CONFIG_DIR`
+  is redirected so that the real `~/.claude` is never read.
+- Every visible string goes through `_()`; the French catalog is `locale/fr/LC_MESSAGES/wxclaude.po`
+  and must be recompiled after an edit. Keep access keys unique inside a dialog (French included).

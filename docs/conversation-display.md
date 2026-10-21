@@ -2,8 +2,9 @@
 
 Specification decided with the user. Implemented: `core/headings.py` (parser, navigation, UTF-16),
 `core/conversation_document.py` (text and message spans), `ui/conversation_view.py` (the field and
-its keys). The system messages are hidden by default (option Conversation > "Hide the system
-messages").
+its keys). The system messages are hidden by default (Preferences > Workspace > "Hide the
+system messages"). Where the focus and the caret go when the text changes is in `focus.md`;
+search is in `interface.md`.
 
 The French wording of the titles is `Vous dites : …` and `Réponse de <model>, effort <effort>`
 (effort names: faible, moyen, élevé, très élevé, maximum); `Claude a répondu` without a model.

@@ -17,6 +17,10 @@ class JsonStoreError(WxClaudeError):
     """A JSON file of the application cannot be written."""
 
 
+class ClaudeSettingsError(WxClaudeError):
+    """A settings file of Claude Code cannot be modified or written."""
+
+
 class SessionReadError(WxClaudeError):
     """A session file of the Claude Code CLI cannot be read."""
 

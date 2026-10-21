@@ -4,7 +4,7 @@ WxClaude is a wxPython desktop front end for `claude -p --output-format stream-j
 
 - `core/`: logic, never imports `wx` (mypy strict).
 - `ui/`: thin wx layer.
-- Worker threads (CLI reader, permission hook server) never touch wx; they post to the UI with
+- Worker threads (CLI readers) never touch wx; they post to the UI with
   `wx.CallAfter`.
 
 ## Scope
@@ -15,31 +15,40 @@ our own. The runner sends typed events (dataclasses) straight to the interface, 
 
 ## Current state
 
-The conversation model, the display and the runner exist: a prompt starts `claude -p` (one
-process per message), the answer appears block by block, and the session file of the CLI is read
-again at the end of the turn. The plan, in order, is in `roadmap.md`. What is known about the CLI
-is in `claude-cli.md`.
+The conversation model, the display, the runner and the permissions exist: a prompt starts
+`claude -p` (one process per message), the answer appears block by block, Claude's permission
+questions are asked to the user, and the session file of the CLI is read again at the end of the
+turn. The permission rules are edited in the settings files of Claude Code. The plan, in order, is
+in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 ## A turn
 
 1. `MainWindow` builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
    session file exists, workspace) and calls `ClaudeRunner.start`. The view shows the prompt at
    once and the window is busy (Send greyed, Interrupt active).
-2. `ClaudeRunner` starts the process with three threads: stdout (each line is parsed by
-   `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt to stdin
-   (UTF-8), waits for the end and sends `TurnEnded`, always the last event.
+2. `ClaudeRunner` starts the process (`--input-format stream-json --output-format stream-json
+   --permission-prompt-tool stdio`) with three threads: stdout (each line is parsed by
+   `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt as a JSON
+   line to stdin, waits for the end and sends `TurnEnded`, always the last event.
 3. Events reach the interface through `wx.CallAfter`. Text blocks are appended to the view;
    `progress.progress_for` turns the others into progress (status bar, and announcement if the
    option is on; the same text is not repeated).
 4. At `TurnEnded`, `progress.turn_outcome` decides done / interrupted / failed. A failure is said in
    the status bar and shown in a dialog. Then the session file is read and the view is rebuilt if
    the text it would hold differs from what is shown.
-5. Interrupt ends the process and its children (`taskkill /T`); closing the window does the same.
+5. When Claude asks a permission (`PermissionRequest`), the window answers with `ClaudeRunner.allow`
+   or `deny`: at once if the rule was allowed earlier in this message, else after the question
+   dialog. *Always allow* writes an allow rule in `.claude/settings.local.json`
+   (`claude_settings.allow_always`) and keeps it for the rest of the message; the CLI reads the file
+   itself afterwards. Stdin is closed when the result line has been read.
+6. Interrupt ends the process and its children (`taskkill /T`); closing the window does the same.
 
 ## Modules of `core/`
 
 | Module | Role |
 |---|---|
+| `messages.py`, `session_reader.py` | `Message` (prompt or answer, with its hidden details) and the reader of the session files of the CLI. |
+| `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
 | `agents.py` | `Agent`: model, effort and permission mode (each optional); `over()` layers one on another; `DEFAULT_AGENT` is complete. Models are listed by ascending power. |
 | `settings.py` | `Settings`: JSON file in the user configuration folder; only invalid or unknown values are dropped. |
 | `jsonstore.py` | Reading and writing the JSON files: atomic write, `.bak` backup, damaged file set aside (`.corrupt`). |
@@ -52,6 +61,8 @@ is in `claude-cli.md`.
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
 | `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
+| `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |
+| `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 | `export.py` | Writes the conversation text to a file. |
@@ -61,12 +72,15 @@ is in `claude-cli.md`.
 
 | Module | Role |
 |---|---|
-| `main_window.py` | Menus, conversation view, prompt, buttons; enables what needs a workspace or a conversation. |
-| `options_dialog.py` | Options, one tab per topic. |
+| `main_window.py` | Menus, prompt, buttons; the runner events, the permission questions, the focus rules (`_modal`); enables what needs a workspace or a conversation. |
+| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`. |
+| `preferences_dialog.py` | Preferences, one tab per topic. |
+| `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
+| `permission_dialog.py` | The permission question of Claude. |
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
-| `tasks_dialog.py` | Task list of the conversation (empty for now). |
+| `tasks_dialog.py` | Task list of the conversation (the dialog exists, the list is empty: milestone 5). |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |
@@ -84,9 +98,15 @@ exists, else the most recent one (by its last message). A workspace without any 
 conversation, none is created. Opening the workspace that is already open changes nothing.
 
 The agent of a conversation is always complete: the remembered one (over the default agent for
-what it leaves unset). A conversation unknown to WxClaude takes the model, the effort and the permission mode of
-its last message as its main agent, and is remembered from then on. Refreshing the conversation
+what it leaves unset). A conversation unknown to WxClaude takes the model, the effort and the
+permission mode of its last message as its main agent, and is remembered from then on. Refreshing the conversation
 (F5) reads its session file again and never touches the agent.
+
+## Data files
+
+`src/wxclaude/data/tools.txt` lists the tools of Claude Code (one name per line) for the Workspace
+settings; it is package data. The settings files of WxClaude and of Claude Code are described in
+`settings.md`.
 
 ## Translations
 

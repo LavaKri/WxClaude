@@ -1,0 +1,50 @@
+# The tools of Claude Code, one name per line (the exact strings used in permission rules).
+# Blank lines and lines that start with # are ignored. The list is a starting point: the tools that
+# a settings file already names are added to it when the dialog opens. Source: "Tools reference" of
+# the Claude Code documentation; names change with the versions of the CLI, edit this file freely.
+Agent
+Artifact
+AskUserQuestion
+Bash
+CronCreate
+CronDelete
+CronList
+Edit
+EndConversation
+EnterPlanMode
+EnterWorktree
+ExitPlanMode
+ExitWorktree
+Glob
+Grep
+ListAgents
+ListMcpResourcesTool
+LSP
+Monitor
+NotebookEdit
+PowerShell
+PushNotification
+Read
+ReadMcpResourceTool
+RemoteTrigger
+ReportFindings
+ScheduleWakeup
+SendFeedback
+SendMessage
+SendUserFile
+ShareOnboardingGuide
+Skill
+SubagentHandback
+TaskCreate
+TaskGet
+TaskList
+TaskOutput
+TaskStop
+TaskUpdate
+TodoWrite
+ToolSearch
+WaitForMcpServers
+WebFetch
+WebSearch
+Workflow
+Write

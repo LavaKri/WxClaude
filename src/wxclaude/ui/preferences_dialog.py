@@ -1,4 +1,4 @@
-"""Options dialog, one tab per topic."""
+"""Preferences dialog, one tab per topic."""
 
 import wx
 
@@ -52,16 +52,16 @@ def shortcut_problem_message(check: ShortcutCheck, shortcut: str) -> str:
     return _("{shortcut} is not a valid shortcut.").format(shortcut=shortcut)
 
 
-class OptionsDialog(wx.Dialog):
-    """Edit the options. ``apply`` copies the chosen values into the settings."""
+class PreferencesDialog(wx.Dialog):
+    """Edit the preferences. ``apply`` copies the chosen values into the settings."""
 
     def __init__(self, parent: wx.Window, settings: Settings) -> None:
         super().__init__(
-            parent, title=_("Options"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
+            parent, title=_("Preferences"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         )
-        self._notebook = wx.Notebook(self, name=_("Options"))
+        self._notebook = wx.Notebook(self, name=_("Preferences"))
         self._notebook.AddPage(self._general_page(settings), _("General"))
-        self._notebook.AddPage(self._conversation_page(settings), _("Conversation"))
+        self._notebook.AddPage(self._workspace_page(settings), _("Workspace"))
         self._notebook.AddPage(self._agent_page(settings), _("Agent"))
         self._notebook.AddPage(self._shortcuts_page(settings), _("Shortcuts"))
         self._notebook.AddPage(self._screen_reader_page(settings), _("Screen reader"))
@@ -98,14 +98,19 @@ class OptionsDialog(wx.Dialog):
         page.SetSizer(sizer)
         return page
 
-    # Conversation ----------------------------------------------------------------------------
+    # Workspace -------------------------------------------------------------------------------
 
-    def _conversation_page(self, settings: Settings) -> wx.Panel:
+    def _workspace_page(self, settings: Settings) -> wx.Panel:
         page = wx.Panel(self._notebook)
         self._hide_system_messages = wx.CheckBox(page, label=_("&Hide the system messages"))
         self._hide_system_messages.SetValue(settings.hide_system_messages)
+        self._local_tools_only = wx.CheckBox(
+            page, label=_("Change the tools only in the &local file, which is not versioned")
+        )
+        self._local_tools_only.SetValue(settings.local_tools_only)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self._hide_system_messages, 0, wx.ALL, 6)
+        sizer.Add(self._local_tools_only, 0, wx.ALL, 6)
         page.SetSizer(sizer)
         return page
 
@@ -283,6 +288,7 @@ class OptionsDialog(wx.Dialog):
         settings.language = SUPPORTED_LANGUAGES[self._language.GetSelection()]
         settings.reopen_last = self._reopen_last.GetValue()
         settings.hide_system_messages = self._hide_system_messages.GetValue()
+        settings.local_tools_only = self._local_tools_only.GetValue()
         settings.announce_progress = self._announce_progress.GetValue()
         self._agents[self._agent_index] = self._agent_panel.agent
         settings.default_agent, settings.alternative_agent = self._agents

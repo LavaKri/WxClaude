@@ -75,9 +75,6 @@ msgstr "&Supprimer la conversation"
 msgid "&Modify the agent…"
 msgstr "&Modifier l'agent…"
 
-msgid "&Options…"
-msgstr "&Options…"
-
 msgid "&About"
 msgstr "À &propos"
 
@@ -315,9 +312,6 @@ msgid "{level}: {implication}"
 msgstr "{level} : {implication}"
 
 # Options
-
-msgid "Options"
-msgstr "Options"
 
 msgid "General"
 msgstr "Général"
@@ -577,3 +571,171 @@ msgstr "Le dossier {folder} n'existe plus."
 
 msgid "The folder {folder} cannot be opened in the file explorer."
 msgstr "Le dossier {folder} ne peut pas être ouvert dans l'explorateur de fichiers."
+
+msgid "Claude asks for permission"
+msgstr "Claude demande une permission"
+
+msgid "&Request"
+msgstr "&Demande"
+
+msgid "Request"
+msgstr "Demande"
+
+msgid "&Explanation for Claude, if you deny"
+msgstr "E&xplication pour Claude, en cas de refus"
+
+msgid "Explanation"
+msgstr "Explication"
+
+msgid "&Allow"
+msgstr "&Autoriser"
+
+msgid "Always allow &this"
+msgstr "Toujours autoriser c&ela"
+
+msgid "&Deny"
+msgstr "&Refuser"
+
+msgid "Tool: {tool}"
+msgstr "Outil : {tool}"
+
+msgid "Description: {description}"
+msgstr "Description : {description}"
+
+msgid "Path: {path}"
+msgstr "Chemin : {path}"
+
+msgid "{name}: {value}"
+msgstr "{name} : {value}"
+
+msgid "Re&move"
+msgstr "Re&tirer"
+
+msgid "Claude asks permission for the tool {tool}."
+msgstr "Claude demande la permission d'utiliser l'outil {tool}."
+
+msgid "Permission granted for the tool {tool}."
+msgstr "Permission accordée pour l'outil {tool}."
+
+msgid "Permission refused for the tool {tool}."
+msgstr "Permission refusée pour l'outil {tool}."
+
+msgid "Claude could not be answered.\n{error}"
+msgstr "Impossible de répondre à Claude.\n{error}"
+
+msgid "Deny"
+msgstr "Refuser"
+
+msgid "Ask"
+msgstr "Demander"
+
+msgid "Allow"
+msgstr "Autoriser"
+
+msgid "general"
+msgstr "général"
+
+msgid "Settings"
+msgstr "Settings"
+
+msgid "SettingsLocal"
+msgstr "SettingsLocal"
+
+msgid "{approval}, {rule}"
+msgstr "{approval}, {rule}"
+
+msgid "{approval} by {origin}"
+msgstr "{approval} par {origin}"
+
+msgid "with rules"
+msgstr "avec règles"
+
+msgid "{tool} {details}"
+msgstr "{tool} {details}"
+
+msgid "Workspace settings"
+msgstr "Paramètres de l'espace de travail"
+
+msgid "Workspace &settings…"
+msgstr "Para&mètres de l'espace de travail…"
+
+msgid "Tools"
+msgstr "Outils"
+
+msgid "&Target file"
+msgstr "&Fichier cible"
+
+msgid "Target file"
+msgstr "Fichier cible"
+
+msgid "Where the changes are saved"
+msgstr "Où les modifications sont enregistrées"
+
+msgid "Settings (shared, versioned)"
+msgstr "Settings (partagé, versionné)"
+
+msgid "SettingsLocal (personal, not versioned)"
+msgstr "SettingsLocal (personnel, non versionné)"
+
+msgid "De&ny"
+msgstr "&Refuser"
+
+msgid "A&sk"
+msgstr "&Demander"
+
+msgid "&Rules of the target file"
+msgstr "Règ&les du fichier cible"
+
+msgid "Rules of the target file"
+msgstr "Règles du fichier cible"
+
+msgid "Rule to a&dd"
+msgstr "Règles à a&jouter"
+
+msgid "Rule to add"
+msgstr "Règles à ajouter"
+
+msgid "A&pproval of the rule"
+msgstr "A&pprobation de la règle"
+
+msgid "Approval of the rule"
+msgstr "Approbation de la règle"
+
+msgid "Add the ru&le"
+msgstr "Ajouter la rè&gle"
+
+msgid "This file is versioned: the other developers of the project get the changes."
+msgstr "Ce fichier est versionné : les autres développeurs du projet reçoivent les modifications."
+
+msgid "This file is personal and is not versioned."
+msgstr "Ce fichier est personnel et n'est pas versionné."
+
+msgid "The changes are saved in {path}."
+msgstr "Les modifications sont enregistrées dans {path}."
+
+msgid "This file cannot be modified: {error}"
+msgstr "Ce fichier ne peut pas être modifié : {error}"
+
+msgid "The general file {path} is only read."
+msgstr "Le fichier général {path} est seulement lu."
+
+msgid "Workspace settings saved."
+msgstr "Paramètres de l'espace de travail enregistrés."
+
+msgid "The rule could not be saved.\n{error}"
+msgstr "La règle n'a pas pu être enregistrée.\n{error}"
+
+msgid "The settings could not be saved.\n{error}"
+msgstr "Les paramètres n'ont pas pu être enregistrés.\n{error}"
+
+msgid "&Preferences…"
+msgstr "&Préférences…"
+
+msgid "Preferences"
+msgstr "Préférences"
+
+msgid "Workspace"
+msgstr "Espace de travail"
+
+msgid "Change the tools only in the &local file, which is not versioned"
+msgstr "Modifier les outils seulement dans le fichier &local, non versionné"

@@ -43,6 +43,7 @@ class Settings:
     reopen_last: bool = True  # open the last workspace and conversation at startup
     hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
     announce_progress: bool = True  # say what Claude is doing while it answers
+    local_tools_only: bool = False  # never modify the versioned settings of a project
     last_workspace: str = ""
     conversation_counter: int = 1  # the number of the next "Conversation x" proposed
     store: Path | None = None
@@ -92,7 +93,7 @@ class Settings:
         reopen_last = data.get("reopen_last")
         if isinstance(reopen_last, bool):
             settings.reopen_last = reopen_last
-        for key in ("hide_system_messages", "announce_progress"):
+        for key in ("hide_system_messages", "announce_progress", "local_tools_only"):
             flag = data.get(key)
             if isinstance(flag, bool):
                 setattr(settings, key, flag)
@@ -130,6 +131,7 @@ class Settings:
             "reopen_last": self.reopen_last,
             "hide_system_messages": self.hide_system_messages,
             "announce_progress": self.announce_progress,
+            "local_tools_only": self.local_tools_only,
             "last_workspace": self.last_workspace,
             "conversation_counter": self.conversation_counter,
         }

@@ -15,6 +15,7 @@ invalid values fall back to their default; unknown keys are ignored.
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |
 | `announce_progress` | Announce the progress of Claude while it answers | `true` |
+| `local_tools_only` | The workspace settings only modify the personal file `.claude/settings.local.json`, never the versioned `settings.json` | `false` |
 | `conversation_counter` | Number proposed in `Conversation x` | `1` |
 
 What is remembered about conversations is not in this file but in the file of each workspace
@@ -40,6 +41,22 @@ kept by WxClaude: it is never written in the session files of the CLI, and it wi
 found in the session file. The path is checked when
 reading: a file that belongs to another path is ignored and the user is told. When a workspace is
 opened, the conversations whose session file no longer exists are dropped.
+
+## Settings files of Claude Code
+
+The permission rules (allow / ask / deny) are not kept by WxClaude but in the settings files of
+Claude Code, so the CLI uses them too:
+
+| Name in the dialog | File | Written by WxClaude | Shared |
+|---|---|---|---|
+| general | `~/.claude/settings.json` (or `$CLAUDE_CONFIG_DIR\settings.json`) | never | no, all projects of the user |
+| Settings | `<workspace>\.claude\settings.json` | yes, unless the preference limits to the local file | yes, versioned |
+| SettingsLocal | `<workspace>\.claude\settings.local.json` | yes | no, personal |
+
+The lists `permissions.allow`, `permissions.ask` and `permissions.deny` are merged across the files and
+the CLI applies deny, then ask, then allow, whatever the file. When a file is written, the other keys
+are kept; it is written atomically without a backup file, and a file that is not valid JSON, or whose
+`permissions` is not an object, is never overwritten. The CLI reloads these files while it runs.
 
 ## Robustness of the files
 

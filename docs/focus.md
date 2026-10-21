@@ -6,8 +6,8 @@ that differ are listed after them. Every new feature follows a rule, or adds its
 ## General rules
 
 **A. A dialog closes: the focus goes back where it was.**
-Every dialog and message of the application (Options, Find, names, agent, task list, export,
-"no more occurrence", errors, warnings, and later the permission questions) is shown through
+Every dialog and message of the application (Preferences, Workspace settings, Find, names, agent, task list, export,
+"no more occurrence", errors, warnings, the permission questions) is shown through
 `MainWindow._modal`: it remembers the focused control and puts the focus back once the dialog is
 destroyed, unless the action that followed has deliberately moved the focus inside the window
 (rule B or C). It applies to a dialog that opens by itself (an error at the end of an answer) as
@@ -43,6 +43,7 @@ messages" rebuilds the text and keeps the caret on its message.
 | New conversation (Ctrl+N) | the prompt field | there is nothing to read; the only action is to type |
 | Workspace without any conversation | the (empty) conversation view, with the announcement "No conversation in this workspace." | the prompt and the buttons are greyed, so they cannot take the focus; the message tells what to do |
 | Start with a last workspace that has no conversation | same as above | |
+| Permission question of Claude (a dialog during an answer) | the description of the request inside the dialog; rule A when it closes | the user may be anywhere when it opens |
 | A conversation that cannot be read | unchanged (rule A, an error dialog) | nothing was loaded |
 | Second launch of the application | unchanged in the first window, which is brought to the front | |
 
@@ -51,4 +52,3 @@ messages" rebuilds the text and keeps the caret on its message.
 - Delete a conversation: the most recent one is selected (rule B); if there is none, the case
   "workspace without any conversation".
 - New conversation branch: rule B once the branch is a real fork of the session.
-- Permission questions: a dialog during an answer (rule A).

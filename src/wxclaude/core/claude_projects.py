@@ -26,10 +26,15 @@ class ClaudeProject:
     last_used: float
 
 
-def claude_projects_dir() -> Path:
-    """Where Claude Code keeps its projects (``CLAUDE_CONFIG_DIR`` is honoured)."""
+def claude_config_dir() -> Path:
+    """The configuration folder of Claude Code (``CLAUDE_CONFIG_DIR`` is honoured)."""
     config = os.environ.get("CLAUDE_CONFIG_DIR")
-    return (Path(config) if config else Path.home() / ".claude") / "projects"
+    return Path(config) if config else Path.home() / ".claude"
+
+
+def claude_projects_dir() -> Path:
+    """Where Claude Code keeps its projects."""
+    return claude_config_dir() / "projects"
 
 
 def _working_folder(session_file: Path) -> Path | None:

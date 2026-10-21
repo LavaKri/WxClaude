@@ -67,16 +67,20 @@ def read_json(path: Path) -> ReadResult:
     return ReadResult(None, reason + " The default values were used.")
 
 
-def write_json(path: Path, data: dict[str, object]) -> None:
-    """Write ``data`` to ``path`` atomically; raises ``JsonStoreError`` if it cannot be done."""
+def write_json(path: Path, data: dict[str, object], *, backup: bool = True) -> None:
+    """Write ``data`` to ``path`` atomically; raises ``JsonStoreError`` if it cannot be done.
+
+    ``backup=False`` leaves no ``.bak`` next to the file (for files that are not ours).
+    """
     temporary = path.with_name(path.name + ".tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with temporary.open("w", encoding="utf-8") as file:
-            json.dump(data, file, indent=2)
+            json.dump(data, file, indent=2, ensure_ascii=False)
+            file.write("\n")
             file.flush()
             os.fsync(file.fileno())
-        if _is_readable(path):  # never replace a good backup with a file that cannot be read
+        if backup and _is_readable(path):  # never replace a good backup with a bad file
             shutil.copyfile(path, _backup_path(path))
         os.replace(temporary, path)
     except OSError as error:

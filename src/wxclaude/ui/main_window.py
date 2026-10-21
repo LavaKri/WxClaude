@@ -15,9 +15,11 @@ from wxclaude.core.claude_projects import (
     list_projects,
     list_sessions,
 )
+from wxclaude.core.claude_settings import ToolSettings, allow_always
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.errors import (
     ClaudeNotFoundError,
+    ClaudeSettingsError,
     ExportError,
     JsonStoreError,
     RunnerError,
@@ -25,9 +27,16 @@ from wxclaude.core.errors import (
     SessionReadError,
     SettingsError,
 )
-from wxclaude.core.events import AssistantText, RunEvent, TurnEnded, TurnResult
+from wxclaude.core.events import (
+    AssistantText,
+    PermissionRequest,
+    RunEvent,
+    TurnEnded,
+    TurnResult,
+)
 from wxclaude.core.export import export_text
 from wxclaude.core.messages import Message, Role
+from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
 from wxclaude.core.search import SearchOptions, find_next, find_previous, line_at
@@ -54,10 +63,12 @@ from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.message_sinks import create_sink
-from wxclaude.ui.options_dialog import OptionsDialog
+from wxclaude.ui.permission_dialog import PermissionDialog
+from wxclaude.ui.preferences_dialog import PreferencesDialog
 from wxclaude.ui.search_dialog import SearchDialog
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.tasks_dialog import TasksDialog
+from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 
 
 def _session_label(session: SessionInfo) -> str:
@@ -81,6 +92,7 @@ class MainWindow(wx.Frame):
         self._turn_agent = settings.default_agent  # the agent of the message being answered
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
+        self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._search_options: SearchOptions | None = None  # the last search
         self._local_messages = 0  # messages added by this run, for their identifiers
         self._recent_ids: dict[int, str] = {}
@@ -186,11 +198,12 @@ class MainWindow(wx.Frame):
         tasks_item = tools_menu.Append(wx.ID_ANY, _("Task &list…"))
         self._command_items.append((TASKS_COMMAND, tasks_item, _("Task &list…")))
         folder_item = tools_menu.Append(wx.ID_ANY, _("Open the workspace &folder"))
-        options_item = tools_menu.Append(wx.ID_ANY, _("&Options…"))
+        workspace_settings_item = tools_menu.Append(wx.ID_ANY, _("Workspace &settings…"))
+        preferences_item = tools_menu.Append(wx.ID_ANY, _("&Preferences…"))
 
         # A conversation belongs to a workspace: without a workspace only the items that open
         # one are available, and without a conversation those that need one are greyed.
-        self._needs_workspace = [new_item, resume_item, folder_item]
+        self._needs_workspace = [new_item, resume_item, folder_item, workspace_settings_item]
         self._needs_conversation = [
             export_item,
             rename_item,
@@ -218,6 +231,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_open_project, projects_item)
         self.Bind(wx.EVT_MENU, self._on_tasks, tasks_item)
         self.Bind(wx.EVT_MENU, self._on_open_workspace_folder, folder_item)
+        self.Bind(wx.EVT_MENU, self._on_workspace_settings, workspace_settings_item)
         self.Bind(wx.EVT_MENU, self._on_export, export_item)
         self.Bind(wx.EVT_MENU, lambda _event: self.Close(), quit_item)
         self.Bind(wx.EVT_MENU, self._on_new_conversation, new_item)
@@ -229,7 +243,7 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self._on_rename_conversation, rename_item)
         self.Bind(wx.EVT_MENU, self._on_new_branch, branch_item)
         self.Bind(wx.EVT_MENU, self._on_choose_agent, agent_item)
-        self.Bind(wx.EVT_MENU, self._on_options, options_item)
+        self.Bind(wx.EVT_MENU, self._on_preferences, preferences_item)
         self.Bind(wx.EVT_MENU, self._on_about, about_item)
         self.Bind(wx.EVT_UPDATE_UI, self._on_update_interrupt, self._interrupt_item)
         self.Bind(wx.EVT_MENU, self._on_interrupt, self._interrupt_item)
@@ -590,8 +604,8 @@ class MainWindow(wx.Frame):
                 self._remember_conversation()
                 self._say(Announce.AGENT_UPDATED)
 
-    def _on_options(self, _event: wx.CommandEvent) -> None:
-        with OptionsDialog(self, self._settings) as dialog:
+    def _on_preferences(self, _event: wx.CommandEvent) -> None:
+        with PreferencesDialog(self, self._settings) as dialog:
             if self._modal(dialog) == wx.ID_OK:
                 dialog.apply(self._settings)
                 self._conversation.set_show_hidden(not self._settings.hide_system_messages)
@@ -667,6 +681,7 @@ class MainWindow(wx.Frame):
         self._turn_agent = agent
         self._turn_result = None
         self._last_progress = ""
+        self._turn_allowed = set()
         self._refresh_enabled()
         self._conversation.append_message(Message(self._local_id(), Role.USER, text))
         self._show_progress(Progress(Announce.CLAUDE_THINKING))
@@ -693,6 +708,9 @@ class MainWindow(wx.Frame):
                     effort=self._turn_agent.effort if event.model else None,
                 )
             )
+        elif isinstance(event, PermissionRequest):
+            self._on_permission_request(event)
+            return
         elif isinstance(event, TurnResult):
             self._turn_result = event
         elif isinstance(event, TurnEnded):
@@ -701,6 +719,63 @@ class MainWindow(wx.Frame):
         progress = progress_for(event)
         if progress is not None:
             self._show_progress(progress)
+
+    def _on_permission_request(self, request: PermissionRequest) -> None:
+        """Claude asks before running a tool: a rule allowed earlier in this message, else ask."""
+        rule = request.suggested_rule
+        if rule and rule in self._turn_allowed:
+            decision = Decision(Choice.ALLOW)
+        else:
+            self.SetStatusText(
+                self._announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
+            )
+            decision = self._ask_permission(request)
+        try:
+            if decision.choice is Choice.DENY:
+                self._runner.deny(request, decision.denial_message())
+                self._say(Announce.PERMISSION_REFUSED, tool=request.tool_name)
+                return
+            if decision.choice is Choice.ALLOW_ALWAYS and rule:
+                self._remember_always_allowed(rule)
+            self._runner.allow(request)
+            self._say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
+        except RunnerError as error:
+            self._show_error(_("Claude could not be answered.\n{error}").format(error=error))
+
+    def _remember_always_allowed(self, rule: str) -> None:
+        """Write the rule in the personal settings file, and keep it for the rest of the message."""
+        self._turn_allowed.add(rule)
+        if self._workspace is None:
+            return
+        try:
+            allow_always(self._workspace, rule)
+        except ClaudeSettingsError as error:
+            self._show_error(_("The rule could not be saved.\n{error}").format(error=error))
+
+    def _ask_permission(self, request: PermissionRequest) -> Decision:
+        """Show the question; closing the dialog without answering is a denial."""
+        with PermissionDialog(self, request) as dialog:
+            self._modal(dialog)
+            decision: Decision = dialog.decision
+        return decision
+
+    def _on_workspace_settings(self, _event: wx.CommandEvent) -> None:
+        """The permission rules of the workspace, in the settings files of Claude Code."""
+        if self._workspace is None:
+            return
+        tool_settings = ToolSettings.load(self._workspace)
+        with WorkspaceSettingsDialog(
+            self, tool_settings, local_only=self._settings.local_tools_only
+        ) as dialog:
+            if self._modal(dialog) != wx.ID_OK:
+                return
+        try:
+            written = tool_settings.save()
+        except ClaudeSettingsError as error:
+            self._show_error(_("The settings could not be saved.\n{error}").format(error=error))
+            return
+        if written:
+            self._say(Announce.WORKSPACE_SETTINGS_SAVED)
 
     def _show_progress(self, progress: Progress) -> None:
         """Progress goes to the status bar, and to the screen reader if the option is on."""

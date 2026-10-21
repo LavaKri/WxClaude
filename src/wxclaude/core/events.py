@@ -59,6 +59,22 @@ class PermissionDenied:
 
 
 @dataclass(frozen=True, slots=True)
+class PermissionRequest:
+    """Claude asks whether a tool may run; the answer goes back with ``ClaudeRunner``.
+
+    ``suggested_rule`` is the rule the CLI proposes to remember (``Bash(touch x)``), '' if none.
+    """
+
+    request_id: str
+    tool_name: str
+    tool_use_id: str
+    input: dict[str, object]
+    description: str
+    blocked_path: str
+    suggested_rule: str
+
+
+@dataclass(frozen=True, slots=True)
 class RateLimit:
     """The state of a usage gauge (the 5-hour or the weekly window)."""
 
@@ -101,6 +117,7 @@ RunEvent = (
     | ToolUsed
     | ToolResult
     | PermissionDenied
+    | PermissionRequest
     | RateLimit
     | TurnResult
     | TurnEnded

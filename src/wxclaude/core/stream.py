@@ -10,6 +10,7 @@ from wxclaude.core.errors import StreamParseError
 from wxclaude.core.events import (
     AssistantText,
     PermissionDenied,
+    PermissionRequest,
     RateLimit,
     RunEvent,
     SessionInit,
@@ -99,6 +100,40 @@ def _user(entry: dict[str, object]) -> list[RunEvent]:
     ]
 
 
+def _suggested_rule(suggestions: object) -> str:
+    """The rule to allow that the CLI proposes (``Bash(touch x)``, ``Edit``), '' if none."""
+    for suggestion in suggestions if isinstance(suggestions, list) else []:
+        if not isinstance(suggestion, dict) or suggestion.get("type") != "addRules":
+            continue
+        if suggestion.get("behavior") != "allow":
+            continue
+        rules = suggestion.get("rules")
+        for rule in rules if isinstance(rules, list) else []:
+            if isinstance(rule, dict) and _text(rule.get("toolName")):
+                content = _text(rule.get("ruleContent"))
+                name = _text(rule.get("toolName"))
+                return f"{name}({content})" if content else name
+    return ""
+
+
+def _control_request(entry: dict[str, object]) -> list[RunEvent]:
+    request = entry.get("request")
+    if not isinstance(request, dict) or request.get("subtype") != "can_use_tool":
+        return []
+    raw_input = request.get("input")
+    return [
+        PermissionRequest(
+            request_id=_text(entry.get("request_id")),
+            tool_name=_text(request.get("tool_name")),
+            tool_use_id=_text(request.get("tool_use_id")),
+            input=raw_input if isinstance(raw_input, dict) else {},
+            description=_text(request.get("description")),
+            blocked_path=_text(request.get("blocked_path")),
+            suggested_rule=_suggested_rule(request.get("permission_suggestions")),
+        )
+    ]
+
+
 def _rate_limit(entry: dict[str, object]) -> list[RunEvent]:
     info = entry.get("rate_limit_info")
     if not isinstance(info, dict):
@@ -131,6 +166,7 @@ _PARSERS = {
     "system": _system,
     "assistant": _assistant,
     "user": _user,
+    "control_request": _control_request,
     "rate_limit_event": _rate_limit,
     "result": _result,
 }

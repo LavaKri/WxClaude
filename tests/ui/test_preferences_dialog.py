@@ -4,7 +4,7 @@ import wx
 from wxclaude.core.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import INTERRUPT_COMMAND, ShortcutProblem
-from wxclaude.ui.options_dialog import OptionsDialog
+from wxclaude.ui.preferences_dialog import PreferencesDialog
 
 pytestmark = pytest.mark.ui
 
@@ -16,18 +16,18 @@ def settings() -> Settings:
 
 @pytest.fixture
 def dialog(wx_app: wx.App, settings: Settings):
-    dialog = OptionsDialog(None, settings)
+    dialog = PreferencesDialog(None, settings)
     yield dialog
     dialog.Destroy()
     wx.SafeYield()  # a dialog is deleted when the application is idle
 
 
-def test_tabs_are_in_the_expected_order(dialog: OptionsDialog) -> None:
+def test_tabs_are_in_the_expected_order(dialog: PreferencesDialog) -> None:
     notebook = dialog._notebook
     assert notebook.GetPageCount() == 5
     assert [notebook.GetPageText(index) for index in range(5)] == [
         "General",
-        "Conversation",
+        "Workspace",
         "Agent",
         "Shortcuts",
         "Screen reader",
@@ -35,18 +35,21 @@ def test_tabs_are_in_the_expected_order(dialog: OptionsDialog) -> None:
 
 
 def test_the_new_options_are_checked_by_default_and_can_be_changed(
-    dialog: OptionsDialog, settings: Settings
+    dialog: PreferencesDialog, settings: Settings
 ) -> None:
     assert dialog._hide_system_messages.GetValue()
     assert dialog._announce_progress.GetValue()
+    assert not dialog._local_tools_only.GetValue()
     dialog._hide_system_messages.SetValue(False)
     dialog._announce_progress.SetValue(False)
+    dialog._local_tools_only.SetValue(True)
     dialog.apply(settings)
     assert (settings.hide_system_messages, settings.announce_progress) == (False, False)
+    assert settings.local_tools_only
 
 
 def test_agent_edits_survive_switching_between_the_two_agents(
-    dialog: OptionsDialog, settings: Settings
+    dialog: PreferencesDialog, settings: Settings
 ) -> None:
     dialog._agent_panel._model.SetSelection(2)  # opus (no "not set" entry here)
     dialog._agent_list.SetSelection(1)
@@ -61,7 +64,7 @@ def test_agent_edits_survive_switching_between_the_two_agents(
 
 
 def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
-    dialog: OptionsDialog,
+    dialog: PreferencesDialog,
 ) -> None:
     panel = dialog._agent_panel
     assert panel._model.GetCount() == 4  # haiku, sonnet, opus, fable
@@ -74,18 +77,22 @@ def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
     assert panel.agent.effort == "low"
 
 
-def test_a_shortcut_can_be_assigned_and_applied(dialog: OptionsDialog, settings: Settings) -> None:
+def test_a_shortcut_can_be_assigned_and_applied(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
     assert dialog.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+K").problem is None
     dialog.apply(settings)
     assert settings.shortcut_for(INTERRUPT_COMMAND) == "Ctrl+K"
 
 
-def test_the_screen_reader_output_can_be_chosen(dialog: OptionsDialog, settings: Settings) -> None:
+def test_the_screen_reader_output_can_be_chosen(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
     dialog.output_choice.SetSelection(0)  # "No output" is always the first
     dialog.apply(settings)
     assert settings.screen_reader_output == "none"
 
 
-def test_a_taken_shortcut_is_refused(dialog: OptionsDialog) -> None:
+def test_a_taken_shortcut_is_refused(dialog: PreferencesDialog) -> None:
     check = dialog.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+N")
     assert check.problem is ShortcutProblem.TAKEN
