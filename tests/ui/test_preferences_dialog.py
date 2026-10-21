@@ -38,12 +38,12 @@ def test_tabs_are_in_the_expected_order(dialog: PreferencesDialog) -> None:
 def test_the_new_options_are_checked_by_default_and_can_be_changed(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
-    assert dialog._hide_system_messages.GetValue()
-    assert dialog._announce_progress.GetValue()
-    assert not dialog._local_tools_only.GetValue()
-    dialog._hide_system_messages.SetValue(False)
-    dialog._announce_progress.SetValue(False)
-    dialog._local_tools_only.SetValue(True)
+    assert dialog.workspace.hide_system_messages.GetValue()
+    assert dialog.screen_reader.announce_progress.GetValue()
+    assert not dialog.workspace.local_tools_only.GetValue()
+    dialog.workspace.hide_system_messages.SetValue(False)
+    dialog.screen_reader.announce_progress.SetValue(False)
+    dialog.workspace.local_tools_only.SetValue(True)
     dialog.apply(settings)
     assert (settings.hide_system_messages, settings.announce_progress) == (False, False)
     assert settings.local_tools_only
@@ -52,13 +52,14 @@ def test_the_new_options_are_checked_by_default_and_can_be_changed(
 def test_agent_edits_survive_switching_between_the_two_agents(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
-    dialog._agent_panel._model.SetSelection(2)  # opus (no "not set" entry here)
-    dialog._agent_list.SetSelection(1)
-    dialog._on_agent_chosen(wx.CommandEvent())
-    assert dialog._agent_panel.agent == settings.alternative_agent
-    dialog._agent_list.SetSelection(0)
-    dialog._on_agent_chosen(wx.CommandEvent())
-    assert dialog._agent_panel.agent.model == "opus"
+    page = dialog.agent
+    page.agent_panel._model.SetSelection(2)  # opus (no "not set" entry here)
+    page.agent_list.SetSelection(1)
+    page._on_agent_chosen(wx.CommandEvent())
+    assert page.agent_panel.agent == settings.alternative_agent
+    page.agent_list.SetSelection(0)
+    page._on_agent_chosen(wx.CommandEvent())
+    assert page.agent_panel.agent.model == "opus"
     dialog.apply(settings)
     assert settings.default_agent.model == "opus"
     assert settings.alternative_agent == Agent(effort="low")
@@ -67,11 +68,11 @@ def test_agent_edits_survive_switching_between_the_two_agents(
 def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
     dialog: PreferencesDialog,
 ) -> None:
-    panel = dialog._agent_panel
+    panel = dialog.agent.agent_panel
     assert panel._model.GetCount() == 4  # haiku, sonnet, opus, fable
     assert panel.agent == DEFAULT_AGENT
-    dialog._agent_list.SetSelection(1)
-    dialog._on_agent_chosen(wx.CommandEvent())
+    dialog.agent.agent_list.SetSelection(1)
+    dialog.agent._on_agent_chosen(wx.CommandEvent())
     assert panel._model.GetCount() == 5
     assert panel._model.GetString(0) == "(same as the conversation)"
     assert panel.agent.model is None
@@ -81,7 +82,7 @@ def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
 def test_a_shortcut_can_be_assigned_and_applied(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
-    assert dialog.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+K").problem is None
+    assert dialog.shortcuts.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+K").problem is None
     dialog.apply(settings)
     assert settings.shortcut_for(INTERRUPT_COMMAND) == "Ctrl+K"
 
@@ -89,33 +90,34 @@ def test_a_shortcut_can_be_assigned_and_applied(
 def test_the_screen_reader_output_can_be_chosen(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
-    dialog.output_choice.SetSelection(0)  # "No output" is always the first
+    dialog.screen_reader.output_choice.SetSelection(0)  # "No output" is always the first
     dialog.apply(settings)
     assert settings.screen_reader_output == "none"
 
 
 def test_a_taken_shortcut_is_refused(dialog: PreferencesDialog) -> None:
-    check = dialog.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+N")
+    check = dialog.shortcuts.assign_shortcut(INTERRUPT_COMMAND, "Ctrl+N")
     assert check.problem is ShortcutProblem.TAKEN
 
 
 def test_claude_is_searched_automatically_by_default_and_the_path_is_greyed(
     dialog: PreferencesDialog,
 ) -> None:
-    assert dialog.claude_auto_search.GetValue()
-    assert not dialog.claude_path.IsEnabled()
-    assert not dialog.claude_browse.IsEnabled()
-    dialog.claude_auto_search.SetValue(False)
-    dialog._update_claude_path()
-    assert dialog.claude_path.IsEnabled()
-    assert dialog.claude_browse.IsEnabled()
+    page = dialog.claude
+    assert page.auto_search.GetValue()
+    assert not page.path.IsEnabled()
+    assert not page.browse.IsEnabled()
+    page.auto_search.SetValue(False)
+    page._update_path()
+    assert page.path.IsEnabled()
+    assert page.browse.IsEnabled()
 
 
 def test_the_claude_path_is_applied_to_the_settings(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
-    dialog.claude_auto_search.SetValue(False)
-    dialog.claude_path.SetValue("  C:/tools/claude.exe ")
+    dialog.claude.auto_search.SetValue(False)
+    dialog.claude.path.SetValue("  C:/tools/claude.exe ")
     dialog.apply(settings)
     assert not settings.claude_auto_search
     assert settings.claude_path == "C:/tools/claude.exe"
@@ -140,8 +142,8 @@ def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
             return wx.ID_OK
 
     monkeypatch.setattr(wx, "MessageDialog", Warning)
-    dialog.claude_auto_search.SetValue(False)
-    dialog.claude_path.SetValue("")
+    dialog.claude.auto_search.SetValue(False)
+    dialog.claude.path.SetValue("")
     event = wx.CommandEvent(wx.wxEVT_BUTTON, wx.ID_OK)
     skipped: list[bool] = []
     event.Skip = lambda *_a: skipped.append(True)  # type: ignore[method-assign]
@@ -151,6 +153,6 @@ def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
     assert shown == ["Give the path of claude-p, or turn the automatic search on."]
     claude = tmp_path / "claude.exe"
     claude.write_text("", encoding="utf-8")
-    dialog.claude_path.SetValue(str(claude))
+    dialog.claude.path.SetValue(str(claude))
     dialog._on_ok(event)
     assert skipped == [True]

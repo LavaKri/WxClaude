@@ -14,13 +14,7 @@ from wxclaude.core.claude_settings import (
 from wxclaude.core.errors import ClaudeSettingsError
 from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
-
-
-def _read_only_field(parent: wx.Window, lines: int, name: str) -> wx.TextCtrl:
-    """A read-only multi-line field: the Tab key reaches it and a screen reader reads it."""
-    field = wx.TextCtrl(parent, style=wx.TE_READONLY | wx.TE_MULTILINE, name=name)
-    field.SetMinSize(wx.Size(-1, field.GetCharHeight() * lines + 10))
-    return field
+from wxclaude.ui.fields import read_only_field
 
 
 class WorkspaceSettingsDialog(wx.Dialog):
@@ -83,7 +77,7 @@ class WorkspaceSettingsDialog(wx.Dialog):
         self._target.SetSelection(0)
         self._target.Bind(wx.EVT_CHOICE, lambda _event: self._refresh())
         sizer.Add(self._target, 0, wx.EXPAND | wx.ALL, 8)
-        self._note = _read_only_field(page, 4, _("Where the changes are saved"))
+        self._note = read_only_field(page, 4, name=_("Where the changes are saved"))
         sizer.Add(self._note, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
 
     def _add_tools(self, page: wx.Panel, sizer: wx.BoxSizer) -> None:

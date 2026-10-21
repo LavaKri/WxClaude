@@ -82,7 +82,9 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 |---|---|
 | `main_window.py` | Menus, prompt, buttons; the runner events, the permission questions, the focus rules (`_modal`); enables what needs a workspace or a conversation. |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
-| `preferences_dialog.py` | Preferences, one tab per topic. |
+| `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
+| `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
+| `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
 | `permission_dialog.py` | The permission question of Claude. |

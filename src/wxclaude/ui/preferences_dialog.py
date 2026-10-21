@@ -1,58 +1,19 @@
-"""Preferences dialog, one tab per topic."""
-
-from pathlib import Path
+"""Preferences dialog: a notebook with one page per topic (the pages are in their own modules)."""
 
 import wx
 
-from wxclaude.core.labels import accessible_name
-from wxclaude.core.screen_reader import available_outputs, default_output, output_named
-from wxclaude.core.settings import SUPPORTED_LANGUAGES, Settings
-from wxclaude.core.shortcuts import (
-    CONFIGURABLE_COMMANDS,
-    ConfigurableCommand,
-    ShortcutCheck,
-    ShortcutProblem,
-    check_shortcut,
-)
+from wxclaude.core.settings import Settings
+from wxclaude.core.shortcuts import CONFIGURABLE_COMMANDS
 from wxclaude.i18n import _
-from wxclaude.ui.agent_panel import AgentPanel, permission_levels_lines
-from wxclaude.ui.shortcut_keys import shortcut_from_event
-
-# Names of the languages, each in its own language (never translated).
-_LANGUAGE_NAMES = {"fr": "Français", "en": "English"}
-
-
-def _read_only_field(parent: wx.Window, lines: int, *, wrap: bool = True) -> wx.TextCtrl:
-    """A read-only text field that the Tab key still reaches (and a screen reader can read).
-
-    wx does not give the keyboard focus to a read-only *single-line* text control, so the field
-    is a multi-line one, sized for ``lines`` lines.
-    """
-    style = wx.TE_READONLY | wx.TE_MULTILINE
-    if not wrap:
-        style |= wx.HSCROLL  # no wrapping: each line stays on one line
-    field = wx.TextCtrl(parent, style=style)
-    field.SetMinSize(wx.Size(-1, field.GetCharHeight() * lines + 10))
-    return field
-
-
-def shortcut_problem_message(check: ShortcutCheck, shortcut: str) -> str:
-    """Explain why ``shortcut`` was refused."""
-    if check.problem is ShortcutProblem.TAKEN and check.other is not None:
-        return _('{shortcut} is already used by the command "{command}".').format(
-            shortcut=shortcut, command=_(check.other.label)
-        )
-    if check.problem is ShortcutProblem.FIXED:
-        return _("{shortcut} is the shortcut of a standard command and cannot be reused.").format(
-            shortcut=shortcut
-        )
-    if check.problem is ShortcutProblem.RESERVED:
-        return _(
-            "{shortcut} cannot be used: a shortcut needs the Ctrl key, the Alt key or both "
-            "(or be a function key), Enter needs at least one modifier key, and Tab, Esc and "
-            "Insert are reserved for navigation and screen readers."
-        ).format(shortcut=shortcut)
-    return _("{shortcut} is not a valid shortcut.").format(shortcut=shortcut)
+from wxclaude.ui.preferences_pages import (
+    AgentPage,
+    ClaudePage,
+    GeneralPage,
+    PreferencesPage,
+    ScreenReaderPage,
+    WorkspacePage,
+)
+from wxclaude.ui.shortcuts_page import ShortcutsPage
 
 
 class PreferencesDialog(wx.Dialog):
@@ -63,12 +24,27 @@ class PreferencesDialog(wx.Dialog):
             parent, title=_("Preferences"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         )
         self._notebook = wx.Notebook(self, name=_("Preferences"))
-        self._notebook.AddPage(self._general_page(settings), _("General"))
-        self._notebook.AddPage(self._claude_page(settings), _("Claude"))
-        self._notebook.AddPage(self._workspace_page(settings), _("Workspace"))
-        self._notebook.AddPage(self._agent_page(settings), _("Agent"))
-        self._notebook.AddPage(self._shortcuts_page(settings), _("Shortcuts"))
-        self._notebook.AddPage(self._screen_reader_page(settings), _("Screen reader"))
+        self.general = GeneralPage(self._notebook, settings)
+        self.claude = ClaudePage(self._notebook, settings)
+        self.workspace = WorkspacePage(self._notebook, settings)
+        self.agent = AgentPage(self._notebook, settings)
+        self.shortcuts = ShortcutsPage(
+            self._notebook, CONFIGURABLE_COMMANDS, settings.all_shortcuts()
+        )
+        self.screen_reader = ScreenReaderPage(self._notebook, settings)
+        self._pages: list[PreferencesPage] = [
+            self.general,
+            self.claude,
+            self.workspace,
+            self.agent,
+            self.screen_reader,
+        ]
+        self._notebook.AddPage(self.general, _("General"))
+        self._notebook.AddPage(self.claude, _("Claude"))
+        self._notebook.AddPage(self.workspace, _("Workspace"))
+        self._notebook.AddPage(self.agent, _("Agent"))
+        self._notebook.AddPage(self.shortcuts, _("Shortcuts"))
+        self._notebook.AddPage(self.screen_reader, _("Screen reader"))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 6)
@@ -78,294 +54,24 @@ class PreferencesDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self._on_ok, id=wx.ID_OK)
         self._notebook.SetFocus()
 
-    # General ---------------------------------------------------------------------------------
-
-    def _general_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        # The label is created right before its control so that screen readers pair them.
-        text = _("&Language")
-        label = wx.StaticText(page, label=text)
-        self._language = wx.Choice(
-            page,
-            choices=[_LANGUAGE_NAMES[code] for code in SUPPORTED_LANGUAGES],
-            name=accessible_name(text),
-        )
-        self._language.SetSelection(SUPPORTED_LANGUAGES.index(settings.language))
-        note = wx.StaticText(page, label=_("The language change applies at the next start."))
-        self._reopen_last = wx.CheckBox(page, label=_("At startup, &open the last workspace"))
-        self._reopen_last.SetValue(settings.reopen_last)
-        row = wx.BoxSizer(wx.HORIZONTAL)
-        row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
-        row.Add(self._language, 0)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(row, 0, wx.ALL, 6)
-        sizer.Add(note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
-        sizer.Add(self._reopen_last, 0, wx.ALL, 6)
-        page.SetSizer(sizer)
-        return page
-
-    # Claude ----------------------------------------------------------------------------------
-
-    def _claude_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        self.claude_auto_search = wx.CheckBox(page, label=_("&Automatic search for claude-p"))
-        self.claude_auto_search.SetValue(settings.claude_auto_search)
-        path_text = _("&Path of claude-p")
-        path_label = wx.StaticText(page, label=path_text)
-        self.claude_path = wx.TextCtrl(
-            page, value=settings.claude_path, name=accessible_name(path_text)
-        )
-        self.claude_browse = wx.Button(page, label=_("&Select…"))
-        self.claude_auto_search.Bind(wx.EVT_CHECKBOX, lambda _event: self._update_claude_path())
-        self.claude_browse.Bind(wx.EVT_BUTTON, lambda _event: self._on_browse_claude())
-        row = wx.BoxSizer(wx.HORIZONTAL)
-        row.Add(self.claude_path, 1, wx.EXPAND | wx.RIGHT, 6)
-        row.Add(self.claude_browse, 0)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.claude_auto_search, 0, wx.ALL, 8)
-        sizer.Add(path_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(row, 0, wx.EXPAND | wx.ALL, 8)
-        page.SetSizer(sizer)
-        self._update_claude_path()
-        return page
-
-    def _update_claude_path(self) -> None:
-        """The path is only used (and editable) without the automatic search."""
-        manual = not self.claude_auto_search.GetValue()
-        self.claude_path.Enable(manual)
-        self.claude_browse.Enable(manual)
-
-    def _on_browse_claude(self) -> None:
-        current = Path(self.claude_path.GetValue())
-        with wx.FileDialog(
-            self,
-            _("Select the claude executable"),
-            defaultDir=str(current.parent) if current.parent.is_dir() else "",
-            wildcard=_("Programs (*.exe;*.cmd;*.bat)|*.exe;*.cmd;*.bat|All files (*.*)|*.*"),
-            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
-        ) as dialog:
-            if dialog.ShowModal() == wx.ID_OK:
-                self.claude_path.SetValue(dialog.GetPath())
-
     def _on_ok(self, event: wx.CommandEvent) -> None:
-        """Refuse a manual path that is not a file (the focus goes to it)."""
-        if not self.claude_auto_search.GetValue():
-            path = self.claude_path.GetValue().strip()
-            if not path or not Path(path).is_file():
-                self._notebook.SetSelection(1)
-                self.claude_path.SetFocus()
-                message = (
-                    _("The file {path} does not exist.").format(path=path)
-                    if path
-                    else _("Give the path of claude-p, or turn the automatic search on.")
-                )
+        """Refuse OK when a page has a problem: show its page, put the focus on it and say why."""
+        for page in self._pages:
+            problem = page.validate()
+            if problem is not None:
+                self._notebook.SetSelection(self._notebook.FindPage(page))
+                problem.control.SetFocus()
                 with wx.MessageDialog(
-                    self, message, _("Preferences"), wx.OK | wx.ICON_WARNING
+                    self, problem.message, _("Preferences"), wx.OK | wx.ICON_WARNING
                 ) as dialog:
                     dialog.ShowModal()
                 return
         event.Skip()
 
-    # Workspace -------------------------------------------------------------------------------
-
-    def _workspace_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        self._hide_system_messages = wx.CheckBox(page, label=_("&Hide the system messages"))
-        self._hide_system_messages.SetValue(settings.hide_system_messages)
-        self._local_tools_only = wx.CheckBox(
-            page, label=_("Change the tools only in the &local file, which is not versioned")
-        )
-        self._local_tools_only.SetValue(settings.local_tools_only)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self._hide_system_messages, 0, wx.ALL, 6)
-        sizer.Add(self._local_tools_only, 0, wx.ALL, 6)
-        page.SetSizer(sizer)
-        return page
-
-    # Agent -----------------------------------------------------------------------------------
-
-    def _agent_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        self._agents = [settings.default_agent, settings.alternative_agent]
-        self._unset_labels = [None, _("(same as the conversation)")]
-        self._agent_index = 0
-
-        agent_text = _("&Agent")
-        list_label = wx.StaticText(page, label=agent_text)
-        self._agent_list = wx.ListBox(
-            page,
-            choices=[_("Agent of a new conversation"), _("Alternative agent")],
-            name=accessible_name(agent_text),
-        )
-        self._agent_list.SetMinSize(wx.Size(-1, self._agent_list.GetCharHeight() * 2 + 12))
-        self._agent_list.SetSelection(0)
-        self._agent_list.Bind(wx.EVT_LISTBOX, self._on_agent_chosen)
-        self._agent_panel = AgentPanel(page, self._agents[0], self._unset_labels[0])
-
-        levels_label = wx.StaticText(page, label=_("Implications of the permission &levels"))
-        self._levels = _read_only_field(page, 8, wrap=False)
-        self._levels.SetValue(
-            "\n".join(permission_levels_lines())
-            + "\n\n"
-            + _(
-                "Cache: when the alternative agent changes the model, the conversation cache is "
-                "lost and the next message is slower and costs more."
-            )
-        )
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(list_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(self._agent_list, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(self._agent_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 2)
-        sizer.Add(levels_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(self._levels, 1, wx.EXPAND | wx.ALL, 8)
-        page.SetSizer(sizer)
-        return page
-
-    def _on_agent_chosen(self, _event: wx.CommandEvent) -> None:
-        index = self._agent_list.GetSelection()
-        if index < 0 or index == self._agent_index:
-            return
-        self._agents[self._agent_index] = self._agent_panel.agent
-        self._agent_index = index
-        self._agent_panel.set_agent(self._agents[index], self._unset_labels[index])
-
-    # Shortcuts -------------------------------------------------------------------------------
-
-    def _shortcuts_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        self._shortcuts = settings.all_shortcuts()
-        list_label = wx.StaticText(page, label=_("Shortcut &list:"))
-        self.command_list = wx.ListCtrl(
-            page, style=wx.LC_REPORT | wx.LC_SINGLE_SEL, name=_("Shortcut list")
-        )
-        self.command_list.AppendColumn(_("Command"), width=330)
-        self.command_list.AppendColumn(_("Shortcut"), width=200)
-        for command in CONFIGURABLE_COMMANDS:
-            self.command_list.Append((_(command.label), ""))
-        capture_label = wx.StaticText(page, label=_("Press the new &shortcut here:"))
-        self.capture = _read_only_field(page, 2)
-        self.default_button = wx.Button(page, label=_("Restore the &default shortcut"))
-        self.clear_button = wx.Button(page, label=_("&No shortcut"))
-
-        self.command_list.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _event: self._show_current())
-        self.capture.Bind(wx.EVT_KEY_DOWN, self._on_capture_key)
-        self.default_button.Bind(wx.EVT_BUTTON, lambda _event: self.restore_default())
-        self.clear_button.Bind(wx.EVT_BUTTON, lambda _event: self.clear_shortcut())
-
-        buttons = wx.BoxSizer(wx.HORIZONTAL)
-        buttons.Add(self.default_button, 0, wx.RIGHT, 8)
-        buttons.Add(self.clear_button)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(list_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(self.command_list, 1, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(capture_label, 0, wx.LEFT | wx.RIGHT, 8)
-        sizer.Add(self.capture, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(buttons, 0, wx.ALL, 8)
-        page.SetSizer(sizer)
-        self._refresh_shortcut_list()
-        self.command_list.Select(0)
-        return page
-
-    def selected_command(self) -> ConfigurableCommand | None:
-        """The command selected in the Shortcuts list."""
-        index = self.command_list.GetFirstSelected()
-        return CONFIGURABLE_COMMANDS[index] if index >= 0 else None
-
-    def _shortcut_text(self, command: ConfigurableCommand) -> str:
-        return self._shortcuts[command.id] or _("None")
-
-    def _refresh_shortcut_list(self) -> None:
-        for index, command in enumerate(CONFIGURABLE_COMMANDS):
-            self.command_list.SetItem(index, 1, self._shortcut_text(command))
-
-    def _show_current(self) -> None:
-        command = self.selected_command()
-        self.capture.SetValue(self._shortcut_text(command) if command else "")
-
-    def assign_shortcut(self, command: ConfigurableCommand, shortcut: str) -> ShortcutCheck:
-        """Give ``shortcut`` to ``command`` unless a rule refuses it; return the verdict."""
-        check = check_shortcut(command, shortcut, self._shortcuts)
-        if check.problem is None:
-            self._shortcuts[command.id] = shortcut
-            self._refresh_shortcut_list()
-            self._show_current()
-        return check
-
-    def restore_default(self) -> None:
-        """Back to the default shortcut of the selected command."""
-        command = self.selected_command()
-        if command is not None:
-            self.assign_shortcut(command, command.default)
-
-    def clear_shortcut(self) -> None:
-        """Remove the shortcut of the selected command."""
-        command = self.selected_command()
-        if command is not None:
-            self.assign_shortcut(command, "")
-
-    def _on_capture_key(self, event: wx.KeyEvent) -> None:
-        if event.GetKeyCode() == wx.WXK_TAB and not event.ControlDown() and not event.AltDown():
-            # Tab and Shift+Tab must always let the user leave the field.
-            flags = (
-                wx.NavigationKeyEvent.IsBackward
-                if event.ShiftDown()
-                else wx.NavigationKeyEvent.IsForward
-            )
-            self.capture.Navigate(flags)
-            return
-        command = self.selected_command()
-        shortcut = shortcut_from_event(event)
-        if command is None or shortcut is None:
-            event.Skip()  # a modifier on its own, or a key that cannot be a shortcut
-            return
-        check = self.assign_shortcut(command, shortcut)
-        if check.problem is not None:
-            with wx.MessageDialog(
-                self,
-                shortcut_problem_message(check, shortcut),
-                _("Options"),
-                wx.OK | wx.ICON_WARNING,
-            ) as dialog:
-                dialog.ShowModal()
-            self._show_current()
-
-    # Screen reader ---------------------------------------------------------------------------
-
-    def _screen_reader_page(self, settings: Settings) -> wx.Panel:
-        page = wx.Panel(self._notebook)
-        self._outputs = available_outputs()
-        announce_text = _("&Announcements")
-        label = wx.StaticText(page, label=announce_text)
-        self.output_choice = wx.Choice(
-            page,
-            choices=[_(output.label) for output in self._outputs],
-            name=accessible_name(announce_text),
-        )
-        current = output_named(settings.screen_reader_output) or default_output()
-        self.output_choice.SetSelection(self._outputs.index(current))
-        self._announce_progress = wx.CheckBox(page, label=_("Announce the &progress of Claude"))
-        self._announce_progress.SetValue(settings.announce_progress)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        sizer.Add(self.output_choice, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(self._announce_progress, 0, wx.ALL, 8)
-        page.SetSizer(sizer)
-        return page
-
-    # OK --------------------------------------------------------------------------------------
-
     def apply(self, settings: Settings) -> None:
         """Store the values chosen in the dialog into ``settings``."""
-        settings.language = SUPPORTED_LANGUAGES[self._language.GetSelection()]
-        settings.reopen_last = self._reopen_last.GetValue()
-        settings.claude_auto_search = self.claude_auto_search.GetValue()
-        settings.claude_path = self.claude_path.GetValue().strip()
-        settings.hide_system_messages = self._hide_system_messages.GetValue()
-        settings.local_tools_only = self._local_tools_only.GetValue()
-        settings.announce_progress = self._announce_progress.GetValue()
-        self._agents[self._agent_index] = self._agent_panel.agent
-        settings.default_agent, settings.alternative_agent = self._agents
+        for page in self._pages:
+            page.apply(settings)
+        chosen = self.shortcuts.shortcuts
         for command in CONFIGURABLE_COMMANDS:
-            settings.set_shortcut(command, self._shortcuts[command.id])
-        settings.screen_reader_output = self._outputs[self.output_choice.GetSelection()].id
+            settings.set_shortcut(command, chosen[command.id])
