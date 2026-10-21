@@ -204,6 +204,8 @@ def test_local_tools_only_limits_the_target_file(
 
 def test_the_workspace_settings_item_needs_a_workspace(window: MainWindow) -> None:
     item = next(
-        item for item in window._needs_workspace if item.GetItemLabel() == "Workspace &settings…"
+        item
+        for item in window._menu.needs_workspace
+        if item.GetItemLabel() == "Workspace &settings…"
     )
     assert not item.IsEnabled()

@@ -45,18 +45,8 @@ from wxclaude.core.runner import ClaudeRunner, RunRequest
 from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
-    FIND_COMMAND,
-    FIND_NEXT_COMMAND,
-    FIND_PREVIOUS_COMMAND,
-    INTERRUPT_COMMAND,
-    NEW_CONVERSATION_COMMAND,
-    OPEN_WORKSPACE_COMMAND,
-    REFRESH_CONVERSATION_COMMAND,
-    RESUME_CONVERSATION_COMMAND,
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
-    TASKS_COMMAND,
-    USAGE_COMMAND,
     ConfigurableCommand,
 )
 from wxclaude.core.tasks import load_tasks
@@ -69,7 +59,7 @@ from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
-from wxclaude.ui.menus import SEPARATOR, MenuEntry, MenuRegistry, Needs, add_entries
+from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.permission_dialog import PermissionDialog
 from wxclaude.ui.preferences_dialog import PreferencesDialog
@@ -109,7 +99,6 @@ class MainWindow(wx.Frame):
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
         self._local_messages = 0  # messages added by this run, for their identifiers
-        self._recent_ids: dict[int, str] = {}
         self._output_id: str | None = None  # the screen reader output in use
         self._conversation_id = ""
         self._conversation_name = ""
@@ -162,11 +151,10 @@ class MainWindow(wx.Frame):
         self._set_status(_("Ready"))
         self._announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
         self._apply_screen_reader_output()
-        self.Bind(wx.EVT_MENU_OPEN, self._on_menu_open)
         self.Bind(wx.EVT_CLOSE, self._on_close)
         self._conversation.set_show_hidden(not settings.hide_system_messages)
         self._refresh_enabled()
-        self._refresh_recent_menu()
+        self._menu.refresh_recent()
         self._restore_last_session()
         wx.CallAfter(self._focus_main_field)
         if settings.load_warning:
@@ -180,123 +168,41 @@ class MainWindow(wx.Frame):
     # Menus -----------------------------------------------------------------------------------
 
     def _build_menu_bar(self) -> None:
-        """The menus, each described as a table of entries (``ui/menus.py``)."""
-        registry = MenuRegistry()
-        self._command_items = registry.command_items
-        self._needs_workspace = registry.needs_workspace
-        self._needs_conversation = registry.needs_conversation
-
-        self._file_menu = wx.Menu()
-        add_entries(self, self._file_menu, self._file_entries(), registry)
-        self._recent_menu = wx.Menu()
-        self._recent_item = self._file_menu.AppendSubMenu(self._recent_menu, _("&Recent"))
-        quit_entry = MenuEntry(_("&Quit\tCtrl+Q"), lambda _event: self.Close(), item_id=wx.ID_EXIT)
-        add_entries(self, self._file_menu, [quit_entry], registry)
-
-        conversation_menu = wx.Menu()
-        kept = add_entries(self, conversation_menu, self._conversation_entries(), registry)
-        self._interrupt_item = kept["interrupt"]
-        self.Bind(wx.EVT_UPDATE_UI, self._on_update_interrupt, self._interrupt_item)
-        search_menu = wx.Menu()
-        add_entries(self, search_menu, self._search_entries(), registry)
-        conversation_menu.AppendSubMenu(search_menu, _("Sear&ch"))
-
-        tools_menu = wx.Menu()
-        add_entries(self, tools_menu, self._tools_entries(), registry)
-        help_menu = wx.Menu()
-        about = MenuEntry(_("&About"), self._on_about, item_id=wx.ID_ABOUT)
-        add_entries(self, help_menu, [about], registry)
-
-        menu_bar = wx.MenuBar()
-        menu_bar.Append(self._file_menu, _("&File"))
-        menu_bar.Append(conversation_menu, _("&Conversation"))
-        menu_bar.Append(tools_menu, _("&Tools"))
-        menu_bar.Append(help_menu, _("&Help"))
-        self.SetMenuBar(menu_bar)
+        """The menu bar (``ui/main_menu.py``), told what each item does."""
+        search = self._search
+        self._menu = MainMenu(
+            self,
+            MenuHandlers(
+                open_workspace=self._on_open_workspace,
+                open_project=self._on_open_project,
+                export=self._on_export,
+                quit=lambda _event: self.Close(),
+                new_conversation=self._on_new_conversation,
+                resume_conversation=self._on_resume_conversation,
+                refresh_conversation=self._on_refresh_conversation,
+                rename_conversation=self._on_rename_conversation,
+                new_branch=self._on_new_branch,
+                interrupt=self._on_interrupt,
+                update_interrupt=self._on_update_interrupt,
+                choose_agent=self._on_choose_agent,
+                find=lambda _event: search.find(),
+                find_next=lambda _event: search.find_next(),
+                find_previous=lambda _event: search.find_previous(),
+                tasks=self._on_tasks,
+                usage=self._on_usage,
+                open_workspace_folder=self._on_open_workspace_folder,
+                workspace_settings=self._on_workspace_settings,
+                preferences=self._on_preferences,
+                about=self._on_about,
+                recent_workspaces=self._recent_workspaces,
+                open_recent=self._open_recent,
+            ),
+        )
         self._apply_shortcuts()
 
-    # A conversation belongs to a workspace: without a workspace only the items that open one are
-    # available, and without a conversation those that need one are greyed.
-
-    def _file_entries(self) -> list[MenuEntry | None]:
-        return [
-            MenuEntry(_("&Open workspace…"), self._on_open_workspace, OPEN_WORKSPACE_COMMAND),
-            MenuEntry(_("Open from Claude &projects…"), self._on_open_project),
-            MenuEntry(_("&Export the conversation…"), self._on_export, needs=Needs.CONVERSATION),
-            SEPARATOR,
-        ]
-
-    def _conversation_entries(self) -> list[MenuEntry | None]:
-        conversation = Needs.CONVERSATION
-        return [
-            MenuEntry(
-                _("&New conversation"),
-                self._on_new_conversation,
-                NEW_CONVERSATION_COMMAND,
-                Needs.WORKSPACE,
-            ),
-            MenuEntry(
-                _("&Resume a conversation…"),
-                self._on_resume_conversation,
-                RESUME_CONVERSATION_COMMAND,
-                Needs.WORKSPACE,
-            ),
-            MenuEntry(
-                _("Re&fresh the conversation"),
-                self._on_refresh_conversation,
-                REFRESH_CONVERSATION_COMMAND,
-                conversation,
-            ),
-            MenuEntry(
-                _("Ren&ame the conversation"), self._on_rename_conversation, needs=conversation
-            ),
-            MenuEntry(_("New conversation &branch"), self._on_new_branch, needs=conversation),
-            # Greyed until deleting is built (a later milestone).
-            MenuEntry(_("&Delete the conversation"), enabled=False),
-            MenuEntry(
-                _("&Interrupt Claude"), self._on_interrupt, INTERRUPT_COMMAND, key="interrupt"
-            ),
-            MenuEntry(_("&Modify the agent…"), self._on_choose_agent, needs=conversation),
-        ]
-
-    def _search_entries(self) -> list[MenuEntry | None]:
-        conversation = Needs.CONVERSATION
-        return [
-            MenuEntry(_("&Find…"), lambda _event: self._search.find(), FIND_COMMAND, conversation),
-            MenuEntry(
-                _("Find &next"),
-                lambda _event: self._search.find_next(),
-                FIND_NEXT_COMMAND,
-                conversation,
-            ),
-            MenuEntry(
-                _("Find &previous"),
-                lambda _event: self._search.find_previous(),
-                FIND_PREVIOUS_COMMAND,
-                conversation,
-            ),
-        ]
-
-    def _tools_entries(self) -> list[MenuEntry | None]:
-        return [
-            MenuEntry(_("Task &list…"), self._on_tasks, TASKS_COMMAND, Needs.CONVERSATION),
-            MenuEntry(_("Claude &usage…"), self._on_usage, USAGE_COMMAND),
-            MenuEntry(
-                _("Open the workspace &folder"),
-                self._on_open_workspace_folder,
-                needs=Needs.WORKSPACE,
-            ),
-            MenuEntry(
-                _("Workspace &settings…"), self._on_workspace_settings, needs=Needs.WORKSPACE
-            ),
-            MenuEntry(_("&Preferences…"), self._on_preferences),
-        ]
-
     def _apply_shortcuts(self) -> None:
-        """Show (and activate) the shortcut of each configurable command in its menu item."""
-        for command, item, text in self._command_items:
-            shortcut = self._settings.shortcut_for(command)
-            item.SetItemLabel(f"{text}\t{shortcut}" if shortcut else text)
+        """Show (and activate) the shortcuts in the menus and in the labels of the send buttons."""
+        self._menu.apply_shortcuts(self._settings.shortcut_for)
         self._send_button.SetLabel(self._send_label(SEND_COMMAND))
         self._alternative_button.SetLabel(self._send_label(SEND_ALTERNATIVE_COMMAND))
 
@@ -309,22 +215,10 @@ class MainWindow(wx.Frame):
             return _("Send with the &alternative agent ({shortcut})").format(shortcut=shortcut)
         return _("Send with the &alternative agent")
 
-    def _on_menu_open(self, event: wx.MenuEvent) -> None:
-        if event.GetMenu() is self._file_menu:
-            self._refresh_recent_menu()
-        event.Skip()
-
-    def _refresh_recent_menu(self) -> None:
-        """Rebuild the recent workspaces, dropping the folders that no longer exist."""
+    def _recent_workspaces(self) -> list[str]:
+        """The recent workspaces whose folder still exists (the others are dropped)."""
         self._settings.recent_workspaces = remove_missing(self._settings.recent_workspaces)
-        for item in list(self._recent_menu.GetMenuItems()):
-            self._recent_menu.Delete(item)
-        self._recent_ids.clear()
-        for folder in self._settings.recent_workspaces:
-            item = self._recent_menu.Append(wx.ID_ANY, workspace_label(folder).replace("&", "&&"))
-            self._recent_ids[item.GetId()] = folder
-            self.Bind(wx.EVT_MENU, self._on_recent, item)
-        self._recent_item.Enable(bool(self._recent_ids))
+        return list(self._settings.recent_workspaces)
 
     # Workspaces ------------------------------------------------------------------------------
 
@@ -375,10 +269,8 @@ class MainWindow(wx.Frame):
             if self._modal(dialog) == wx.ID_OK:
                 self.open_workspace(Path(dialog.GetPath()))
 
-    def _on_recent(self, event: wx.CommandEvent) -> None:
-        folder = self._recent_ids.get(event.GetId())
-        if folder is None:
-            return
+    def _open_recent(self, folder: str) -> None:
+        """Open a recent workspace; a folder that is gone is dropped from the list."""
         if Path(folder).is_dir():
             self.open_workspace(Path(folder))
             return
@@ -419,12 +311,10 @@ class MainWindow(wx.Frame):
         """Grey out what needs a workspace or a conversation that is not there."""
         has_workspace = self._workspace is not None
         has_conversation = bool(self._conversation_id)
-        for item in self._needs_workspace:
-            item.Enable(has_workspace)
-        for item in self._needs_conversation:
-            item.Enable(has_conversation)
+        self._menu.refresh_enabled(
+            has_workspace=has_workspace, has_conversation=has_conversation, busy=self._busy
+        )
         self._prompt.Enable(has_conversation)
-        self._interrupt_item.Enable(self._busy)
 
     @property
     def can_send(self) -> bool:

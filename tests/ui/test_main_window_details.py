@@ -42,7 +42,7 @@ def _capture_dialogs(
 
 
 def test_the_usage_item_is_available_without_a_workspace(window: MainWindow) -> None:
-    labels = [item.GetItemLabel() for _command, item, _text in window._command_items]
+    labels = [item.GetItemLabel() for _command, item, _text in window._menu.command_items]
     assert "Claude &usage…\tCtrl+Shift+U" in labels
 
 

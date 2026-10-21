@@ -146,12 +146,12 @@ def test_interrupting_stops_claude(
     conversation._announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
-    assert conversation._interrupt_item.IsEnabled()
+    assert conversation._menu.interrupt_item.IsEnabled()
     conversation._on_interrupt(wx.CommandEvent())
     _wait_until_idle(conversation)
     assert sink.messages[-2:] == ["Interrupting Claude.", "Claude was interrupted."]
     assert errors.messages == []
-    assert not conversation._interrupt_item.IsEnabled()
+    assert not conversation._menu.interrupt_item.IsEnabled()
 
 
 def test_nothing_is_sent_without_a_conversation(window: MainWindow) -> None:

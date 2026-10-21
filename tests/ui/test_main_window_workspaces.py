@@ -29,10 +29,10 @@ def test_at_the_first_start_there_is_no_workspace_and_no_conversation(window: Ma
     assert window.conversation_id == ""
     assert not window.can_send
     assert not window._prompt.IsEnabled()
-    assert not any(_enabled(window._needs_workspace))
-    assert not any(_enabled(window._needs_conversation))
-    assert not window._interrupt_item.IsEnabled()
-    assert not window._recent_item.IsEnabled()  # nothing opened yet
+    assert not any(_enabled(window._menu.needs_workspace))
+    assert not any(_enabled(window._menu.needs_conversation))
+    assert not window._menu.interrupt_item.IsEnabled()
+    assert not window._menu.recent_item.IsEnabled()  # nothing opened yet
 
 
 def test_a_workspace_without_conversation_only_allows_to_start_one(
@@ -40,14 +40,14 @@ def test_a_workspace_without_conversation_only_allows_to_start_one(
 ) -> None:
     window.open_workspace(tmp_path)
     assert window.GetTitle() == f"{tmp_path.name} - WxClaude"
-    assert all(_enabled(window._needs_workspace))
-    assert not any(_enabled(window._needs_conversation))
+    assert all(_enabled(window._menu.needs_workspace))
+    assert not any(_enabled(window._menu.needs_conversation))
     assert not window.can_send
 
 
 def test_a_conversation_enables_everything_that_needs_one(conversation: MainWindow) -> None:
-    assert all(_enabled(conversation._needs_workspace))
-    assert all(_enabled(conversation._needs_conversation))
+    assert all(_enabled(conversation._menu.needs_workspace))
+    assert all(_enabled(conversation._menu.needs_conversation))
     assert conversation._prompt.IsEnabled()
     assert conversation.can_send
     assert is_conversation_id(conversation.conversation_id)
@@ -65,7 +65,7 @@ def test_another_workspace_closes_the_conversation(
     other.mkdir()
     conversation.open_workspace(other)
     assert conversation.conversation_id == ""
-    assert not any(_enabled(conversation._needs_conversation))
+    assert not any(_enabled(conversation._menu.needs_conversation))
     assert not conversation._prompt.IsEnabled()
 
 
@@ -191,7 +191,7 @@ def test_a_workspace_that_no_longer_exists_is_not_opened(wx_app: wx.App, tmp_pat
     fresh = MainWindow(settings)
     assert fresh.GetTitle() == "WxClaude"
     assert fresh.conversation_id == ""
-    assert not any(_enabled(fresh._needs_workspace))
+    assert not any(_enabled(fresh._menu.needs_workspace))
     fresh.Destroy()
     wx.SafeYield()
 
@@ -237,7 +237,7 @@ def test_a_workspace_folder_that_is_gone_or_refused_is_reported(
 def test_the_folder_item_needs_a_workspace(window: MainWindow, tmp_path: Path) -> None:
     folder_item = next(
         item
-        for item in window._needs_workspace
+        for item in window._menu.needs_workspace
         if item.GetItemLabel() == "Open the workspace &folder"
     )
     assert not folder_item.IsEnabled()

@@ -89,7 +89,7 @@ def test_next_without_a_previous_search_opens_the_dialog(
 
 
 def test_the_search_commands_have_the_classic_shortcuts(conversation: MainWindow) -> None:
-    labels = [item.GetItemLabel() for item in conversation._needs_conversation]
+    labels = [item.GetItemLabel() for item in conversation._menu.needs_conversation]
     assert "&Find…	Ctrl+F" in labels
     assert "Find &next	F3" in labels
     assert "Find &previous	Shift+F3" in labels
