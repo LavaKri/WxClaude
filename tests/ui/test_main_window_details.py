@@ -50,7 +50,7 @@ def test_the_usage_report_says_nothing_is_known_before_the_first_answer(
     window: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     states = _capture_dialogs(window, monkeypatch)
-    window._on_usage(wx.CommandEvent())
+    window._actions.show_usage()
     assert states[0]["report"].startswith("No subscription usage information yet")  # type: ignore[attr-defined]
 
 
@@ -59,7 +59,7 @@ def test_an_answer_feeds_the_usage_report(
 ) -> None:
     _send(conversation, "hello")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._on_usage(wx.CommandEvent())
+    conversation._actions.show_usage()
     report = str(states[0]["report"]).splitlines()
     assert report[0].startswith("5-hour window, 50 % used")
     tokens = "3 in, 4 out, 0 read from the cache, 0 written to the cache"
@@ -74,7 +74,7 @@ def test_another_conversation_starts_the_spending_again(
     _send(conversation, "hello")
     conversation._start_new_conversation("Other")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._on_usage(wx.CommandEvent())
+    conversation._actions.show_usage()
     report = str(states[0]["report"])
     assert "5-hour window" in report  # the gauges belong to the account
     assert "No message sent yet" in report
@@ -95,7 +95,7 @@ def test_the_tools_item_shows_the_tools_of_the_message(
     _send(conversation, "hello")
     answer = conversation._conversation.document.spans[-1].message
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._on_message_action(DetailAction.TOOLS, answer, -1)
+    conversation._actions.act(DetailAction.TOOLS, answer, -1)
     assert states[0]["lines"] == ["Read, n.txt"]
 
 
@@ -114,7 +114,7 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
     monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
     sink = RecordingMessageSink()
     conversation._announcements.message_sink = sink
-    conversation._on_message_action(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
+    conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
     assert copied == [TABLE_AND_LINKS.text]
     assert sink.messages[-1] == "Message copied to the clipboard."
 
@@ -124,7 +124,7 @@ def test_a_clipboard_that_cannot_be_used_is_reported(
 ) -> None:
     monkeypatch.setattr(desktop, "set_clipboard", lambda _text: False)
     errors = _Errors(conversation)
-    conversation._on_message_action(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
+    conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
     assert errors.messages == ["The clipboard cannot be used."]
 
 
@@ -134,7 +134,7 @@ def test_the_table_can_be_copied_as_markdown(
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
     monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
-    conversation._on_message_action(DetailAction.TABLE, TABLE_AND_LINKS, 2)
+    conversation._actions.act(DetailAction.TABLE, TABLE_AND_LINKS, 2)
     assert states[0]["lines"] == ["Name: a.txt, Size: 3"]
     assert copied == ["| Name | Size |\n|---|---|\n| a.txt | 3 |"]
 
@@ -145,7 +145,7 @@ def test_a_link_is_opened_in_the_browser(
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
     opened: list[str] = []
     monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
-    conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
+    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert states[0]["lines"] == ["one, https://1.test", "two, ftp://x.test/f"]
     assert opened == ["https://1.test"]
 
@@ -161,7 +161,7 @@ def test_a_link_of_another_kind_is_never_handed_to_the_system(
     opened: list[str] = []
     monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
     errors = _Errors(conversation)
-    conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
+    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert opened == []
     assert errors.messages == ["This kind of address is not opened from here: ftp://x.test/f"]
 
@@ -172,7 +172,7 @@ def test_a_browser_that_refuses_is_reported(
     _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
     monkeypatch.setattr(desktop, "launch_url", lambda _url: False)
     errors = _Errors(conversation)
-    conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
+    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert errors.messages == ["The address https://1.test cannot be opened."]
 
 
@@ -182,7 +182,7 @@ def test_a_link_address_can_be_copied(
     _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
     monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
-    conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
+    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert copied == ["https://1.test"]
 
 
@@ -195,7 +195,7 @@ def test_the_task_list_reads_the_tasks_of_the_conversation(
         json.dumps({"id": "1", "subject": "Write", "status": "in_progress"}), encoding="utf-8"
     )
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._on_tasks(wx.CommandEvent())
+    conversation._actions.show_tasks()
     assert states[0]["lines"] == ["1, Write, in progress"]
 
 
@@ -203,5 +203,5 @@ def test_the_task_list_of_a_conversation_without_tasks_says_so(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._on_tasks(wx.CommandEvent())
+    conversation._actions.show_tasks()
     assert states[0]["lines"] == ["No task in this conversation yet."]

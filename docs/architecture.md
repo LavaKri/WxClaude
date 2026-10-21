@@ -87,6 +87,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs); `add_entries` appends and binds them. |
 | `main_menu.py` | `MainMenu`: the menu bar of the main window (tables, recent workspaces, shortcuts, greying), told what each item does by `MenuHandlers`. |
+| `message_actions.py` | `MessageActions`: the dialogs of a message (tools, table, links), copying it, the task list and the usage of Claude. |
 | `search_controller.py` | `SearchController`: Find, Find next and Find previous in the conversation view; keeps the last search. |
 | `desktop.py` | The clipboard, the browser and the file explorer; each function says whether the desktop refused. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
