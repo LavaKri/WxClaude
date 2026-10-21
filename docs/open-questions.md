@@ -50,14 +50,14 @@ the file it belongs to and delete it from this one.
      file is up to date.
   7. No concatenation inside `_()`: its argument is a text literal.
   8. Documents: every module of `core/` and `ui/` is named in `architecture.md`.
-  9. Classes with too many attributes or methods: same method as the size test (limits, and a
-     list of known exceptions that may not grow).
+  9. Classes with too many attributes or methods: same method as the size test (an absolute
+     limit that gives a warning at every run).
 
   Not checkable by a tool: whether a split makes sense, whether a data object holds only data
   (check 1 only keeps it from importing `wx`), and code duplicated between files (Pylint's
   `duplicate-code` could do it if it becomes a problem).
-- **Split the large classes and files**, now only held at their present size by
-  `tests/test_code_size.py` (the main window and `PreferencesDialog`), following `working-rules.md`.
+- **Split the large classes and files** that `tests/test_code_size.py` warns about at every run
+  (the main window and `PreferencesDialog`), following `working-rules.md`.
 - **Split the main window** (`ui/main_window.py`, over 1000 lines): its constructor and its menu
   are too long for the checks, which are switched off for this one file in `pyproject.toml`
   (`per-file-ignores`); remove that exception once it is split, following `working-rules.md`.

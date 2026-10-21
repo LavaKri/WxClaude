@@ -60,6 +60,9 @@ sentence that says why, and tell the user when it is done.
 
 ## At each milestone
 
+- A file or a class over its size limit is a warning, not a failure. When proposing a commit,
+  report the warnings of the size check to the user (which file or class, its size) and let the
+  user decide whether to split. Do not split, move code or change a limit without being asked.
 - Before proposing a commit, check the size of the files that were touched and split those that
   are over the limit.
 - While working, run the tests that concern the change; run the complete suite and the checks
