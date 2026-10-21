@@ -13,6 +13,7 @@ from main_window_support import (
 from wxclaude.core.announcements import RecordingMessageSink
 from wxclaude.core.details import DetailAction
 from wxclaude.core.messages import Message, Role
+from wxclaude.ui import desktop
 from wxclaude.ui.main_window import MainWindow
 
 pytestmark = pytest.mark.ui
@@ -110,7 +111,7 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     copied: list[str] = []
-    monkeypatch.setattr(conversation, "_set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
     sink = RecordingMessageSink()
     conversation._announcements.message_sink = sink
     conversation._on_message_action(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
@@ -121,7 +122,7 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
 def test_a_clipboard_that_cannot_be_used_is_reported(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(conversation, "_set_clipboard", lambda _text: False)
+    monkeypatch.setattr(desktop, "set_clipboard", lambda _text: False)
     errors = _Errors(conversation)
     conversation._on_message_action(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
     assert errors.messages == ["The clipboard cannot be used."]
@@ -132,7 +133,7 @@ def test_the_table_can_be_copied_as_markdown(
 ) -> None:
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
-    monkeypatch.setattr(conversation, "_set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
     conversation._on_message_action(DetailAction.TABLE, TABLE_AND_LINKS, 2)
     assert states[0]["lines"] == ["Name: a.txt, Size: 3"]
     assert copied == ["| Name | Size |\n|---|---|\n| a.txt | 3 |"]
@@ -143,7 +144,7 @@ def test_a_link_is_opened_in_the_browser(
 ) -> None:
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
     opened: list[str] = []
-    monkeypatch.setattr(conversation, "_launch_url", lambda url: opened.append(url) or True)
+    monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
     conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert states[0]["lines"] == ["one, https://1.test", "two, ftp://x.test/f"]
     assert opened == ["https://1.test"]
@@ -158,7 +159,7 @@ def test_a_link_of_another_kind_is_never_handed_to_the_system(
 
     monkeypatch.setattr(conversation, "_modal", modal)
     opened: list[str] = []
-    monkeypatch.setattr(conversation, "_launch_url", lambda url: opened.append(url) or True)
+    monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
     errors = _Errors(conversation)
     conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert opened == []
@@ -169,7 +170,7 @@ def test_a_browser_that_refuses_is_reported(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
-    monkeypatch.setattr(conversation, "_launch_url", lambda _url: False)
+    monkeypatch.setattr(desktop, "launch_url", lambda _url: False)
     errors = _Errors(conversation)
     conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert errors.messages == ["The address https://1.test cannot be opened."]
@@ -180,7 +181,7 @@ def test_a_link_address_can_be_copied(
 ) -> None:
     _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
-    monkeypatch.setattr(conversation, "_set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
     conversation._on_message_action(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert copied == ["https://1.test"]
 

@@ -18,6 +18,7 @@ from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import RecordingMessageSink
 from wxclaude.core.conversations import is_conversation_id
 from wxclaude.core.workspace_state import WorkspaceState
+from wxclaude.ui import desktop
 from wxclaude.ui.main_window import MainWindow
 
 pytestmark = pytest.mark.ui
@@ -202,7 +203,7 @@ def _folder_tools(window: MainWindow, monkeypatch: pytest.MonkeyPatch, *, accept
         opened.append(folder)
         return accepted
 
-    monkeypatch.setattr(window, "_launch_folder", launch)
+    monkeypatch.setattr(desktop, "launch_folder", launch)
     errors = _Errors(window)
     return opened, errors
 
