@@ -38,6 +38,15 @@ the file it belongs to and delete it from this one.
 
 ## Improvements not done yet
 
+- **Split the main window** (`ui/main_window.py`, over 1000 lines): its constructor and its menu
+  are too long for the checks, which are switched off for this one file in `pyproject.toml`
+  (`per-file-ignores`); remove that exception once it is split, following `working-rules.md`.
+- **Template for a new Python project with an interface.** `working-rules.md` is the first generic
+  document. To look at more closely: which sections of the other documents are generic (the four
+  focus rules of `focus.md`, the plans of `roadmap.md`, `open-questions.md`, `architecture.md` and
+  `settings.md` as empty templates), a folder of templates kept outside this project (for example
+  `templates/python-ui/`, so that WxClaude does not depend on another project), and a test that
+  checks the size of the source files.
 - Details dialogs: the thinking and the token usage of one answer are kept by the model but not
   shown yet; the usage dialog cannot show the context window filled (`modelUsage.contextWindow`
   is in the `result` line).

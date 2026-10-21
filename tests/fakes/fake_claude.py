@@ -48,7 +48,7 @@ def write_session(session_id: str, prompt: str, answer: str, model: str, effort:
         {
             "type": "user",
             "uuid": f"u-{time.time_ns()}",
-            "cwd": os.getcwd(),
+            "cwd": str(Path.cwd()),
             "permissionMode": option("--permission-mode"),
             "timestamp": now,
             "message": {"role": "user", "content": prompt},
@@ -151,7 +151,7 @@ def main() -> int:
     log = os.environ.get("FAKE_CLAUDE_LOG")
     if log:
         Path(log).write_text(
-            json.dumps({"arguments": sys.argv[1:], "prompt": prompt, "cwd": os.getcwd()}),
+            json.dumps({"arguments": sys.argv[1:], "prompt": prompt, "cwd": str(Path.cwd())}),
             encoding="utf-8",
         )
     session_id = option("--session-id") or option("--resume")

@@ -62,6 +62,9 @@ are kept; it is written atomically without a backup file, and a file that is not
 
 ## Robustness of the files
 
+The principles (atomic write, backup, a file that cannot be read is set aside) are in
+`working-rules.md`, section "Files and data". Here is how WxClaude applies them.
+
 `settings.json` and the files of the workspaces are written to a temporary file of the same folder
 and then moved over the old one (a crash never leaves a half-written file). The last valid version is
 kept as `<name>.bak`, and a file that cannot be read is renamed `<name>.corrupt`, so nothing is lost.

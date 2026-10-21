@@ -6,6 +6,7 @@ WxClaude is a wxPython desktop front end for `claude -p --output-format stream-j
 - `ui/`: thin wx layer.
 - Worker threads (CLI readers) never touch wx; they post to the UI with
   `wx.CallAfter`.
+- The rules of structure and size of the code are in `working-rules.md`.
 
 ## Scope
 
@@ -65,6 +66,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
 | `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |
 | `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
+| `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
 | `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
 | `usage.py` | `UsageTracker`: subscription gauges and tokens / cost spent, as lines of the usage dialog. |
@@ -85,7 +87,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `permission_dialog.py` | The permission question of Claude. |
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
-| `list_dialog.py` | `ListDialog`: a list of lines, the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
+| `list_dialog.py` | `ListDialog(parent, spec, actions)`: a list of lines (from a `ListSpec`), the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
 | `tasks_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; tools used, rows of a table and links of a message; usage of Claude. |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |

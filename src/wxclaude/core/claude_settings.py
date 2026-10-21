@@ -139,12 +139,12 @@ class SettingsFile:
 
     def rules(self) -> list[Rule]:
         """The rules of the file (entries that are not text are ignored)."""
-        found: list[Rule] = []
-        for approval in Approval:
-            for entry in self._list(approval, create=False) or []:
-                if isinstance(entry, str) and entry.strip():
-                    found.append(Rule(approval, entry.strip()))
-        return found
+        return [
+            Rule(approval, entry.strip())
+            for approval in Approval
+            for entry in self._list(approval, create=False) or []
+            if isinstance(entry, str) and entry.strip()
+        ]
 
     def add(self, rule: Rule) -> None:
         """Add ``rule`` unless the file already has it."""

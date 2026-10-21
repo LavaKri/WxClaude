@@ -10,33 +10,30 @@ from collections.abc import Sequence
 
 import wx
 
+from wxclaude.core.list_spec import ListSpec
+
 
 class ListDialog(wx.Dialog):
     """Lines to choose from, optional details of the chosen one, a Close button and actions.
 
-    The list has the initial focus. ``details`` has one text per line; without it there is no
-    details field.
+    ``spec`` is what it shows (data only); ``actions`` are the buttons, each an identifier of the
+    interface library and a label. The list has the initial focus; without ``spec.details`` there
+    is no details field.
     """
 
     def __init__(
         self,
         parent: wx.Window,
-        title: str,
-        *,
-        list_label: str,
-        list_name: str,
-        lines: Sequence[str],
-        details: Sequence[str] | None = None,
-        details_label: str = "",
-        details_name: str = "",
+        spec: ListSpec,
         actions: Sequence[tuple[int, str]] = (),
-        selection: int = 0,
     ) -> None:
-        super().__init__(parent, title=title, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-        self._details = list(details) if details is not None else None
+        super().__init__(parent, title=spec.title, style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self._details = list(spec.details) if spec.details is not None else None
         # Each label is created right before its control so that screen readers pair them.
-        label = wx.StaticText(self, label=list_label)
-        self._list = wx.ListBox(self, choices=list(lines), style=wx.LB_SINGLE, name=list_name)
+        label = wx.StaticText(self, label=spec.list_label)
+        self._list = wx.ListBox(
+            self, choices=list(spec.lines), style=wx.LB_SINGLE, name=spec.list_name
+        )
         self._list.SetMinSize(
             wx.Size(self._list.GetCharWidth() * 70, self._list.GetCharHeight() * 8)
         )
@@ -46,9 +43,9 @@ class ListDialog(wx.Dialog):
         sizer.Add(self._list, 1, wx.EXPAND | wx.ALL, 8)
         self._text: wx.TextCtrl | None = None
         if self._details is not None:
-            details_text = wx.StaticText(self, label=details_label)
+            details_text = wx.StaticText(self, label=spec.details_label)
             self._text = wx.TextCtrl(
-                self, style=wx.TE_MULTILINE | wx.TE_READONLY, name=details_name
+                self, style=wx.TE_MULTILINE | wx.TE_READONLY, name=spec.details_name
             )
             self._text.SetMinSize(
                 wx.Size(self._text.GetCharWidth() * 70, self._text.GetCharHeight() * 8)
@@ -65,8 +62,8 @@ class ListDialog(wx.Dialog):
         self.SetEscapeId(wx.ID_CLOSE)
         self.Bind(wx.EVT_BUTTON, self._on_button)
         self._list.Bind(wx.EVT_LISTBOX, self._on_select)
-        if lines:
-            self._list.SetSelection(min(max(selection, 0), len(lines) - 1))
+        if spec.lines:
+            self._list.SetSelection(min(max(spec.selection, 0), len(spec.lines) - 1))
         self._show_details()
         self._list.SetFocus()
 

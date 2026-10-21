@@ -37,7 +37,20 @@ line-length = 100
 src = ["src", "tests"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "PT", "RUF"]
+select = [
+    "E", "F", "W", "I", "N", "UP", "B", "SIM", "C4", "PT", "RUF",
+    # Structure and size of the code (thresholds: ruff defaults, see docs/working-rules.md)
+    "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
+    "PLC0415", "BLE001", "ERA001", "PTH", "PERF", "RET", "TRY203", "TRY300", "TRY301",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Other dialogs and windows still take many labels and names; group them in a data object (see
+# docs/working-rules.md, "Grouping arguments") as `ListDialog` does, then drop this exception.
+"src/wxclaude/ui/*" = ["PLR0913"]
+"tests/*" = ["PLR0913"]
+# To be removed once the main window is split (its constructor and its menu are too long).
+"src/wxclaude/ui/main_window.py" = ["PLR0913", "PLR0915"]
 
 [tool.mypy]
 python_version = "3.14"

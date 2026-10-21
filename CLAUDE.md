@@ -5,7 +5,9 @@ mode (`claude -p --output-format stream-json`).
 
 This project is self-contained: it must not reference, import or depend on any other project.
 
-Detailed specs live in `docs/` (English). Read the relevant spec before changing a feature.
+Detailed specs live in `docs/` (English). The general working rules (structure and size of the code,
+what to do when a check says the code is too big, tests, texts, accessibility) are in
+`docs/working-rules.md`: read them before writing code. Read the relevant spec before changing a feature.
 **New session: start with `docs/roadmap.md`** (decisions taken, what is done, next milestones). Open questions and improvements
 are only in `docs/open-questions.md`; the other docs hold what is true, not questions.
 

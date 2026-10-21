@@ -5,6 +5,7 @@ from collections.abc import Sequence
 import wx
 
 from wxclaude.core.details import Link, Table, tool_detail, tool_line
+from wxclaude.core.list_spec import ListSpec
 from wxclaude.core.messages import ToolUse
 from wxclaude.i18n import _
 from wxclaude.ui.list_dialog import ListDialog
@@ -16,13 +17,15 @@ class ToolsDialog(ListDialog):
     def __init__(self, parent: wx.Window, tools: Sequence[ToolUse]) -> None:
         super().__init__(
             parent,
-            _("Tools used"),
-            list_label=_("&Tools used"),
-            list_name=_("Tools used"),
-            lines=[tool_line(tool) for tool in tools],
-            details=[tool_detail(tool) for tool in tools],
-            details_label=_("&Details"),
-            details_name=_("Details"),
+            ListSpec(
+                _("Tools used"),
+                list_label=_("&Tools used"),
+                list_name=_("Tools used"),
+                lines=[tool_line(tool) for tool in tools],
+                details=[tool_detail(tool) for tool in tools],
+                details_label=_("&Details"),
+                details_name=_("Details"),
+            ),
         )
 
 
@@ -32,14 +35,13 @@ class TableDialog(ListDialog):
 
     def __init__(self, parent: wx.Window, table: Table) -> None:
         rows = [table.row_line(row) for row in table.rows]
-        super().__init__(
-            parent,
+        spec = ListSpec(
             _("Table"),
             list_label=_("&Rows"),
             list_name=_("Rows"),
             lines=rows or [_("The table has no row.")],
-            actions=[(wx.ID_COPY, _("Copy the &table"))],
         )
+        super().__init__(parent, spec, [(wx.ID_COPY, _("Copy the &table"))])
 
 
 class LinksDialog(ListDialog):
@@ -48,15 +50,12 @@ class LinksDialog(ListDialog):
     ``selection`` tells which link."""
 
     def __init__(self, parent: wx.Window, links: Sequence[Link], selected: int = 0) -> None:
-        super().__init__(
-            parent,
+        spec = ListSpec(
             _("Links"),
             list_label=_("&Links"),
             list_name=_("Links"),
             lines=[link.label() for link in links],
-            actions=[
-                (wx.ID_OPEN, _("&Open in the browser")),
-                (wx.ID_COPY, _("Copy the &address")),
-            ],
             selection=selected,
         )
+        actions = [(wx.ID_OPEN, _("&Open in the browser")), (wx.ID_COPY, _("Copy the &address"))]
+        super().__init__(parent, spec, actions)

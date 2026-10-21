@@ -2,6 +2,7 @@
 
 import wx
 
+from wxclaude.core.list_spec import ListSpec
 from wxclaude.core.tasks import TaskList
 from wxclaude.i18n import _
 from wxclaude.ui.list_dialog import ListDialog
@@ -23,11 +24,13 @@ class TasksDialog(ListDialog):
             lines, descriptions = [_("No task in this conversation yet.")], [""]
         super().__init__(
             parent,
-            _("Task list"),
-            list_label=_("&Tasks"),
-            list_name=_("Tasks"),
-            lines=lines,
-            details=descriptions,
-            details_label=_("&Description"),
-            details_name=_("Description"),
+            ListSpec(
+                _("Task list"),
+                list_label=_("&Tasks"),
+                list_name=_("Tasks"),
+                lines=lines,
+                details=descriptions,
+                details_label=_("&Description"),
+                details_name=_("Description"),
+            ),
         )

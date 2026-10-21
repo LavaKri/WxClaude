@@ -164,6 +164,15 @@ def _normalize_key(key: str) -> str | None:
     return None
 
 
+def _is_reserved(modifiers: list[str], key: str) -> bool:
+    """Is the key, with these modifiers, one a shortcut may never be?"""
+    if key in _RESERVED_KEYS:
+        return True
+    if key == "Enter":
+        return not modifiers
+    return not _FUNCTION_KEY.fullmatch(key) and not {"Ctrl", "Alt"} & set(modifiers)
+
+
 def check_shortcut(
     command: ConfigurableCommand, shortcut: str, current: Mapping[str, str]
 ) -> ShortcutCheck:
@@ -181,13 +190,7 @@ def check_shortcut(
     if not normalized:
         return ShortcutCheck()
     *modifiers, key = normalized.split("+")
-    if key in _RESERVED_KEYS:
-        return ShortcutCheck(ShortcutProblem.RESERVED)
-    is_function_key = bool(_FUNCTION_KEY.fullmatch(key))
-    if key == "Enter":
-        if not modifiers:
-            return ShortcutCheck(ShortcutProblem.RESERVED)
-    elif not is_function_key and not {"Ctrl", "Alt"} & set(modifiers):
+    if _is_reserved(modifiers, key):
         return ShortcutCheck(ShortcutProblem.RESERVED)
     if normalized in FIXED_SHORTCUTS:
         return ShortcutCheck(ShortcutProblem.FIXED)

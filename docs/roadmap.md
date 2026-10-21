@@ -96,11 +96,12 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
 
 ## Working notes for a new session
 
-- Commands, layout and rules are in `CLAUDE.md`. One shell command per call, never chained.
+- Commands, layout and rules are in `CLAUDE.md`. One shell command per call, never chained. The
+  general working rules (structure, size, tests, texts, accessibility) are in `working-rules.md`.
 - Manual tests with the real CLI use `haiku` with effort `low`; the protocol facts that were verified
-  are in `claude-cli.md` (do not guess the stream: look at it).
+  are in `claude-cli.md`.
 - The tests of the UI create real wx windows; a fake `claude` replaces the CLI everywhere in the
   tests (`FAKE_CLAUDE` scenarios, see the top of `tests/fakes/fake_claude.py`), and `CLAUDE_CONFIG_DIR`
   is redirected so that the real `~/.claude` is never read.
-- Every visible string goes through `_()`; the French catalog is `locale/fr/LC_MESSAGES/wxclaude.po`
-  and must be recompiled after an edit. Keep access keys unique inside a dialog (French included).
+- The French catalog is `locale/fr/LC_MESSAGES/wxclaude.po`; recompile it with the command of
+  `CLAUDE.md` after an edit.

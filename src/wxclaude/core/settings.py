@@ -17,6 +17,14 @@ from wxclaude.core.shortcuts import (
 )
 
 SETTINGS_FILE_NAME = "settings.json"
+_FLAG_KEYS = (
+    "reopen_last",
+    "hide_system_messages",
+    "announce_progress",
+    "local_tools_only",
+    "claude_auto_search",
+)
+_TEXT_KEYS = ("claude_path", "last_workspace")
 SUPPORTED_LANGUAGES = ("fr", "en")
 
 
@@ -79,53 +87,53 @@ class Settings:
             return settings
         result = read_json(store)
         settings.load_warning = result.warning
-        data = result.data
-        if data is None:
-            return settings
+        if result.data is not None:
+            settings._apply_values(result.data)
+            settings._apply_agents(result.data)
+            settings._apply_shortcuts(result.data)
+        return settings
+
+    def _apply_values(self, data: dict[str, object]) -> None:
+        """The plain values of the file; a value of the wrong kind is ignored."""
         language = data.get("language")
         if language in SUPPORTED_LANGUAGES:
-            settings.language = language
-        if "default_agent" in data:
-            settings.default_agent = Agent.from_dict(data["default_agent"]).over(DEFAULT_AGENT)
-        if "alternative_agent" in data:
-            settings.alternative_agent = Agent.from_dict(data["alternative_agent"])
+            self.language = str(language)
         recent = data.get("recent_workspaces")
         if isinstance(recent, list):
-            settings.recent_workspaces = [item for item in recent if isinstance(item, str)]
-        reopen_last = data.get("reopen_last")
-        if isinstance(reopen_last, bool):
-            settings.reopen_last = reopen_last
-        for key in (
-            "hide_system_messages",
-            "announce_progress",
-            "local_tools_only",
-            "claude_auto_search",
-        ):
+            self.recent_workspaces = [item for item in recent if isinstance(item, str)]
+        for key in _FLAG_KEYS:
             flag = data.get(key)
             if isinstance(flag, bool):
-                setattr(settings, key, flag)
-        claude_path = data.get("claude_path")
-        if isinstance(claude_path, str):
-            settings.claude_path = claude_path
-        last_workspace = data.get("last_workspace")
-        if isinstance(last_workspace, str):
-            settings.last_workspace = last_workspace
+                setattr(self, key, flag)
+        for key in _TEXT_KEYS:
+            text = data.get(key)
+            if isinstance(text, str):
+                setattr(self, key, text)
         counter = data.get("conversation_counter")
         if isinstance(counter, int) and not isinstance(counter, bool) and counter >= 1:
-            settings.conversation_counter = counter
+            self.conversation_counter = counter
         output = data.get("screen_reader_output")
         if isinstance(output, str) and output_named(output) is not None:
-            settings.screen_reader_output = output
-        saved_shortcuts = data.get("shortcuts")
-        if isinstance(saved_shortcuts, dict):
-            for command in CONFIGURABLE_COMMANDS:
-                value = saved_shortcuts.get(command.id)
-                normalized = normalize_shortcut(value) if isinstance(value, str) else None
-                if normalized is None:
-                    continue
-                if check_shortcut(command, normalized, settings.all_shortcuts()).problem is None:
-                    settings.set_shortcut(command, normalized)
-        return settings
+            self.screen_reader_output = output
+
+    def _apply_agents(self, data: dict[str, object]) -> None:
+        if "default_agent" in data:
+            self.default_agent = Agent.from_dict(data["default_agent"]).over(DEFAULT_AGENT)
+        if "alternative_agent" in data:
+            self.alternative_agent = Agent.from_dict(data["alternative_agent"])
+
+    def _apply_shortcuts(self, data: dict[str, object]) -> None:
+        """The shortcuts that differ from the default; invalid or conflicting ones are ignored."""
+        saved = data.get("shortcuts")
+        if not isinstance(saved, dict):
+            return
+        for command in CONFIGURABLE_COMMANDS:
+            value = saved.get(command.id)
+            normalized = normalize_shortcut(value) if isinstance(value, str) else None
+            if normalized is None:
+                continue
+            if check_shortcut(command, normalized, self.all_shortcuts()).problem is None:
+                self.set_shortcut(command, normalized)
 
     def save(self) -> None:
         """Write the settings to their store, if any."""

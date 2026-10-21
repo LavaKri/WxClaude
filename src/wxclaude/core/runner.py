@@ -16,7 +16,7 @@ import subprocess
 import sys
 import threading
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO
 
@@ -114,6 +114,19 @@ class _Stdin:
                 return  # the process is gone: there is nothing left to close
 
 
+@dataclass(slots=True)
+class _Run:
+    """What one message needs while it runs: its process, what it says and what it prints."""
+
+    process: subprocess.Popen[str]
+    stdin: _Stdin
+    prompt: str
+    on_event: Callable[[RunEvent], None]
+    diagnostics: list[str] = field(default_factory=list)  # lines that are not stream lines
+    stderr_lines: list[str] = field(default_factory=list)
+    readers: list[threading.Thread] = field(default_factory=list)
+
+
 class ClaudeRunner:
     """Runs one message at a time. ``command`` replaces the ``claude`` executable (tests)."""
 
@@ -158,25 +171,20 @@ class ClaudeRunner:
             self._process = process
             self._stdin = stdin = _Stdin(process.stdin)
             self._interrupted = False
-        diagnostics: list[str] = []
-        stderr_lines: list[str] = []
-        readers = [
+        run = _Run(process, stdin, request.prompt, on_event)
+        run.readers = [
             threading.Thread(
                 target=self._read_stdout,
-                args=(process.stdout, stdin, on_event, diagnostics),
+                args=(process.stdout, stdin, on_event, run.diagnostics),
                 daemon=True,
             ),
             threading.Thread(
-                target=self._read_stderr, args=(process.stderr, stderr_lines), daemon=True
+                target=self._read_stderr, args=(process.stderr, run.stderr_lines), daemon=True
             ),
         ]
-        for reader in readers:
+        for reader in run.readers:
             reader.start()
-        threading.Thread(
-            target=self._supervise,
-            args=(process, stdin, request.prompt, readers, on_event, diagnostics, stderr_lines),
-            daemon=True,
-        ).start()
+        threading.Thread(target=self._supervise, args=(run,), daemon=True).start()
 
     def allow(self, request: PermissionRequest) -> None:
         """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""
@@ -235,29 +243,21 @@ class ClaudeRunner:
     def _read_stderr(stream: IO[str] | None, lines: list[str]) -> None:
         lines.extend(stream or ())
 
-    def _supervise(
-        self,
-        process: subprocess.Popen[str],
-        stdin: _Stdin,
-        prompt: str,
-        readers: list[threading.Thread],
-        on_event: Callable[[RunEvent], None],
-        diagnostics: list[str],
-        stderr_lines: list[str],
-    ) -> None:
+    def _supervise(self, run: _Run) -> None:
         try:
-            stdin.write({"type": "user", "message": {"role": "user", "content": prompt}})
+            run.stdin.write({"type": "user", "message": {"role": "user", "content": run.prompt}})
         except RunnerError as error:  # the process ended before reading the prompt
-            diagnostics.append(str(error))
-        for reader in readers:
+            run.diagnostics.append(str(error))
+        for reader in run.readers:
             reader.join()
-        stdin.close()
-        exit_code = process.wait()
+        run.stdin.close()
+        exit_code = run.process.wait()
         with self._lock:
             interrupted = self._interrupted
             self._process = None
             self._stdin = None
-        on_event(TurnEnded(exit_code, interrupted, "".join(stderr_lines).strip(), diagnostics))
+        stderr = "".join(run.stderr_lines).strip()
+        run.on_event(TurnEnded(exit_code, interrupted, stderr, run.diagnostics))
 
 
 def _kill_tree(process: subprocess.Popen[str]) -> None:

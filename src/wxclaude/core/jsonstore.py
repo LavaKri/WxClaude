@@ -55,7 +55,7 @@ def read_json(path: Path) -> ReadResult:
         reason = f"Cannot read {path}: {error}."
     moved = path.with_name(path.name + ".corrupt")
     try:
-        os.replace(path, moved)
+        path.replace(moved)
         reason += f" The file was kept as {moved.name}."
     except OSError as error:
         reason += f" It could not be set aside: {error}."
@@ -82,6 +82,6 @@ def write_json(path: Path, data: dict[str, object], *, backup: bool = True) -> N
             os.fsync(file.fileno())
         if backup and _is_readable(path):  # never replace a good backup with a bad file
             shutil.copyfile(path, _backup_path(path))
-        os.replace(temporary, path)
+        temporary.replace(path)
     except OSError as error:
         raise JsonStoreError(f"Cannot write {path}: {error}") from error
