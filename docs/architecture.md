@@ -80,7 +80,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 | Module | Role |
 |---|---|
-| `main_window.py` | Menus, prompt, buttons; the runner events, the permission questions, the focus rules (`_modal`); enables what needs a workspace or a conversation. |
+| `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the runner events, the permission questions, the workspaces and conversations. |
+| `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`). |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |

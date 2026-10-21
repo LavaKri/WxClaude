@@ -93,7 +93,7 @@ def _wait_until_idle(window: MainWindow, timeout: float = 30) -> None:
 class _Errors:
     def __init__(self, window: MainWindow) -> None:
         self.messages: list[str] = []
-        window._show_error = self.messages.append  # type: ignore[method-assign]
+        window._feedback.show_error = self.messages.append  # type: ignore[method-assign]
 
 
 def _use_log(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:

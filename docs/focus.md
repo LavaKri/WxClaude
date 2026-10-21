@@ -8,7 +8,7 @@ that differ are listed after them. Every new feature follows a rule, or adds its
 **A. A dialog closes: the focus goes back where it was.**
 Every dialog and message of the application (Preferences, Workspace settings, Find, names, agent, task list, export,
 "no more occurrence", errors, warnings, the permission questions) is shown through
-`MainWindow._modal`: it remembers the focused control and puts the focus back once the dialog is
+`Feedback.modal` (`ui/feedback.py`): it remembers the focused control and puts the focus back once the dialog is
 destroyed, unless the action that followed has deliberately moved the focus inside the window
 (rule B or C). It applies to a dialog that opens by itself (an error at the end of an answer) as
 much as to one the user opened.

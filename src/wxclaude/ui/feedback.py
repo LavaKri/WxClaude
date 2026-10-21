@@ -1,0 +1,99 @@
+"""What the main window tells the user: the status bar, the announcements and the dialogs.
+
+Every dialog of the application is shown through ``Feedback.modal``, which puts the focus back
+where it was when the dialog closes (rule A of ``docs/focus.md``).
+"""
+
+from collections.abc import Callable
+
+import wx
+
+from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
+from wxclaude.core.errors import ScreenReaderOutputError
+from wxclaude.i18n import _
+from wxclaude.ui.message_sinks import create_sink
+
+_POSITION_FIELD = 0
+_MESSAGE_FIELD = 1
+
+
+class Feedback:
+    """Says things to the user through ``frame``: its status bar, the screen reader, dialogs.
+
+    ``is_closing`` tells whether the window is closing (the focus is then left alone).
+    """
+
+    def __init__(self, frame: wx.Frame, is_closing: Callable[[], bool]) -> None:
+        self._frame = frame
+        self._is_closing = is_closing
+        self._output_id: str | None = None  # the screen reader output in use
+        self.announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
+
+    # Status bar and announcements --------------------------------------------------------------
+
+    def say(self, announce: Announce, **values: object) -> None:
+        """Show an announcement in the status bar and send it to the screen reader output."""
+        self.set_status(self.announcements.notify(announce, **values))
+
+    def set_status(self, text: str) -> None:
+        """The message field of the status bar (the first field is the position)."""
+        self._frame.SetStatusText(text, _MESSAGE_FIELD)
+
+    def show_position(self, number: int, total: int) -> None:
+        """First field of the status bar: the prompt the caret is in, 'Message 3 of 8'."""
+        text = _("Message {number} of {total}").format(number=number, total=total) if total else ""
+        self._frame.SetStatusText(text, _POSITION_FIELD)
+
+    def apply_screen_reader_output(self, output_id: str) -> None:
+        """Connect the announcements to the output chosen in the Preferences."""
+        if output_id == self._output_id:
+            return
+        self._output_id = output_id
+        try:
+            sink = create_sink(output_id, self._frame)
+        except ScreenReaderOutputError as error:
+            sink = NullMessageSink()
+            self._on_screen_reader_error(error)
+        self.announcements.message_sink.close()
+        self.announcements.message_sink = sink
+
+    def _on_screen_reader_error(self, error: ScreenReaderOutputError) -> None:
+        self.show_error(_("The screen reader output cannot be used.\n{error}").format(error=error))
+
+    # Dialogs ----------------------------------------------------------------------------------
+
+    def modal(self, dialog: wx.Dialog) -> int:
+        """Show ``dialog``; when it closes the focus is back where it was (docs/focus.md)."""
+        focused = wx.Window.FindFocus()
+        try:
+            return int(dialog.ShowModal())
+        finally:
+            wx.CallAfter(self._restore_focus, focused)  # once the dialog is destroyed
+
+    def _restore_focus(self, focused: wx.Window | None) -> None:
+        """Put the focus back on ``focused`` unless it was deliberately moved inside the window."""
+        frame = self._frame
+        if self._is_closing() or not frame or not focused:
+            return
+        current = wx.Window.FindFocus()
+        if current is None or not frame.IsDescendant(current):
+            focused.SetFocus()
+
+    def message_box(self, message: str, caption: str, icon: int) -> None:
+        """A message with an OK button; the focus comes back where it was."""
+        with wx.MessageDialog(self._frame, message, caption, wx.OK | icon) as dialog:
+            self.modal(dialog)
+
+    def show_error(self, message: str) -> None:
+        self.message_box(message, _("Error"), wx.ICON_ERROR)
+
+    def show_info(self, message: str) -> None:
+        self.message_box(message, _("Find in the conversation"), wx.ICON_INFORMATION)
+
+    def show_file_warning(self, details: str) -> None:
+        """Tell the user that a file of the application was damaged (and what was done)."""
+        self.message_box(
+            _("A configuration file could not be read.\n{details}").format(details=details),
+            _("Warning"),
+            wx.ICON_WARNING,
+        )

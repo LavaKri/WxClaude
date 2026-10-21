@@ -7,7 +7,7 @@ import wx
 
 from wxclaude import __version__
 from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
+from wxclaude.core.announcements import Announce
 from wxclaude.core.claude_projects import (
     SessionInfo,
     choose_conversation,
@@ -23,7 +23,6 @@ from wxclaude.core.errors import (
     ExportError,
     JsonStoreError,
     RunnerError,
-    ScreenReaderOutputError,
     SessionReadError,
     SettingsError,
 )
@@ -55,17 +54,15 @@ from wxclaude.ui import desktop
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
+from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_actions import MessageActions
-from wxclaude.ui.message_sinks import create_sink
 from wxclaude.ui.permission_dialog import PermissionDialog
 from wxclaude.ui.preferences_dialog import PreferencesDialog
 from wxclaude.ui.search_controller import SearchController
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 
-_POSITION_FIELD = 0
-_MESSAGE_FIELD = 1
 _POSITION_WIDTH = 150
 
 
@@ -88,13 +85,13 @@ class MainWindow(wx.Frame):
         self._apply_claude_path()
         self._busy = False  # True while Claude is answering
         self._closing = False
+        self._feedback = Feedback(self, lambda: self._closing)
         self._turn_agent = settings.default_agent  # the agent of the message being answered
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
         self._local_messages = 0  # messages added by this run, for their identifiers
-        self._output_id: str | None = None  # the screen reader output in use
         self._conversation_id = ""
         self._conversation_name = ""
         self._branch_count = 0  # branches made from the current conversation
@@ -102,9 +99,9 @@ class MainWindow(wx.Frame):
         # The window's own methods are looked up at each call, so that they can be replaced.
         self._actions = MessageActions(
             self,
-            lambda dialog: self._modal(dialog),
-            lambda announce, **values: self._say(announce, **values),
-            lambda message: self._show_error(message),
+            lambda dialog: self._feedback.modal(dialog),
+            lambda announce, **values: self._feedback.say(announce, **values),
+            lambda message: self._feedback.show_error(message),
             lambda: self._conversation_id,
             self._usage,
         )
@@ -112,15 +109,15 @@ class MainWindow(wx.Frame):
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
         self._conversation = ConversationView(
             panel,
-            self._say,
+            self._feedback.say,
             lambda action, message, line: self._actions.act(action, message, line),
-            self._show_position,
+            self._feedback.show_position,
         )
         self._search = SearchController(
             self._conversation,
-            lambda dialog: self._modal(dialog),
-            lambda announce, **values: self._say(announce, **values),
-            lambda message: self._show_info(message),
+            lambda dialog: self._feedback.modal(dialog),
+            lambda announce, **values: self._feedback.say(announce, **values),
+            lambda message: self._feedback.show_info(message),
         )
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
@@ -154,9 +151,8 @@ class MainWindow(wx.Frame):
         self._build_menu_bar()
         status_bar = self.CreateStatusBar(2)  # the position in the conversation, then the messages
         status_bar.SetStatusWidths([_POSITION_WIDTH, -1])
-        self._set_status(_("Ready"))
-        self._announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
-        self._apply_screen_reader_output()
+        self._feedback.set_status(_("Ready"))
+        self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
         self.Bind(wx.EVT_CLOSE, self._on_close)
         self._conversation.set_show_hidden(not settings.hide_system_messages)
         self._refresh_enabled()
@@ -164,7 +160,7 @@ class MainWindow(wx.Frame):
         self._restore_last_session()
         wx.CallAfter(self._focus_main_field)
         if settings.load_warning:
-            wx.CallAfter(self._show_file_warning, settings.load_warning)
+            wx.CallAfter(self._feedback.show_file_warning, settings.load_warning)
 
     @property
     def conversation_id(self) -> str:
@@ -242,26 +238,26 @@ class MainWindow(wx.Frame):
         if self._state is None or folder != self._workspace:
             self._state = WorkspaceState.load(folder, self._settings.workspaces_dir)
             if self._state.warning:
-                self._show_file_warning(self._state.warning)
+                self._feedback.show_file_warning(self._state.warning)
         self._workspace = folder
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
         self._update_title()
         self._refresh_enabled()
-        self._say(Announce.WORKSPACE_OPENED, folder=folder)
+        self._feedback.say(Announce.WORKSPACE_OPENED, folder=folder)
         self._save_settings()
 
     def _on_open_project(self, _event: wx.CommandEvent) -> None:
         """Open one of the folders Claude Code has already worked in."""
         projects = list_projects()
         if not projects:
-            self._show_error(_("Claude Code has no project yet."))
+            self._feedback.show_error(_("Claude Code has no project yet."))
             return
         labels = [workspace_label(str(project.folder)) for project in projects]
         with wx.SingleChoiceDialog(
             self, _("Choose a project:"), _("Open from Claude projects"), labels
         ) as dialog:
-            if self._modal(dialog) == wx.ID_OK:
+            if self._feedback.modal(dialog) == wx.ID_OK:
                 self.open_workspace(projects[dialog.GetSelection()].folder)
 
     def _on_open_workspace(self, _event: wx.CommandEvent) -> None:
@@ -272,7 +268,7 @@ class MainWindow(wx.Frame):
             defaultPath=default,
             style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
         ) as dialog:
-            if self._modal(dialog) == wx.ID_OK:
+            if self._feedback.modal(dialog) == wx.ID_OK:
                 self.open_workspace(Path(dialog.GetPath()))
 
     def _open_recent(self, folder: str) -> None:
@@ -281,7 +277,7 @@ class MainWindow(wx.Frame):
             self.open_workspace(Path(folder))
             return
         self._settings.recent_workspaces = remove_missing(self._settings.recent_workspaces)
-        self._show_error(
+        self._feedback.show_error(
             _("The folder {folder} no longer exists. It was removed from the recent list.").format(
                 folder=folder
             )
@@ -292,7 +288,7 @@ class MainWindow(wx.Frame):
     def _ask_conversation_name(self, title: str, proposal: str) -> str | None:
         """Ask for a conversation name, the proposal being selected; None if cancelled."""
         with ConversationNameDialog(self, title, proposal) as dialog:
-            return dialog.name if self._modal(dialog) == wx.ID_OK else None
+            return dialog.name if self._feedback.modal(dialog) == wx.ID_OK else None
 
     def _set_conversation(self, conversation_id: str, name: str) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
@@ -380,14 +376,16 @@ class MainWindow(wx.Frame):
             return
         # Nothing to talk to: the prompt and the buttons are greyed, the (empty) view says why.
         self._conversation.focus_last_prompt()
-        self._say(Announce.NO_CONVERSATION)
+        self._feedback.say(Announce.NO_CONVERSATION)
 
     def _load_conversation(self, chosen: SessionInfo) -> bool:
         """Show the conversation ``chosen`` and make it current; False if it cannot be read."""
         try:
             session = read_session(chosen.path)
         except SessionReadError as error:
-            self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Cannot read the conversation.\n{error}").format(error=error)
+            )
             return False
         settings = self._settings
         record = self._state.conversations.get(chosen.id) if self._state is not None else None
@@ -407,7 +405,7 @@ class MainWindow(wx.Frame):
         self._branch_count = 0
         self._set_conversation(chosen.id, name)
         self._conversation.focus_last_prompt()
-        self._say(Announce.CONVERSATION_RESUMED, name=name)
+        self._feedback.say(Announce.CONVERSATION_RESUMED, name=name)
         return True
 
     def _on_new_conversation(self, _event: wx.CommandEvent) -> None:
@@ -421,7 +419,7 @@ class MainWindow(wx.Frame):
         self._agent = self._settings.default_agent
         self._branch_count = 0
         self._start_new_conversation(name)
-        self._say(Announce.NEW_CONVERSATION, name=name)
+        self._feedback.say(Announce.NEW_CONVERSATION, name=name)
         self._prompt.SetFocus()  # enabled by now: there is a conversation
 
     def _on_resume_conversation(self, _event: wx.CommandEvent) -> None:
@@ -430,13 +428,13 @@ class MainWindow(wx.Frame):
             return
         sessions = list_sessions(self._workspace)
         if not sessions:
-            self._show_error(_("This workspace has no conversation yet."))
+            self._feedback.show_error(_("This workspace has no conversation yet."))
             return
         labels = [_session_label(session) for session in sessions]
         with wx.SingleChoiceDialog(
             self, _("Choose a conversation:"), _("Resume a conversation"), labels
         ) as dialog:
-            if self._modal(dialog) != wx.ID_OK:
+            if self._feedback.modal(dialog) != wx.ID_OK:
                 return
             chosen = sessions[dialog.GetSelection()]
         self._load_conversation(chosen)
@@ -447,24 +445,28 @@ class MainWindow(wx.Frame):
             return
         found = [s for s in list_sessions(self._workspace) if s.id == self._conversation_id]
         if not found:
-            self._say(Announce.CONVERSATION_NOT_SAVED)
+            self._feedback.say(Announce.CONVERSATION_NOT_SAVED)
             return
         try:
             session = read_session(found[0].path)
         except SessionReadError as error:
-            self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Cannot read the conversation.\n{error}").format(error=error)
+            )
             return
         view = self._conversation
         before = len(view.document.spans)
         view.set_messages(session.messages)
         view.focus_last_prompt()
-        self._say(Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before))
+        self._feedback.say(
+            Announce.CONVERSATION_REFRESHED, count=max(0, len(view.document.spans) - before)
+        )
 
     def _on_rename_conversation(self, _event: wx.CommandEvent) -> None:
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)
         if name is not None:
             self._set_conversation_name(name)
-            self._say(Announce.CONVERSATION_RENAMED, name=name)
+            self._feedback.say(Announce.CONVERSATION_RENAMED, name=name)
 
     def _on_new_branch(self, _event: wx.CommandEvent) -> None:
         # Until the Claude runner exists a branch keeps the text on screen under a new name.
@@ -475,7 +477,7 @@ class MainWindow(wx.Frame):
             return
         self._branch_count = 0  # the new branch starts its own numbering
         self._start_new_conversation(name)  # a branch is a session of its own
-        self._say(Announce.CONVERSATION_BRANCHED, name=name)
+        self._feedback.say(Announce.CONVERSATION_BRANCHED, name=name)
 
     def _on_export(self, _event: wx.CommandEvent) -> None:
         with wx.FileDialog(
@@ -485,30 +487,32 @@ class MainWindow(wx.Frame):
             wildcard=_("Text files (*.txt)|*.txt|Markdown files (*.md)|*.md"),
             style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
         ) as dialog:
-            if self._modal(dialog) != wx.ID_OK:
+            if self._feedback.modal(dialog) != wx.ID_OK:
                 return
             path = Path(dialog.GetPath())
         try:
             export_text(path, self._conversation.GetValue())
         except ExportError as error:
-            self._show_error(_("Cannot export the conversation.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Cannot export the conversation.\n{error}").format(error=error)
+            )
             return
-        self._say(Announce.CONVERSATION_EXPORTED, path=path)
+        self._feedback.say(Announce.CONVERSATION_EXPORTED, path=path)
 
     def _on_choose_agent(self, _event: wx.CommandEvent) -> None:
         with AgentDialog(self, self._agent) as dialog:
-            if self._modal(dialog) == wx.ID_OK:
+            if self._feedback.modal(dialog) == wx.ID_OK:
                 self._agent = dialog.agent
                 self._remember_conversation()
-                self._say(Announce.AGENT_UPDATED)
+                self._feedback.say(Announce.AGENT_UPDATED)
 
     def _on_preferences(self, _event: wx.CommandEvent) -> None:
         with PreferencesDialog(self, self._settings) as dialog:
-            if self._modal(dialog) == wx.ID_OK:
+            if self._feedback.modal(dialog) == wx.ID_OK:
                 dialog.apply(self._settings)
                 self._conversation.set_show_hidden(not self._settings.hide_system_messages)
                 self._apply_shortcuts()
-                self._apply_screen_reader_output()
+                self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
                 self._apply_claude_path()
                 self._save_settings()
 
@@ -522,9 +526,11 @@ class MainWindow(wx.Frame):
         if folder is None:
             return
         if not folder.is_dir():
-            self._show_error(_("The folder {folder} no longer exists.").format(folder=folder))
+            self._feedback.show_error(
+                _("The folder {folder} no longer exists.").format(folder=folder)
+            )
         elif not desktop.launch_folder(folder):
-            self._show_error(
+            self._feedback.show_error(
                 _("The folder {folder} cannot be opened in the file explorer.").format(
                     folder=folder
                 )
@@ -532,7 +538,7 @@ class MainWindow(wx.Frame):
 
     def _on_about(self, _event: wx.CommandEvent) -> None:
         message = _("WxClaude {version}").format(version=__version__)
-        self._message_box(message, _("About"), wx.ICON_INFORMATION)
+        self._feedback.message_box(message, _("About"), wx.ICON_INFORMATION)
 
     # Prompt ----------------------------------------------------------------------------------
 
@@ -565,7 +571,7 @@ class MainWindow(wx.Frame):
         try:
             self._runner.start(request, self._post_event)
         except (ClaudeNotFoundError, RunnerError) as error:
-            self._show_error(_("Claude cannot be started.\n{error}").format(error=error))
+            self._feedback.show_error(_("Claude cannot be started.\n{error}").format(error=error))
             return False
         self._busy = True
         self._turn_agent = agent
@@ -619,21 +625,23 @@ class MainWindow(wx.Frame):
         if rule and rule in self._turn_allowed:
             decision = Decision(Choice.ALLOW)
         else:
-            self._set_status(
-                self._announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
+            self._feedback.set_status(
+                self._feedback.announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
             )
             decision = self._ask_permission(request)
         try:
             if decision.choice is Choice.DENY:
                 self._runner.deny(request, decision.denial_message())
-                self._say(Announce.PERMISSION_REFUSED, tool=request.tool_name)
+                self._feedback.say(Announce.PERMISSION_REFUSED, tool=request.tool_name)
                 return
             if decision.choice is Choice.ALLOW_ALWAYS and rule:
                 self._remember_always_allowed(rule)
             self._runner.allow(request)
-            self._say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
+            self._feedback.say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
         except RunnerError as error:
-            self._show_error(_("Claude could not be answered.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Claude could not be answered.\n{error}").format(error=error)
+            )
 
     def _remember_always_allowed(self, rule: str) -> None:
         """Write the rule in the personal settings file, and keep it for the rest of the message."""
@@ -643,12 +651,14 @@ class MainWindow(wx.Frame):
         try:
             allow_always(self._workspace, rule)
         except ClaudeSettingsError as error:
-            self._show_error(_("The rule could not be saved.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("The rule could not be saved.\n{error}").format(error=error)
+            )
 
     def _ask_permission(self, request: PermissionRequest) -> Decision:
         """Show the question; closing the dialog without answering is a denial."""
         with PermissionDialog(self, request) as dialog:
-            self._modal(dialog)
+            self._feedback.modal(dialog)
             decision: Decision = dialog.decision
         return decision
 
@@ -660,26 +670,28 @@ class MainWindow(wx.Frame):
         with WorkspaceSettingsDialog(
             self, tool_settings, local_only=self._settings.local_tools_only
         ) as dialog:
-            if self._modal(dialog) != wx.ID_OK:
+            if self._feedback.modal(dialog) != wx.ID_OK:
                 return
         try:
             written = tool_settings.save()
         except ClaudeSettingsError as error:
-            self._show_error(_("The settings could not be saved.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("The settings could not be saved.\n{error}").format(error=error)
+            )
             return
         if written:
-            self._say(Announce.WORKSPACE_SETTINGS_SAVED)
+            self._feedback.say(Announce.WORKSPACE_SETTINGS_SAVED)
 
     def _show_progress(self, progress: Progress) -> None:
         """Progress goes to the status bar, and to the screen reader if the option is on."""
-        text = self._announcements.text(progress.announce, **progress.values)
+        text = self._feedback.announcements.text(progress.announce, **progress.values)
         if text == self._last_progress:
             return
         self._last_progress = text
         if self._settings.announce_progress:
-            self._say(progress.announce, **progress.values)
+            self._feedback.say(progress.announce, **progress.values)
         else:
-            self._set_status(text)
+            self._feedback.set_status(text)
 
     def _finish_turn(self, ended: TurnEnded) -> None:
         self._busy = False
@@ -688,13 +700,13 @@ class MainWindow(wx.Frame):
         self._turn_result = None
         self._reconcile_with_session_file()
         if outcome.outcome is Outcome.DONE:
-            self._say(Announce.CLAUDE_DONE)
+            self._feedback.say(Announce.CLAUDE_DONE)
         elif outcome.outcome is Outcome.INTERRUPTED:
-            self._say(Announce.CLAUDE_INTERRUPTED)
+            self._feedback.say(Announce.CLAUDE_INTERRUPTED)
         else:
             first_line = outcome.details.splitlines()[0] if outcome.details else ""
-            self._say(Announce.CLAUDE_FAILED, details=first_line)
-            self._show_error(
+            self._feedback.say(Announce.CLAUDE_FAILED, details=first_line)
+            self._feedback.show_error(
                 _("Claude could not answer.\n{details}").format(details=outcome.details)
             )
 
@@ -706,7 +718,9 @@ class MainWindow(wx.Frame):
         try:
             session = read_session(path)
         except SessionReadError as error:
-            self._show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Cannot read the conversation.\n{error}").format(error=error)
+            )
             return
         view = self._conversation
         if view.shows(session.messages):
@@ -718,7 +732,7 @@ class MainWindow(wx.Frame):
 
     def _on_interrupt(self, _event: wx.CommandEvent) -> None:
         if self._busy:
-            self._say(Announce.CLAUDE_INTERRUPTING)
+            self._feedback.say(Announce.CLAUDE_INTERRUPTING)
             self._runner.interrupt()
 
     def _on_prompt_key(self, event: wx.KeyEvent) -> None:
@@ -740,74 +754,10 @@ class MainWindow(wx.Frame):
 
     # Misc ------------------------------------------------------------------------------------
 
-    def _say(self, announce: Announce, **values: object) -> None:
-        """Show an announcement in the status bar and send it to the screen reader output."""
-        self._set_status(self._announcements.notify(announce, **values))
-
-    def _set_status(self, text: str) -> None:
-        """The message field of the status bar (the first field is the position)."""
-        self.SetStatusText(text, _MESSAGE_FIELD)
-
-    def _show_position(self, number: int, total: int) -> None:
-        """First field of the status bar: the prompt the caret is in, 'Message 3 of 8'."""
-        text = _("Message {number} of {total}").format(number=number, total=total) if total else ""
-        self.SetStatusText(text, _POSITION_FIELD)
-
     def _apply_claude_path(self) -> None:
         """Tell the runner which claude executable to start: the chosen file, or the PATH."""
         settings = self._settings
         self._runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
-
-    def _apply_screen_reader_output(self) -> None:
-        """Connect the announcements to the output chosen in the options."""
-        if self._settings.screen_reader_output == self._output_id:
-            return
-        self._output_id = self._settings.screen_reader_output
-        try:
-            sink = create_sink(self._settings.screen_reader_output, self)
-        except ScreenReaderOutputError as error:
-            sink = NullMessageSink()
-            self._on_screen_reader_error(error)
-        self._announcements.message_sink.close()
-        self._announcements.message_sink = sink
-
-    def _on_screen_reader_error(self, error: ScreenReaderOutputError) -> None:
-        self._show_error(_("The screen reader output cannot be used.\n{error}").format(error=error))
-
-    def _modal(self, dialog: wx.Dialog) -> int:
-        """Show ``dialog``; when it closes the focus is back where it was (docs/focus.md)."""
-        focused = wx.Window.FindFocus()
-        try:
-            return int(dialog.ShowModal())
-        finally:
-            wx.CallAfter(self._restore_focus, focused)  # once the dialog is destroyed
-
-    def _restore_focus(self, focused: wx.Window | None) -> None:
-        """Put the focus back on ``focused`` unless it was deliberately moved inside the window."""
-        if self._closing or not self or not focused:
-            return
-        current = wx.Window.FindFocus()
-        if current is None or not self.IsDescendant(current):
-            focused.SetFocus()
-
-    def _message_box(self, message: str, caption: str, icon: int) -> None:
-        """A message with an OK button; the focus comes back where it was."""
-        with wx.MessageDialog(self, message, caption, wx.OK | icon) as dialog:
-            self._modal(dialog)
-
-    def _show_error(self, message: str) -> None:
-        self._message_box(message, _("Error"), wx.ICON_ERROR)
-
-    def _show_info(self, message: str) -> None:
-        self._message_box(message, _("Find in the conversation"), wx.ICON_INFORMATION)
-
-    def _show_file_warning(self, details: str) -> None:
-        """Tell the user that a file of the application was damaged (and what was done)."""
-        self._message_box(
-            _("A configuration file could not be read.\n{details}").format(details=details),
-            _("Warning"),
-            wx.ICON_WARNING,
-        )
 
     def _save_state(self) -> None:
         if self._state is None:
@@ -815,13 +765,15 @@ class MainWindow(wx.Frame):
         try:
             self._state.save()
         except JsonStoreError as error:
-            self._show_error(_("Cannot save the workspace data.\n{error}").format(error=error))
+            self._feedback.show_error(
+                _("Cannot save the workspace data.\n{error}").format(error=error)
+            )
 
     def _save_settings(self) -> None:
         try:
             self._settings.save()
         except SettingsError as error:
-            self._show_error(_("Cannot save the settings.\n{error}").format(error=error))
+            self._feedback.show_error(_("Cannot save the settings.\n{error}").format(error=error))
 
     def _on_close(self, event: wx.CloseEvent) -> None:
         self._closing = True

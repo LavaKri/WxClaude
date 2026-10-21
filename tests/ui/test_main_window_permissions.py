@@ -36,7 +36,7 @@ def _permission_setup(
 
     monkeypatch.setattr(window, "_ask_permission", ask)
     sink = RecordingMessageSink()
-    window._announcements.message_sink = sink
+    window._feedback.announcements.message_sink = sink
     return asked, log, sink
 
 
@@ -147,7 +147,7 @@ def _workspace_settings_edit(
         edit(dialog)
         return result
 
-    monkeypatch.setattr(window, "_modal", modal)
+    monkeypatch.setattr(window._feedback, "modal", modal)
     window._on_workspace_settings(wx.CommandEvent())
     return seen
 
@@ -156,7 +156,7 @@ def test_workspace_settings_deny_a_tool_in_the_shared_file(
     conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
 
     def edit(dialog: WorkspaceSettingsDialog) -> None:
         assert dialog.target is Source.SETTINGS  # the versioned file is the default

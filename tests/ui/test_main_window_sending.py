@@ -47,7 +47,7 @@ def test_sending_runs_claude_and_shows_the_answer(
 ) -> None:
     log = _use_log(monkeypatch, tmp_path)
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     assert conversation._busy
@@ -100,7 +100,7 @@ def test_progress_is_only_in_the_status_bar_when_it_is_not_announced(
 ) -> None:
     conversation._settings.announce_progress = False
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     _wait_until_idle(conversation)
@@ -113,7 +113,7 @@ def test_a_failure_is_announced_and_shown_in_a_dialog(
     monkeypatch.setenv("FAKE_CLAUDE", "crash")
     errors = _Errors(conversation)
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     _wait_until_idle(conversation)
@@ -143,7 +143,7 @@ def test_interrupting_stops_claude(
     monkeypatch.setenv("FAKE_CLAUDE", "slow")
     errors = _Errors(conversation)
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     assert conversation._menu.interrupt_item.IsEnabled()

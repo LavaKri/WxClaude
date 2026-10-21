@@ -26,9 +26,9 @@ def _search_window(conversation: MainWindow) -> tuple[MainWindow, RecordingMessa
         ]
     )
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     infos: list[str] = []
-    conversation._show_info = infos.append  # type: ignore[method-assign]
+    conversation._feedback.show_info = infos.append  # type: ignore[method-assign]
     return conversation, sink, infos
 
 
@@ -148,7 +148,7 @@ def test_a_workspace_without_conversation_focuses_the_view_and_says_so(
     conversation: MainWindow, tmp_path: Path
 ) -> None:
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     empty = tmp_path / "empty-workspace"
     empty.mkdir()
     conversation._prompt.SetFocus()

@@ -37,7 +37,7 @@ def _capture_dialogs(
         )
         return result
 
-    monkeypatch.setattr(window, "_modal", modal)
+    monkeypatch.setattr(window._feedback, "modal", modal)
     return states
 
 
@@ -113,7 +113,7 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
     copied: list[str] = []
     monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
     assert copied == [TABLE_AND_LINKS.text]
     assert sink.messages[-1] == "Message copied to the clipboard."
@@ -157,7 +157,7 @@ def test_a_link_of_another_kind_is_never_handed_to_the_system(
         dialog._list.SetSelection(1)  # the file: link
         return wx.ID_OPEN
 
-    monkeypatch.setattr(conversation, "_modal", modal)
+    monkeypatch.setattr(conversation._feedback, "modal", modal)
     opened: list[str] = []
     monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
     errors = _Errors(conversation)

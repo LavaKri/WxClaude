@@ -159,7 +159,7 @@ def test_refreshing_reads_the_session_file_again(
 
 def test_refreshing_a_conversation_without_history_says_so(conversation: MainWindow) -> None:
     sink = RecordingMessageSink()
-    conversation._announcements.message_sink = sink
+    conversation._feedback.announcements.message_sink = sink
     conversation._on_refresh_conversation(wx.CommandEvent())
     assert sink.messages == ["This conversation has no history yet."]
 
