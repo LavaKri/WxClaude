@@ -5,13 +5,12 @@ changes a lot. Only what was tested or read in the documentation is stated here.
 
 ## Running it
 
-- Non-interactive: `claude -p --input-format stream-json --output-format stream-json --verbose
-  --permission-prompt-tool stdio`. The prompt is one JSON line on stdin
-  (`{"type": "user", "message": {"role": "user", "content": "..."}}`), so there is no length limit
-  of a command line (verified; `--verbose` is required with `stream-json`). stdin stays open while
-  Claude works, to answer its permission questions; the process ends when stdin is closed after the
-  `result` line. One process per message (WxClaude does not keep a process open); the conversation continues with
-  `--resume <id>`.
+- Non-interactive: `claude -p --input-format stream-json --output-format stream-json --verbose`
+  plus a permission channel (see "Permission channels"). `--verbose` is required with `stream-json`.
+- Prompt: one JSON line on stdin (`{"type": "user", "message": {"role": "user", "content": "..."}}`),
+  no command-line length limit (verified). stdin stays open until the `result` line, then is
+  closed: the process ends (verified with both channels).
+- One process per message; the conversation continues with `--resume <id>`.
 - The application chooses the conversation id: `--session-id <uuid>` for the first message
   (verified: the session gets that id), `--resume <uuid>` afterwards. `--fork-session` with `--resume` creates a new id.
 - Per message: `--model` (aliases `haiku`, `sonnet`, `opus`, `fable`, or a full name), `--effort`
@@ -35,32 +34,59 @@ changes a lot. Only what was tested or read in the documentation is stated here.
 | `dontAsk` | reads in the working folders and pre-approved tools; anything else is denied |
 | `bypassPermissions` | everything (not offered by WxClaude) |
 
-## Permission questions (verified)
+## Permission channels
 
-With `--permission-prompt-tool stdio` (and `--input-format stream-json`) the CLI asks the host before
-it runs a tool that the permission mode does not allow. Without it, `-p` denies the tool at once
-(a `permission_denied` system line and a failed tool result); `--permission-prompts none` does the
-same on purpose.
+The CLI decides when a tool needs a permission; the host only answers. Without a channel, `-p`
+denies at once (`permission_denied` system line, failed tool result); `--permission-prompts none`
+does the same on purpose.
 
-- The question is a line on stdout: `{"type": "control_request", "request_id", "request": {"subtype":
-  "can_use_tool", "tool_name", "input", "description", "tool_use_id", "blocked_path",
-  "permission_suggestions": [...]}}`. The suggestions are rules to add (`{"type": "addRules",
-  "rules": [{"toolName": "Bash", "ruleContent": "touch x"}], "behavior": "allow", "destination":
-  "localSettings"}`), directories, and a permission mode.
-- The answer is a line on stdin: `{"type": "control_response", "response": {"subtype": "success",
-  "request_id", "response": {...}}}` where the inner response is `{"behavior": "allow",
-  "updatedInput": <the input>}` or `{"behavior": "deny", "message": "<text>"}`. Claude is told the
-  text as the result of the tool, so a denial can explain itself.
-- The suggested rule has `destination: localSettings`: in the CLI it is saved in
-  `.claude/settings.local.json`. In `-p` the host has to do it: WxClaude writes the *allow* rule there
-  (`permissions.allow`), and the CLI then does not ask any more, in this message or the next ones.
-- Verified in a real run, with a rule in `.claude/settings.local.json`: `allow` runs the tool without
-  a question, `deny` refuses it without a question (`permission_denied`), `ask` asks (even when an
-  allow rule also matches). Rules are merged across the settings files, deny first, then ask, then
-  allow; a bare `deny` rule on a tool removes the tool from Claude's context.
-- On Windows the personal file stays in the `.claude` folder of the workspace (the CLI only moves it
-  to the root of a git repository on other systems).
-- Some commands do not need an answer at all (`echo` runs under `manual`).
+Tests: CLI 2.1.286, Windows, `haiku`, effort `low`, 2026-10-22, empty folder, prompt on stdin.
+`[test]` = observed, `[doc]` = documentation only, `[not tested]`.
+
+### Retained: stdio control protocol and PermissionRequest HTTP hook
+
+| | Stdio control protocol (`stdio`) | PermissionRequest HTTP hook (`hook`) |
+|---|---|---|
+| Status in WxClaude | implemented | tested, not implemented |
+| Flags | `--permission-prompt-tool stdio` | `--settings '{"hooks": {"PermissionRequest": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:<port>/<token>", "timeout": <seconds>}]}]}}'` |
+| Channel | JSON lines, CLI stdout and stdin | HTTP POST from the CLI to a local server; the response is held until the user answers |
+| Needs besides the process | nothing | an HTTP server on `127.0.0.1` |
+| Request | `control_request`: `request_id`, `request` {`subtype` `can_use_tool`, `tool_name`, `input`, `description`, `tool_use_id`, `blocked_path`, `permission_suggestions`} | POST body: `cwd`, `hook_event_name`, `permission_mode`, `permission_suggestions`, `prompt_id`, `session_id`, `tool_input`, `tool_name`, `transcript_path`; no `tool_use_id` (the documentation lists it), no `description`, no `blocked_path` [test] |
+| Answer allow | `control_response` `{"subtype": "success", "request_id", "response": {"behavior": "allow", "updatedInput": <input>}}` | `{"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "allow"}}}`; file written in the same turn [test] |
+| Answer deny | same, `{"behavior": "deny", "message": "<text>"}`; Claude gets the text as the tool result | `{"behavior": "deny", "message": "<text>"}`; Claude gets the text as the tool result [test]; the CLI still sends `permission_denied` (`decision_reason_type` `hook`, `decision_reason`) and lists it in `result.permission_denials` [test] |
+| Other answer fields | not tested | `updatedInput`, `updatedPermissions`, `interrupt` [doc, not tested]; `decision.rule` appears in one documentation page [not tested] |
+| Waiting time | no limit known; closing stdin cancels the question [doc] | `timeout` in seconds, default 600 for most events [doc]. Expiry (`timeout` 10, no answer) [test]: the CLI waited, then denied as a plain `-p` denial (`permission_denied` without `decision_reason_type`, "you haven't granted it yet"), result `success`, Claude asks the user to approve; indistinguishable from a denial in the stream |
+| Switch of channel between two messages of a conversation | `--resume` works, context kept [test] | same [test] |
+| Mode `plan` | host receives `ExitPlanMode` (`input.plan`), then the `Write` request; after allow the file is created [test] | hook never called; Claude writes a plan file in `~/.claude/plans/`, has no tool to submit it [test] |
+| Mode `dontAsk` | host never called; `permission_denied` with `decision_reason_type` `mode`; Claude tries `Bash` [test] | same [test] |
+| Question tool `AskUserQuestion` | host receives it (`display_name`, `input`, `requires_user_interaction`, `subtype`, `tool_name`, `tool_use_id`); `input.questions[]`: `question`, `header`, `options[]` (`label`, `description`), `multiSelect`; answer `updatedInput` `{"questions": <same>, "answers": {"<question>": "<label>"}}`; Claude gets `Your questions have been answered: "<question>"="<label>"` [test] | tool absent (`ToolSearch` finds nothing) in `default` and `plan`; Claude asks in plain text [test] |
+| Suggested rule for `Write` | `setMode` `acceptEdits`, destination `session` [test] | same [test] |
+| Documentation | only through the Agent SDK (`canUseTool`); the flag value `stdio` is not in the CLI reference | hook type `http` and decision fields documented; the hooks reference says `PermissionRequest` does not fire in `-p` (page not read in full), the headless page says a `PermissionRequest` hook can approve in `-p`; observed: fires [test] |
+
+Differences in one line: the hook has no `AskUserQuestion`, no `ExitPlanMode`, no plan-mode
+request, no `description` or `blocked_path`, and needs a local HTTP server; the stdio protocol has
+all of them and needs nothing else. `dontAsk` is the same for both: nothing asks.
+
+### Not retained
+
+- **`PreToolUse` hook returning `defer`**: runs before rules and mode, so the application decides which calls need a permission; one stop and one resume per question. [not tested]
+- **MCP permission prompt tool** (`--permission-prompt-tool mcp__<server>__<tool>`): needs an MCP server (PyPI `mcp`, many dependencies), request and answer contract not in the pages read, 30 s wait for the server. [not tested]
+
+### Stdio: rules and answers
+
+- The suggestions are rules to add (`{"type": "addRules", "rules": [{"toolName": "Bash",
+  "ruleContent": "touch x"}], "behavior": "allow", "destination": "localSettings"}`), directories,
+  and a permission mode.
+- Destination `localSettings` = `.claude/settings.local.json` in the CLI. In `-p` the host writes it:
+  WxClaude writes the *allow* rule (`permissions.allow`); the CLI then does not ask any more, in
+  this message and the next ones.
+- Rule in `.claude/settings.local.json` [test]: `allow` runs without a question, `deny` refuses
+  without a question (`permission_denied`), `ask` asks (even with a matching allow rule).
+- Merge order across the settings files: deny, ask, allow; a bare `deny` rule removes the tool from
+  Claude's context.
+- Windows: the personal file stays in the `.claude` folder of the workspace (other systems: root of
+  the git repository).
+- Some commands need no answer (`echo` runs under `manual`).
 
 ## Settings files and permission rules (from the documentation)
 

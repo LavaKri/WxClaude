@@ -16,6 +16,7 @@ from wxclaude.core.events import (
     TurnEnded,
     TurnResult,
 )
+from wxclaude.core.permission_channel import StdioChannel
 from wxclaude.core.runner import ClaudeRunner, RunRequest, build_arguments, find_claude
 
 pytestmark = pytest.mark.unit
@@ -55,18 +56,18 @@ def _runner() -> ClaudeRunner:
 
 
 def test_the_arguments_of_a_new_and_of_a_resumed_conversation(tmp_path: Path) -> None:
-    new = build_arguments(_request(tmp_path))
+    new = build_arguments(_request(tmp_path), StdioChannel())
     assert new[-2:] == ["--session-id", "11111111-1111-4111-8111-111111111111"]
     assert new[new.index("--model") + 1] == "haiku"
     assert new[new.index("--effort") + 1] == "low"
     assert new[new.index("--permission-mode") + 1] == "manual"
     assert "--verbose" in new
-    assert build_arguments(_request(tmp_path, resume=True))[-2] == "--resume"
+    assert build_arguments(_request(tmp_path, resume=True), StdioChannel())[-2] == "--resume"
 
 
 def test_an_incomplete_agent_is_refused(tmp_path: Path) -> None:
     with pytest.raises(RunnerError):
-        build_arguments(_request(tmp_path, agent=Agent(model="haiku")))
+        build_arguments(_request(tmp_path, agent=Agent(model="haiku")), StdioChannel())
 
 
 def test_a_run_reports_its_events_in_order_and_ends_with_turn_ended(

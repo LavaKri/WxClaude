@@ -27,8 +27,9 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 1. `RunController` (`ui/run_controller.py`) builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
    session file exists, workspace) and calls `ClaudeRunner.start`. The view shows the prompt at
    once and the window is busy (Send greyed, Interrupt active).
-2. `ClaudeRunner` starts the process (`--input-format stream-json --output-format stream-json
-   --permission-prompt-tool stdio`) with three threads: stdout (each line is parsed by
+2. `ClaudeRunner` starts the process (`--input-format stream-json --output-format stream-json`
+   plus the arguments of its permission channel, `--permission-prompt-tool stdio` for
+   `StdioChannel`) with three threads: stdout (each line is parsed by
    `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt as a JSON
    line to stdin, waits for the end and sends `TurnEnded`, always the last event.
 3. Events reach the interface through `wx.CallAfter`. Text blocks are appended to the view;
@@ -62,6 +63,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `announcements.py` | `Announce` messages, `AnnouncementCenter` and the message sinks. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
+| `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel`. See `claude-cli.md`, "Permission channels". |
+| `process_input.py` | `ProcessInput`: the JSON lines written to the standard input of the process, from several threads, closed once. |
 | `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
 | `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |

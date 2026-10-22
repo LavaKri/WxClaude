@@ -10,7 +10,6 @@ from those threads; the interface must hand the event over to its own thread (``
 This module never imports ``wx``.
 """
 
-import json
 import shutil
 import subprocess
 import sys
@@ -23,6 +22,8 @@ from typing import IO
 from wxclaude.core.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
 from wxclaude.core.events import PermissionRequest, RunEvent, TurnEnded, TurnResult
+from wxclaude.core.permission_channel import STDIO, PermissionChannel, make_channel
+from wxclaude.core.process_input import ProcessInput
 from wxclaude.core.stream import parse_stream_line
 
 _KILL_WAIT_SECONDS = 5
@@ -43,7 +44,7 @@ class RunRequest:
     cwd: Path
 
 
-def build_arguments(request: RunRequest) -> list[str]:
+def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str]:
     """The arguments of ``claude`` for ``request`` (the prompt goes through stdin)."""
     agent = request.agent
     if not (agent.model and agent.effort and agent.permission_mode):
@@ -55,8 +56,7 @@ def build_arguments(request: RunRequest) -> list[str]:
         "--output-format",
         "stream-json",
         "--verbose",
-        "--permission-prompt-tool",
-        "stdio",
+        *channel.arguments(),
         "--model",
         agent.model,
         "--effort",
@@ -83,43 +83,13 @@ def find_claude(path: str = "") -> list[str]:
     return [found]
 
 
-class _Stdin:
-    """The standard input of the process: JSON lines written from several threads, closed once."""
-
-    def __init__(self, stream: IO[str] | None) -> None:
-        self._stream = stream
-        self._lock = threading.Lock()
-        self._closed = stream is None
-
-    def write(self, entry: dict[str, object]) -> None:
-        """Write ``entry`` as a line; raises ``RunnerError`` if the input is closed or broken."""
-        with self._lock:
-            if self._closed or self._stream is None:
-                raise RunnerError("Claude is not waiting for an answer.")
-            try:
-                self._stream.write(json.dumps(entry) + "\n")
-                self._stream.flush()
-            except OSError as error:
-                raise RunnerError(f"Claude cannot be reached: {error}") from error
-
-    def close(self) -> None:
-        """Close the input (the CLI then ends); harmless the second time or if it is broken."""
-        with self._lock:
-            if self._closed or self._stream is None:
-                return
-            self._closed = True
-            try:
-                self._stream.close()
-            except OSError:
-                return  # the process is gone: there is nothing left to close
-
-
 @dataclass(slots=True)
 class _Run:
     """What one message needs while it runs: its process, what it says and what it prints."""
 
     process: subprocess.Popen[str]
-    stdin: _Stdin
+    stdin: ProcessInput
+    channel: PermissionChannel
     prompt: str
     on_event: Callable[[RunEvent], None]
     diagnostics: list[str] = field(default_factory=list)  # lines that are not stream lines
@@ -133,8 +103,9 @@ class ClaudeRunner:
     def __init__(self, command: Sequence[str] | None = None) -> None:
         self._command = list(command) if command is not None else None
         self.claude_path = ""  # the claude executable chosen by hand; '' looks in the PATH
+        self.permission_channel = STDIO  # how the permission questions travel, per message
         self._process: subprocess.Popen[str] | None = None
-        self._stdin: _Stdin | None = None
+        self._channel: PermissionChannel | None = None
         self._interrupted = False
         self._lock = threading.Lock()
 
@@ -150,7 +121,8 @@ class ClaudeRunner:
         message is already running.
         """
         command = self._command if self._command is not None else find_claude(self.claude_path)
-        argv = [*command, *build_arguments(request)]
+        channel = make_channel(self.permission_channel)
+        argv = [*command, *build_arguments(request, channel)]
         with self._lock:
             if self._process is not None:
                 raise RunnerError("Claude is already answering.")
@@ -169,9 +141,11 @@ class ClaudeRunner:
             except OSError as error:
                 raise RunnerError(f"Cannot start {argv[0]}: {error}") from error
             self._process = process
-            self._stdin = stdin = _Stdin(process.stdin)
+            self._channel = channel
+            stdin = ProcessInput(process.stdin)
+            channel.bind(stdin)
             self._interrupted = False
-        run = _Run(process, stdin, request.prompt, on_event)
+        run = _Run(process, stdin, channel, request.prompt, on_event)
         run.readers = [
             threading.Thread(
                 target=self._read_stdout,
@@ -196,19 +170,10 @@ class ClaudeRunner:
 
     def _answer(self, request: PermissionRequest, body: dict[str, object]) -> None:
         with self._lock:
-            stdin = self._stdin
-        if stdin is None:
+            channel = self._channel
+        if channel is None:
             raise RunnerError("Claude is not waiting for an answer.")
-        stdin.write(
-            {
-                "type": "control_response",
-                "response": {
-                    "subtype": "success",
-                    "request_id": request.request_id,
-                    "response": body,
-                },
-            }
-        )
+        channel.answer(request.request_id, body)
 
     def interrupt(self) -> None:
         """Stop the running message (nothing happens if none runs)."""
@@ -222,7 +187,7 @@ class ClaudeRunner:
     @staticmethod
     def _read_stdout(
         stream: IO[str] | None,
-        stdin: _Stdin,
+        stdin: ProcessInput,
         on_event: Callable[[RunEvent], None],
         diagnostics: list[str],
     ) -> None:
@@ -255,7 +220,8 @@ class ClaudeRunner:
         with self._lock:
             interrupted = self._interrupted
             self._process = None
-            self._stdin = None
+            self._channel = None
+        run.channel.close()
         stderr = "".join(run.stderr_lines).strip()
         run.on_event(TurnEnded(exit_code, interrupted, stderr, run.diagnostics))
 

@@ -8,6 +8,7 @@ import pytest
 from wxclaude.core.agents import Agent
 from wxclaude.core.errors import RunnerError
 from wxclaude.core.events import PermissionRequest, RunEvent, ToolResult, TurnEnded
+from wxclaude.core.permission_channel import StdioChannel
 from wxclaude.core.runner import ClaudeRunner, RunRequest, build_arguments
 
 pytestmark = pytest.mark.unit
@@ -59,7 +60,7 @@ class Asker:
 
 
 def test_the_cli_is_started_in_stream_json_with_the_stdio_permission_tool(tmp_path: Path) -> None:
-    arguments = build_arguments(_request(tmp_path))
+    arguments = build_arguments(_request(tmp_path), StdioChannel())
     assert arguments[arguments.index("--input-format") + 1] == "stream-json"
     assert arguments[arguments.index("--output-format") + 1] == "stream-json"
     assert arguments[arguments.index("--permission-prompt-tool") + 1] == "stdio"
