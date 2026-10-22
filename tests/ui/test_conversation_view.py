@@ -1,8 +1,8 @@
 import pytest
 import wx
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.messages import Message, Role
+from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
 
 pytestmark = pytest.mark.ui

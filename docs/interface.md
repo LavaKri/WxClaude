@@ -22,7 +22,7 @@
   kept when Claude cannot be started.
 - **Step**: when Claude puts a task of its list in progress (`TaskUpdate` with the status
   `in_progress`, seen with the real CLI), the step is the place of that task in the task files of the
-  conversation (`core/tasks.py`). It is announced (category "Step in progress", instead of "Claude
+  conversation (`core/claude/tasks.py`). It is announced (category "Step in progress", instead of "Claude
   uses the tool TaskUpdate") and kept in the second status field until the end of the turn. A task
   that is not in the files gives the normal progress.
 - Window title: `<conversation> - <workspace> - WxClaude`, the parts that exist.

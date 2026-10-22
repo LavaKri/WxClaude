@@ -2,8 +2,8 @@
 
 import wx
 
+from wxclaude.core.config.settings import Settings, default_settings_path
 from wxclaude.core.errors import JsonStoreError
-from wxclaude.core.settings import Settings, default_settings_path
 from wxclaude.i18n import _, install
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.single_instance import (

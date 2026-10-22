@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import wx
 
-from wxclaude.core.claude_settings import Approval, Source, ToolSettings
+from wxclaude.core.claude.claude_settings import Approval, Source, ToolSettings
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 
 pytestmark = pytest.mark.ui

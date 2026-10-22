@@ -4,7 +4,7 @@ import pytest
 import wx
 from main_window_support import _runner, _settings
 
-from wxclaude.core.announcements import NullSoundPlayer
+from wxclaude.core.speech.announcements import NullSoundPlayer
 from wxclaude.ui.main_window import MainWindow
 
 

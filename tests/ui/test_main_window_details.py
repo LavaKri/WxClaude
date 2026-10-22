@@ -12,9 +12,9 @@ from main_window_support import (
     _session,
 )
 
-from wxclaude.core.announcements import RecordingMessageSink
-from wxclaude.core.details import DetailAction
-from wxclaude.core.messages import Message, Role
+from wxclaude.core.conversation.details import DetailAction
+from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.speech.announcements import RecordingMessageSink
 from wxclaude.ui import desktop
 from wxclaude.ui.main_window import MainWindow
 

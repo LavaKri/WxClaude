@@ -2,9 +2,9 @@
 
 import wx
 
-from wxclaude.core.events import PermissionRequest
+from wxclaude.core.claude.events import PermissionRequest
+from wxclaude.core.claude.permissions import Choice, Decision, describe_request
 from wxclaude.core.labels import accessible_name
-from wxclaude.core.permissions import Choice, Decision, describe_request
 from wxclaude.i18n import _
 
 _ALWAYS_ID = wx.ID_APPLY

@@ -163,7 +163,7 @@ the entries instead. One JSON object per line; interesting entries have `type` `
 - The title is written to the file by the CLI, asynchronously; a rename adds a `custom-title`
   entry with `customTitle` (repeated many times in a long session: the last one wins, and it takes
   precedence over a generated title).
-- Other entry types seen, ignored by `core/session_reader.py`: `attachment`, `queue-operation`,
+- Other entry types seen, ignored by `core/claude/session_reader.py`: `attachment`, `queue-operation`,
   `last-prompt`, `mode`, `cost-state`, `atis-latch`. Entries with `isMeta` or `isSidechain` are
   not part of the conversation. The `permissionMode` field is on user entries.
 - The reader (`read_session`) skips lines that are not valid JSON (the CLI may be writing one).

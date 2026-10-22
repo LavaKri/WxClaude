@@ -14,10 +14,10 @@ from main_window_support import (
     _settings,
 )
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import RecordingMessageSink
-from wxclaude.core.conversations import is_conversation_id
-from wxclaude.core.workspace_state import WorkspaceState
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.workspace_state import WorkspaceState
+from wxclaude.core.conversation.conversations import is_conversation_id
+from wxclaude.core.speech.announcements import RecordingMessageSink
 from wxclaude.ui import desktop
 from wxclaude.ui.main_window import MainWindow
 

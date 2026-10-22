@@ -9,7 +9,9 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.announcements import (
+from wxclaude.core.claude.session_reader import Session, read_session
+from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
+from wxclaude.core.speech.announcements import (
     Announce,
     AnnouncementCenter,
     Category,
@@ -17,9 +19,7 @@ from wxclaude.core.announcements import (
     NullMessageSink,
     SoundPlayer,
 )
-from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
-from wxclaude.core.session_reader import Session, read_session
-from wxclaude.core.sounds import WinsoundPlayer
+from wxclaude.core.speech.sounds import WinsoundPlayer
 from wxclaude.i18n import _
 from wxclaude.ui.message_sinks import create_sink
 

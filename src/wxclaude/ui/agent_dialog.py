@@ -2,7 +2,7 @@
 
 import wx
 
-from wxclaude.core.agents import Agent
+from wxclaude.core.config.agents import Agent
 from wxclaude.i18n import _
 from wxclaude.ui.agent_panel import AgentPanel
 

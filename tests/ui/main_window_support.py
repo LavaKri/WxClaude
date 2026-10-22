@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 import wx
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.conversations import new_conversation_id
-from wxclaude.core.runner import ClaudeRunner
-from wxclaude.core.settings import Settings
+from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.conversation.conversations import new_conversation_id
 from wxclaude.ui.main_window import MainWindow
 
 FAKE = Path(__file__).resolve().parent.parent / "fakes" / "fake_claude.py"

@@ -19,7 +19,7 @@ explanation field of the permission question, the shortcut list, the unnamed rea
   the line concerned, or a sound (Message.wav for the end of an answer, Permission.wav for a question of
   permission; two WAV files in `wxclaude/sounds`). The status bar is only written for a message:
   some screen readers read its changes by themselves, which would say what the user turned off.
-  The list of the announcements and their categories is `Announce` in `core/announcements.py`.
+  The list of the announcements and their categories is `Announce` in `core/speech/announcements.py`.
   Fixed announcements (no conversation in the workspace) are always a message. What the user asked
   for by an action (open a workspace, new conversation, resume, rename, copy, export, settings
   saved) is not announced: the interface shows it. A failure of Claude is in the status bar and a

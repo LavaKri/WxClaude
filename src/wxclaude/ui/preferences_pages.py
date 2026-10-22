@@ -9,11 +9,11 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.announcements import CATEGORIES
+from wxclaude.core.claude.permission_channel import CHANNEL_KINDS, HOOK, STDIO
+from wxclaude.core.config.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
 from wxclaude.core.labels import accessible_name
-from wxclaude.core.permission_channel import CHANNEL_KINDS, HOOK, STDIO
-from wxclaude.core.screen_reader import available_outputs, default_output, output_named
-from wxclaude.core.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
+from wxclaude.core.speech.announcements import CATEGORIES
+from wxclaude.core.speech.screen_reader import available_outputs, default_output, output_named
 from wxclaude.i18n import N_, _
 from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter
 from wxclaude.ui.agent_panel import AgentPanel, permission_levels_lines

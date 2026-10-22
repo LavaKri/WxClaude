@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 
 import wx
 
-from wxclaude.core.shortcuts import (
+from wxclaude.core.config.shortcuts import (
     ConfigurableCommand,
     ShortcutCheck,
     ShortcutProblem,

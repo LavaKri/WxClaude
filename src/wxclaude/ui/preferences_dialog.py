@@ -2,8 +2,8 @@
 
 import wx
 
-from wxclaude.core.settings import Settings
-from wxclaude.core.shortcuts import CONFIGURABLE_COMMANDS
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.config.shortcuts import CONFIGURABLE_COMMANDS
 from wxclaude.i18n import _
 from wxclaude.ui.preferences_pages import (
     AgentPage,

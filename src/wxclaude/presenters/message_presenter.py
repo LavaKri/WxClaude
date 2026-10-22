@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from wxclaude.core.claude_files import ClaudeFiles
-from wxclaude.core.details import DetailAction, Link, Table, message_details
+from wxclaude.core.claude.claude_files import ClaudeFiles
+from wxclaude.core.claude.plans import Plan
+from wxclaude.core.claude.tasks import TaskList
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.conversation.details import DetailAction, Link, Table, message_details
+from wxclaude.core.conversation.messages import Message, ToolUse
 from wxclaude.core.errors import PlanReadError, TaskReadError
-from wxclaude.core.messages import Message, ToolUse
-from wxclaude.core.plans import Plan
-from wxclaude.core.tasks import TaskList
-from wxclaude.core.usage import UsageTracker
 from wxclaude.i18n import _
 
 

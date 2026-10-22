@@ -21,7 +21,7 @@ dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `a
 the new list *Interface type* and spin control of Preferences > Claude, and the *Plan* dialog.
 
 Last work (permission channels), in order: the channel behind `PermissionChannel`, the HTTP hook
-(`core/hook_channel.py`), the choice in the Preferences, *Tools > Plan…*. What is left of it is in
+(`core/claude/hook_channel.py`), the choice in the Preferences, *Tools > Plan…*. What is left of it is in
 `open-questions.md`: the hook options not tested yet, the `&` of the Preferences labels. The help
 page (F1, Markdown in `src/wxclaude/help/`, rendered to HTML on opening) exists in French and
 English and grows with the features. The announcements are grouped in categories with a
@@ -80,7 +80,7 @@ question of permission).
 
 ## Done
 
-1. **Conversation model and history** (`core/messages.py`, `core/session_reader.py`).
+1. **Conversation model and history** (`core/conversation/messages.py`, `core/claude/session_reader.py`).
 2. **Display**: Markdown heading parser and navigation, `ConversationView`, resume a conversation,
    refresh (F5), hidden system messages option, search (Ctrl+F, F3, Shift+F3), the focus rules.
 3. **Runner**: `claude -p` in `stream-json`, reader threads, typed events, a fake `claude` for the
@@ -91,10 +91,10 @@ question of permission).
    that edits the allow / ask / deny rules of the settings files. The two permission channels
    (stdio protocol, HTTP hook) behind `PermissionChannel`, the choice and the waiting time in
    Preferences > Claude.
-5. **Details dialogs** (`core/details.py`, `ui/details_dialogs.py`, context menu of
+5. **Details dialogs** (`core/conversation/details.py`, `ui/details_dialogs.py`, context menu of
    `ConversationView`): tools used, tables, links, copy a message. **Claude usage** dialog
-   (`core/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
-   (`core/tasks.py`, `ui/tasks_dialog.py`). **Plans** of a conversation, to read (`core/plans.py`,
+   (`core/claude/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
+   (`core/claude/tasks.py`, `ui/tasks_dialog.py`). **Plans** of a conversation, to read (`core/claude/plans.py`,
    `ui/plans_dialog.py`, *Tools > Plan…*). The dialogs share `ui/list_dialog.py`.
    The context menu of the conversation is always ours (the native one of the field is never
    shown, see `conversation-display.md`).
@@ -112,7 +112,8 @@ question of permission).
    presenter and its wx view: sending a message (`RunPresenter`), the current conversation
    (`ConversationPresenter`), the workspaces, the search, the details of the messages, the files,
    the announcement categories of the Preferences. `MainWindow` only builds and wires them (under
-   300 lines).
+   300 lines). The files of Claude Code reach the presenters through `ClaudeFiles`, and `core/` is
+   grouped by subject: `claude/`, `conversation/`, `config/`, `speech/`.
 
 ## Next milestones
 

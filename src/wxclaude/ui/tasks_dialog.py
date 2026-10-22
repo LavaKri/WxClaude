@@ -2,8 +2,8 @@
 
 import wx
 
+from wxclaude.core.claude.tasks import TaskList
 from wxclaude.core.list_spec import ListSpec
-from wxclaude.core.tasks import TaskList
 from wxclaude.i18n import _
 from wxclaude.ui.list_dialog import ListDialog
 

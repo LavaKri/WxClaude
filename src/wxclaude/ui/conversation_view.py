@@ -4,10 +4,9 @@ from collections.abc import Callable
 
 import wx
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.conversation_document import ConversationDocument, MessageSpan
-from wxclaude.core.details import DetailAction, message_details
-from wxclaude.core.headings import (
+from wxclaude.core.conversation.conversation_document import ConversationDocument, MessageSpan
+from wxclaude.core.conversation.details import DetailAction, message_details
+from wxclaude.core.conversation.headings import (
     Heading,
     from_utf16,
     next_heading,
@@ -15,7 +14,8 @@ from wxclaude.core.headings import (
     previous_heading,
     to_utf16,
 )
-from wxclaude.core.messages import Message, Role
+from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}

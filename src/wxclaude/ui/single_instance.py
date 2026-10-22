@@ -13,7 +13,7 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.jsonstore import read_json, write_json
+from wxclaude.core.config.jsonstore import read_json, write_json
 
 INSTANCE_FILE_NAME = "instance.json"
 _SW_RESTORE = 9

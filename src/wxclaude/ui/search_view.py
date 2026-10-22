@@ -2,8 +2,8 @@
 
 import wx
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.search import SearchOptions
+from wxclaude.core.conversation.search import SearchOptions
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.search_dialog import SearchDialog

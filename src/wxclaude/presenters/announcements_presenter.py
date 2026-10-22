@@ -3,8 +3,8 @@ of each, edited until OK (see ``docs/accessibility.md``)."""
 
 from typing import Protocol
 
-from wxclaude.core.announcements import CATEGORIES, Category, Destination
-from wxclaude.core.settings import Settings
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.speech.announcements import CATEGORIES, Category, Destination
 from wxclaude.i18n import _
 
 

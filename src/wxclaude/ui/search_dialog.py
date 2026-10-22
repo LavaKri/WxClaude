@@ -2,8 +2,8 @@
 
 import wx
 
+from wxclaude.core.conversation.search import SearchOptions
 from wxclaude.core.labels import accessible_name
-from wxclaude.core.search import SearchOptions
 from wxclaude.i18n import _
 
 

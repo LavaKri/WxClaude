@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import Protocol
 
 from wxclaude import __version__
+from wxclaude.core.conversation.export import export_text
 from wxclaude.core.errors import ExportError, HelpError
-from wxclaude.core.export import export_text
 from wxclaude.core.help import write_help_page
 from wxclaude.i18n import _
 

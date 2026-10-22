@@ -11,7 +11,7 @@ The code follows Model-View-Presenter, moved to it one screen at a time:
   a presenter. The screens that have no presenter yet keep their logic here.
 - `tests/test_layers.py` checks that `core/` and `presenters/` never import `wx`.
 - The files of Claude Code (sessions, tasks, plans, projects, "always allow" rules) reach the
-  presenters through one contract, `ClaudeFiles` (`core/claude_files.py`): `DiskClaudeFiles` is
+  presenters through one contract, `ClaudeFiles` (`core/claude/claude_files.py`): `DiskClaudeFiles` is
   the real one, tested on disk in `tests/core/`; the tests of the presenters use
   `tests/presenters/fake_claude_files.py`, in memory. WxClaude's own files (settings, workspace
   state) stay with `Settings` and `WorkspaceState`.
@@ -62,39 +62,65 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 ## Modules of `core/`
 
+Grouped by subject (`working-rules.md`: split by subject, not by technical kind).
+
+### `core/claude/`: Claude Code (the CLI, its stream, its permission channels, its files)
+
 | Module | Role |
 |---|---|
-| `messages.py`, `session_reader.py` | `Message` (prompt or answer, with its hidden details) and the reader of the session files of the CLI. |
-| `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
-| `agents.py` | `Agent`: model, effort and permission mode (each optional); `over()` layers one on another; `DEFAULT_AGENT` is complete. Models are listed by ascending power. |
-| `settings.py` | `Settings`: JSON file in the user configuration folder; only invalid or unknown values are dropped. |
-| `jsonstore.py` | Reading and writing the JSON files: atomic write, `.bak` backup, damaged file set aside (`.corrupt`). |
-| `workspace_state.py` | `WorkspaceState`: per workspace, the current conversation and the name and main agent of each conversation (`workspaces/<hash>.json`). |
-| `shortcuts.py` | Configurable commands, shortcut notation (`Ctrl+Shift+O`), rules and conflicts. |
-| `workspaces.py` | Recent workspaces (missing folders are dropped) and how a workspace is listed. |
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
-| `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
-| `announcements.py` | `Announce` messages, their `Category` and the `Destination` chosen per category, `AnnouncementCenter`, the message sinks and the sound players. |
-| `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). |
+| `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage. |
 | `claude_files.py` | `ClaudeFiles` (Protocol): what the presenters read and write of the files of Claude Code; `DiskClaudeFiles`, the real one, built on the modules above. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
 | `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
 | `hook_channel.py` | `HookChannel`: a server on `127.0.0.1` (one per message, a token in the URL) that receives the POST of the CLI's `PermissionRequest` hook, hands it to the interface as a `PermissionRequest` event and writes the response from its own thread; the interface thread only stores the decision. A question nobody answers gives `PermissionExpired`. |
 | `process_input.py` | `ProcessInput`: the JSON lines written to the standard input of the process, from several threads, closed once. |
 | `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
-| `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
 | `claude_settings.py` | The permission rules of the settings files of Claude Code (general, Settings, SettingsLocal): read, merged state of a tool, edit in memory, atomic write. |
 | `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
-| `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
-| `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
-| `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
 | `usage.py` | `UsageTracker`: subscription gauges and tokens / cost spent, as lines of the usage dialog. |
 | `tasks.py` | The tasks Claude wrote for a session (`<config>/tasks/<id>/*.json`), read only. |
 | `plans.py` | The plans of a conversation: the `Write` calls of its session file to `<config>/plans/`, with their text (from the file, else from the session), read only. |
-| `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
+
+### `core/conversation/`: the conversation (messages, document, details, search, export)
+
+| Module | Role |
+|---|---|
+| `messages.py` | `Message`: a prompt or an answer, with its hidden details (tools, thinking, usage). |
+| `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
+| `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
+| `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
+| `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
 | `export.py` | Writes the conversation text to a file. |
+
+### `core/config/`: WxClaude's settings (agents, shortcuts, settings file, workspaces)
+
+| Module | Role |
+|---|---|
+| `agents.py` | `Agent`: model, effort and permission mode (each optional); `over()` layers one on another; `DEFAULT_AGENT` is complete. Models are listed by ascending power. |
+| `settings.py` | `Settings`: JSON file in the user configuration folder; only invalid or unknown values are dropped. |
+| `jsonstore.py` | Reading and writing the JSON files: atomic write, `.bak` backup, damaged file set aside (`.corrupt`). |
+| `workspace_state.py` | `WorkspaceState`: per workspace, the current conversation and the name and main agent of each conversation (`workspaces/<hash>.json`). |
+| `shortcuts.py` | Configurable commands, shortcut notation (`Ctrl+Shift+O`), rules and conflicts. |
+| `workspaces.py` | Recent workspaces (missing folders are dropped) and how a workspace is listed. |
+
+### `core/speech/`: what is said (announcements, screen reader outputs, sounds)
+
+| Module | Role |
+|---|---|
+| `announcements.py` | `Announce` messages, their `Category` and the `Destination` chosen per category, `AnnouncementCenter`, the message sinks and the sound players. |
+| `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). |
+| `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
+
+### `core/`: shared by all
+
+| Module | Role |
+|---|---|
+| `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
+| `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
+| `help.py` | The help page: the Markdown of a language (English as fallback) turned into an HTML file for the browser. |
 
 ## Modules of `presenters/`
 
@@ -121,7 +147,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
-| `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
+| `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/config/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs); `add_entries` appends and binds them. |
 | `main_menu.py` | `MainMenu`: the menu bar of the main window (tables, recent workspaces, shortcuts, greying), told what each item does by `MenuHandlers`. |

@@ -4,7 +4,7 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.claude_settings import (
+from wxclaude.core.claude.claude_settings import (
     Approval,
     Rule,
     Source,

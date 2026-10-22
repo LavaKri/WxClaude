@@ -11,10 +11,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from wxclaude.core.claude_files import ClaudeFiles
-from wxclaude.core.settings import Settings
-from wxclaude.core.workspace_state import WorkspaceState
-from wxclaude.core.workspaces import add_recent, remove_missing, workspace_label
+from wxclaude.core.claude.claude_files import ClaudeFiles
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.config.workspace_state import WorkspaceState
+from wxclaude.core.config.workspaces import add_recent, remove_missing, workspace_label
 from wxclaude.i18n import _
 
 

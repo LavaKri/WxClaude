@@ -2,8 +2,8 @@
 
 import pytest
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.search import SearchOptions
+from wxclaude.core.conversation.search import SearchOptions
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.presenters.search_presenter import SearchPresenter
 
 pytestmark = pytest.mark.unit

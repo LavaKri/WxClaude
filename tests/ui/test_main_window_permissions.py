@@ -10,10 +10,10 @@ from main_window_support import (
     _send,
 )
 
-from wxclaude.core.announcements import RecordingMessageSink
-from wxclaude.core.claude_settings import Approval, Source
-from wxclaude.core.events import PermissionExpired, PermissionRequest
-from wxclaude.core.permissions import DEFAULT_DENIAL, Choice, Decision
+from wxclaude.core.claude.claude_settings import Approval, Source
+from wxclaude.core.claude.events import PermissionExpired, PermissionRequest
+from wxclaude.core.claude.permissions import DEFAULT_DENIAL, Choice, Decision
+from wxclaude.core.speech.announcements import RecordingMessageSink
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 

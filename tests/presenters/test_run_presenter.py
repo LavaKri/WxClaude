@@ -6,8 +6,7 @@ from pathlib import Path
 import pytest
 from fake_claude_files import FakeClaudeFiles
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.events import (
+from wxclaude.core.claude.events import (
     AssistantText,
     PermissionExpired,
     PermissionRequest,
@@ -17,12 +16,13 @@ from wxclaude.core.events import (
     TurnEnded,
     TurnResult,
 )
-from wxclaude.core.messages import Message
-from wxclaude.core.permissions import Choice, Decision
-from wxclaude.core.runner import ClaudeRunner
-from wxclaude.core.settings import Settings
-from wxclaude.core.tasks import Task
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.claude.permissions import Choice, Decision
+from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.claude.tasks import Task
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.conversation.messages import Message
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.shared import Shared
 

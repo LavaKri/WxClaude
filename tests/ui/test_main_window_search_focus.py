@@ -10,9 +10,9 @@ from main_window_support import (
     _wait_until_idle,
 )
 
-from wxclaude.core.announcements import RecordingMessageSink
-from wxclaude.core.messages import Message, Role
-from wxclaude.core.search import SearchOptions
+from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.conversation.search import SearchOptions
+from wxclaude.core.speech.announcements import RecordingMessageSink
 from wxclaude.ui.main_window import MainWindow
 
 pytestmark = pytest.mark.ui

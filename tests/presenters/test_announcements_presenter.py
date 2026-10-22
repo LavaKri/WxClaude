@@ -2,8 +2,8 @@
 
 import pytest
 
-from wxclaude.core.announcements import CATEGORIES, END_OF_ANSWER, PROGRESS, Destination
-from wxclaude.core.settings import Settings
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.speech.announcements import CATEGORIES, END_OF_ANSWER, PROGRESS, Destination
 from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter
 
 pytestmark = pytest.mark.unit

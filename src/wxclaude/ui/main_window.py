@@ -4,18 +4,18 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.claude_files import DiskClaudeFiles
-from wxclaude.core.claude_settings import ToolSettings
-from wxclaude.core.errors import ClaudeSettingsError, SettingsError
-from wxclaude.core.runner import ClaudeRunner
-from wxclaude.core.settings import Settings
-from wxclaude.core.shortcuts import (
+from wxclaude.core.claude.claude_files import DiskClaudeFiles
+from wxclaude.core.claude.claude_settings import ToolSettings
+from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.config.shortcuts import (
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
     ConfigurableCommand,
 )
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.errors import ClaudeSettingsError, SettingsError
 from wxclaude.i18n import _
 from wxclaude.presenters.conversation_presenter import ConversationPresenter
 from wxclaude.presenters.file_presenter import FilePresenter

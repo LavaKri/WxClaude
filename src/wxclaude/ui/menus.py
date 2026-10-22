@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import wx
 
-from wxclaude.core.shortcuts import ConfigurableCommand
+from wxclaude.core.config.shortcuts import ConfigurableCommand
 
 
 class Needs(enum.Enum):

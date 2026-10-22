@@ -4,9 +4,9 @@ from collections.abc import Sequence
 
 import wx
 
-from wxclaude.core.details import Link, Table, tool_detail, tool_line
+from wxclaude.core.conversation.details import Link, Table, tool_detail, tool_line
+from wxclaude.core.conversation.messages import ToolUse
 from wxclaude.core.list_spec import ListSpec
-from wxclaude.core.messages import ToolUse
 from wxclaude.i18n import _
 from wxclaude.ui.list_dialog import ListDialog
 

@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from fake_claude_files import FakeClaudeFiles
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import Announce
-from wxclaude.core.messages import Message
-from wxclaude.core.settings import Settings
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.settings import Settings
+from wxclaude.core.conversation.messages import Message
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.presenters.conversation_presenter import ConversationPresenter
 from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter

@@ -7,14 +7,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import Announce
-from wxclaude.core.claude_projects import SessionInfo, choose_conversation
-from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
+from wxclaude.core.claude.claude_projects import SessionInfo, choose_conversation
+from wxclaude.core.claude.session_reader import Session
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.workspaces import describe
+from wxclaude.core.conversation.conversations import branch_name, default_name, new_conversation_id
+from wxclaude.core.conversation.messages import Message
 from wxclaude.core.errors import JsonStoreError, SessionReadError
-from wxclaude.core.messages import Message
-from wxclaude.core.session_reader import Session
-from wxclaude.core.workspaces import describe
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _
 from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspacePresenter

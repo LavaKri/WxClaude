@@ -14,17 +14,17 @@ from main_window_support import (
     _wait_until_idle,
 )
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import (
+from wxclaude.core.claude.claude_projects import claude_config_dir
+from wxclaude.core.claude.events import ToolUsed, TurnEnded, TurnResult
+from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.speech.announcements import (
     END_OF_ANSWER,
     PROGRESS,
     Destination,
     RecordingMessageSink,
     RecordingSoundPlayer,
 )
-from wxclaude.core.claude_projects import claude_config_dir
-from wxclaude.core.events import ToolUsed, TurnEnded, TurnResult
-from wxclaude.core.runner import ClaudeRunner
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.message_sinks import create_sink
 

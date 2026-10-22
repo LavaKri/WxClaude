@@ -4,10 +4,10 @@ from collections.abc import Callable
 
 import wx
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.events import PermissionRequest, RunEvent
-from wxclaude.core.messages import Message
-from wxclaude.core.permissions import Decision
+from wxclaude.core.claude.events import PermissionRequest, RunEvent
+from wxclaude.core.claude.permissions import Decision
+from wxclaude.core.conversation.messages import Message
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.permission_dialog import PermissionDialog

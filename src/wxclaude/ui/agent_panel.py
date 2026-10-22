@@ -2,7 +2,7 @@
 
 import wx
 
-from wxclaude.core.agents import EFFORTS, MODELS, PERMISSION_MODES, Agent
+from wxclaude.core.config.agents import EFFORTS, MODELS, PERMISSION_MODES, Agent
 from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import N_, _
 

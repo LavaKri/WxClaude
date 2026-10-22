@@ -3,9 +3,9 @@
 
 import wx
 
-from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import Announce
-from wxclaude.core.messages import Message
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.conversation.messages import Message
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView

@@ -1,8 +1,8 @@
 import pytest
 import wx
 
-from wxclaude.core.events import PermissionRequest
-from wxclaude.core.permissions import Choice
+from wxclaude.core.claude.events import PermissionRequest
+from wxclaude.core.claude.permissions import Choice
 from wxclaude.ui.permission_dialog import PermissionDialog
 
 pytestmark = pytest.mark.ui

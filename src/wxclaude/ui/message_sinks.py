@@ -2,8 +2,8 @@
 
 import wx
 
-from wxclaude.core import screen_reader
-from wxclaude.core.announcements import MessageSink, NullMessageSink
+from wxclaude.core.speech import screen_reader
+from wxclaude.core.speech.announcements import MessageSink, NullMessageSink
 from wxclaude.ui.uia_provider import UiaProvider
 
 _ACTIVITY_ID = "wxclaude.announcement"

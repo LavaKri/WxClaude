@@ -5,11 +5,11 @@ from collections.abc import Sequence
 import pytest
 from fake_claude_files import FakeClaudeFiles
 
-from wxclaude.core.details import DetailAction, Link, Table
-from wxclaude.core.messages import Message, Role, ToolUse
-from wxclaude.core.plans import Plan
-from wxclaude.core.tasks import Task, TaskList
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.claude.plans import Plan
+from wxclaude.core.claude.tasks import Task, TaskList
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.conversation.details import DetailAction, Link, Table
+from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.presenters.message_presenter import LinkAction, LinkChoice, MessagePresenter
 
 pytestmark = pytest.mark.unit

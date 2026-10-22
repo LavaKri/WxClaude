@@ -6,12 +6,12 @@ The real files are tested once, in ``tests/core/``; here a test only says what C
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from wxclaude.core.claude_projects import ClaudeProject, SessionInfo
+from wxclaude.core.claude.claude_projects import ClaudeProject, SessionInfo
+from wxclaude.core.claude.plans import Plan
+from wxclaude.core.claude.session_reader import Session
+from wxclaude.core.claude.tasks import Task, TaskList
+from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.errors import SessionReadError
-from wxclaude.core.messages import Message, Role
-from wxclaude.core.plans import Plan
-from wxclaude.core.session_reader import Session
-from wxclaude.core.tasks import Task, TaskList
 
 
 @dataclass(slots=True)

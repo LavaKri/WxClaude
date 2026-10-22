@@ -1,7 +1,7 @@
 # Conversation display
 
-Specification decided with the user. Implemented: `core/headings.py` (parser, navigation, UTF-16),
-`core/conversation_document.py` (text and message spans), `ui/conversation_view.py` (the field and
+Specification decided with the user. Implemented: `core/conversation/headings.py` (parser, navigation, UTF-16),
+`core/conversation/conversation_document.py` (text and message spans), `ui/conversation_view.py` (the field and
 its keys). The system messages are hidden by default (Preferences > Workspace > "Hide the
 system messages"). Where the focus and the caret go when the text changes is in `focus.md`;
 search is in `interface.md`.
@@ -89,7 +89,7 @@ nothing is announced, the user asked for it), and last *Next heading* (`T`) and 
   the turn is over). A dialog lists the tools, one per line (`Bash, git status, failed`: name, what
   it worked on, and "failed" if it did), and a read-only field gives everything about the selected
   one (each argument, then the result).
-- **Show the table…** when the caret is on a line of a table (`core/details.py`, the parser with the
+- **Show the table…** when the caret is on a line of a table (`core/conversation/details.py`, the parser with the
   `table` rule; a table inside a code block is not one). The dialog lists the rows, one per line
   (`Name: a.txt, Size: 3`, empty cells left out), and *Copy the table* puts its Markdown on the
   clipboard.

@@ -1,9 +1,9 @@
 import pytest
 import wx
 
-from wxclaude.core.details import DetailAction, Link, message_details
-from wxclaude.core.messages import Message, Role, ToolUse
-from wxclaude.core.tasks import Task, TaskList
+from wxclaude.core.claude.tasks import Task, TaskList
+from wxclaude.core.conversation.details import DetailAction, Link, message_details
+from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
 from wxclaude.ui.tasks_dialog import TasksDialog

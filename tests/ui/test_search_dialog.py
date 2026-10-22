@@ -1,7 +1,7 @@
 import pytest
 import wx
 
-from wxclaude.core.search import SearchOptions
+from wxclaude.core.conversation.search import SearchOptions
 from wxclaude.ui.search_dialog import SearchDialog
 
 pytestmark = pytest.mark.ui

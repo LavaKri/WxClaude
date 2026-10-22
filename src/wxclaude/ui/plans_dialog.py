@@ -2,8 +2,8 @@
 
 import wx
 
+from wxclaude.core.claude.plans import Plan
 from wxclaude.core.list_spec import ListSpec
-from wxclaude.core.plans import Plan
 from wxclaude.i18n import _
 from wxclaude.ui.list_dialog import ListDialog
 

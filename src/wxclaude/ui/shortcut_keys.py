@@ -2,7 +2,7 @@
 
 import wx
 
-from wxclaude.core.shortcuts import normalize_shortcut
+from wxclaude.core.config.shortcuts import normalize_shortcut
 
 _NAMED_KEY_CODES = {
     wx.WXK_RETURN: "Enter",

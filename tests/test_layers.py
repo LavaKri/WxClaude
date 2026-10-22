@@ -14,8 +14,8 @@ _WX_IMPORT = re.compile(r"^\s*(import wx\b|from wx\b)", re.MULTILINE)
 @pytest.mark.parametrize("layer", ["core", "presenters"])
 def test_the_layer_does_not_import_wx(layer: str) -> None:
     offenders = [
-        path.name
-        for path in sorted((PACKAGE / layer).glob("*.py"))
+        str(path.relative_to(PACKAGE))
+        for path in sorted((PACKAGE / layer).rglob("*.py"))
         if _WX_IMPORT.search(path.read_text(encoding="utf-8"))
     ]
     assert offenders == []

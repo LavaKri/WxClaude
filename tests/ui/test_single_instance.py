@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import wx
 
-from wxclaude.core.jsonstore import write_json
+from wxclaude.core.config.jsonstore import write_json
 from wxclaude.ui.single_instance import (
     acquire_single_instance,
     instance_file,

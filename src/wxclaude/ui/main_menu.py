@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import wx
 
-from wxclaude.core.shortcuts import (
+from wxclaude.core.config.shortcuts import (
     FIND_COMMAND,
     FIND_NEXT_COMMAND,
     FIND_PREVIOUS_COMMAND,
@@ -22,7 +22,7 @@ from wxclaude.core.shortcuts import (
     USAGE_COMMAND,
     ConfigurableCommand,
 )
-from wxclaude.core.workspaces import workspace_label
+from wxclaude.core.config.workspaces import workspace_label
 from wxclaude.i18n import _
 from wxclaude.ui.menus import SEPARATOR, MenuEntry, MenuRegistry, Needs, add_entries
 

@@ -4,10 +4,10 @@ from collections.abc import Callable, Sequence
 
 import wx
 
-from wxclaude.core.details import Link, Table
-from wxclaude.core.messages import Message, ToolUse
-from wxclaude.core.plans import Plan
-from wxclaude.core.tasks import TaskList
+from wxclaude.core.claude.plans import Plan
+from wxclaude.core.claude.tasks import TaskList
+from wxclaude.core.conversation.details import Link, Table
+from wxclaude.core.conversation.messages import Message, ToolUse
 from wxclaude.presenters.message_presenter import LinkAction, LinkChoice
 from wxclaude.ui import desktop
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog

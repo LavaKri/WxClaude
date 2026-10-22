@@ -2,8 +2,8 @@
 
 from typing import Protocol
 
-from wxclaude.core.announcements import Announce
-from wxclaude.core.search import SearchOptions, find_next, find_previous, line_at
+from wxclaude.core.conversation.search import SearchOptions, find_next, find_previous, line_at
+from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _
 
 

@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 
-from wxclaude.core.claude_files import ClaudeFiles
-from wxclaude.core.settings import Settings
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.claude.claude_files import ClaudeFiles
+from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.settings import Settings
 
 
 @dataclass(frozen=True, slots=True)

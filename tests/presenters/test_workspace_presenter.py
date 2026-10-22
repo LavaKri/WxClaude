@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from fake_claude_files import FakeClaudeFiles
 
-from wxclaude.core.settings import Settings
+from wxclaude.core.config.settings import Settings
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
 
 pytestmark = pytest.mark.unit
