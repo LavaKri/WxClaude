@@ -13,8 +13,6 @@ from typing import Protocol
 
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce, AnnouncementCenter
-from wxclaude.core.claude_projects import find_session_file
-from wxclaude.core.claude_settings import allow_always
 from wxclaude.core.errors import (
     ClaudeNotFoundError,
     ClaudeSettingsError,
@@ -36,11 +34,9 @@ from wxclaude.core.messages import Message, Role
 from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
-from wxclaude.core.session_reader import read_session
-from wxclaude.core.settings import Settings
-from wxclaude.core.tasks import load_tasks, started_task_id, step_of
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.tasks import started_task_id, step_of
 from wxclaude.i18n import _
+from wxclaude.presenters.shared import Shared
 
 
 class RunView(Protocol):
@@ -101,17 +97,17 @@ class RunPresenter:
         self,
         view: RunView,
         runner: ClaudeRunner,
-        settings: Settings,
-        usage: UsageTracker,
+        shared: Shared,
         links: RunLinks,
     ) -> None:
         self._view = view
         self.runner = runner
-        self._settings = settings
-        self._usage = usage
+        self._settings = shared.settings
+        self._usage = shared.usage
+        self._files = shared.files
         self._links = links
         self._busy = False  # True while Claude is answering
-        self._turn_agent = settings.default_agent  # the agent of the message being answered
+        self._turn_agent = shared.settings.default_agent  # the agent of the message being answered
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
@@ -133,7 +129,7 @@ class RunPresenter:
             text,
             agent,
             conversation_id,
-            find_session_file(conversation_id) is not None,
+            self._files.find_session(conversation_id) is not None,
             workspace,
         )
         self.runner.permission_channel = self._settings.permission_channel
@@ -210,7 +206,7 @@ class RunPresenter:
         if task_id is None:
             return False
         try:
-            tasks = load_tasks(self._links.conversation_id())
+            tasks = self._files.load_tasks(self._links.conversation_id())
         except TaskReadError as error:
             self._view.show_error(_("Cannot read the tasks.\n{error}").format(error=error))
             return False
@@ -252,7 +248,7 @@ class RunPresenter:
         if workspace is None:
             return
         try:
-            allow_always(workspace, rule)
+            self._files.allow_always(workspace, rule)
         except ClaudeSettingsError as error:
             self._view.show_error(_("The rule could not be saved.\n{error}").format(error=error))
 
@@ -294,11 +290,11 @@ class RunPresenter:
 
     def _reconcile_with_session_file(self) -> None:
         """The session file of the CLI is the reference: the view shows it."""
-        path = find_session_file(self._links.conversation_id())
+        path = self._files.find_session(self._links.conversation_id())
         if path is None:
             return
         try:
-            session = read_session(path)
+            session = self._files.read_session(path)
         except SessionReadError as error:
             self._view.show_error(_("Cannot read the conversation.\n{error}").format(error=error))
             return

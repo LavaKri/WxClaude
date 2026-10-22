@@ -1,15 +1,14 @@
 """The presenter of the messages and their details, with a fake view: no wx, no window."""
 
-import json
 from collections.abc import Sequence
-from pathlib import Path
 
 import pytest
+from fake_claude_files import FakeClaudeFiles
 
 from wxclaude.core.details import DetailAction, Link, Table
 from wxclaude.core.messages import Message, Role, ToolUse
 from wxclaude.core.plans import Plan
-from wxclaude.core.tasks import TaskList
+from wxclaude.core.tasks import Task, TaskList
 from wxclaude.core.usage import UsageTracker
 from wxclaude.presenters.message_presenter import LinkAction, LinkChoice, MessagePresenter
 
@@ -73,21 +72,19 @@ class FakeView:
         self.errors.append(message)
 
 
-@pytest.fixture(autouse=True)
-def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    folder = tmp_path / "claude-config"
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
-    return folder
-
-
 @pytest.fixture
 def view() -> FakeView:
     return FakeView()
 
 
 @pytest.fixture
-def presenter(view: FakeView) -> MessagePresenter:
-    return MessagePresenter(view, lambda: CONVERSATION, UsageTracker())
+def files() -> FakeClaudeFiles:
+    return FakeClaudeFiles()
+
+
+@pytest.fixture
+def presenter(view: FakeView, files: FakeClaudeFiles) -> MessagePresenter:
+    return MessagePresenter(view, lambda: CONVERSATION, UsageTracker(), files)
 
 
 def test_a_message_and_its_exchange_are_copied(view: FakeView, presenter: MessagePresenter) -> None:
@@ -138,12 +135,9 @@ def test_a_browser_that_refuses_is_reported(view: FakeView, presenter: MessagePr
 
 
 def test_the_tasks_of_the_conversation_are_read_and_shown(
-    view: FakeView, presenter: MessagePresenter, claude_config: Path
+    view: FakeView, presenter: MessagePresenter, files: FakeClaudeFiles
 ) -> None:
-    folder = claude_config / "tasks" / CONVERSATION
-    folder.mkdir(parents=True)
-    task = {"id": "1", "subject": "Alpha", "status": "pending"}
-    (folder / "1.json").write_text(json.dumps(task), encoding="utf-8")
+    files.tasks[CONVERSATION] = [Task("1", "Alpha", "", "pending")]
     presenter.show_tasks()
     (tasks,) = view.shown
     assert isinstance(tasks, TaskList)

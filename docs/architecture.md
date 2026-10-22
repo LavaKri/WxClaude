@@ -10,6 +10,11 @@ The code follows Model-View-Presenter, moved to it one screen at a time:
 - `ui/`: the wx views: windows, dialogs, controls, and the classes that implement the `Protocol` of
   a presenter. The screens that have no presenter yet keep their logic here.
 - `tests/test_layers.py` checks that `core/` and `presenters/` never import `wx`.
+- The files of Claude Code (sessions, tasks, plans, projects, "always allow" rules) reach the
+  presenters through one contract, `ClaudeFiles` (`core/claude_files.py`): `DiskClaudeFiles` is
+  the real one, tested on disk in `tests/core/`; the tests of the presenters use
+  `tests/presenters/fake_claude_files.py`, in memory. WxClaude's own files (settings, workspace
+  state) stay with `Settings` and `WorkspaceState`.
 - Worker threads (CLI readers) never touch wx; they hand their events to the view, which posts
   them to the UI with `wx.CallAfter`.
 - The rules of structure and size of the code are in `working-rules.md`.
@@ -71,6 +76,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `announcements.py` | `Announce` messages, their `Category` and the `Destination` chosen per category, `AnnouncementCenter`, the message sinks and the sound players. |
 | `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). |
+| `claude_files.py` | `ClaudeFiles` (Protocol): what the presenters read and write of the files of Claude Code; `DiskClaudeFiles`, the real one, built on the modules above. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
 | `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
 | `hook_channel.py` | `HookChannel`: a server on `127.0.0.1` (one per message, a token in the URL) that receives the POST of the CLI's `PermissionRequest` hook, hands it to the interface as a `PermissionRequest` event and writes the response from its own thread; the interface thread only stores the decision. A question nobody answers gives `PermissionExpired`. |
@@ -94,6 +100,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 | Module | Role |
 |---|---|
+| `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
 | `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window; what is remembered in the workspace file. |
 | `workspace_presenter.py` | `WorkspacePresenter`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |

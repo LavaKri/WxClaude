@@ -9,15 +9,14 @@ from typing import Protocol
 
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce
-from wxclaude.core.claude_projects import SessionInfo, choose_conversation, list_sessions
+from wxclaude.core.claude_projects import SessionInfo, choose_conversation
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.errors import JsonStoreError, SessionReadError
 from wxclaude.core.messages import Message
-from wxclaude.core.session_reader import Session, read_session
-from wxclaude.core.settings import Settings
-from wxclaude.core.usage import UsageTracker
+from wxclaude.core.session_reader import Session
 from wxclaude.core.workspaces import describe
 from wxclaude.i18n import _
+from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspacePresenter
 
 
@@ -89,19 +88,19 @@ class ConversationPresenter:
     def __init__(
         self,
         view: ConversationView,
-        settings: Settings,
+        shared: Shared,
         workspaces: WorkspacePresenter,
-        usage: UsageTracker,
         state_changed: Callable[[], None],
     ) -> None:
         self._view = view
-        self._settings = settings
+        self._settings = shared.settings
+        self._usage = shared.usage
+        self._files = shared.files
         self._workspaces = workspaces
-        self._usage = usage
         self._state_changed = state_changed
         self.conversation_id = ""
         self.name = ""
-        self.agent = settings.default_agent  # the main agent of the conversation
+        self.agent = shared.settings.default_agent  # the main agent of the conversation
         self._branch_count = 0  # branches made from the current conversation
 
     def agent_for(self, *, alternative: bool) -> Agent:
@@ -135,7 +134,7 @@ class ConversationPresenter:
         state = self._workspaces.state
         if state is None:
             return
-        sessions = list_sessions(workspace)
+        sessions = self._files.list_sessions(workspace)
         state.forget_missing({session.id for session in sessions})
         chosen = choose_conversation(sessions, state.current_conversation)
         if chosen is not None:
@@ -174,7 +173,7 @@ class ConversationPresenter:
         workspace = self._workspaces.workspace
         if workspace is None:
             return
-        sessions = list_sessions(workspace)
+        sessions = self._files.list_sessions(workspace)
         if not sessions:
             self._view.show_error(_("This workspace has no conversation yet."))
             return
@@ -188,7 +187,7 @@ class ConversationPresenter:
         workspace = self._workspaces.workspace
         if workspace is None or not self.conversation_id:
             return
-        found = [s for s in list_sessions(workspace) if s.id == self.conversation_id]
+        found = [s for s in self._files.list_sessions(workspace) if s.id == self.conversation_id]
         if not found:
             self._view.say(Announce.CONVERSATION_NOT_SAVED)
             return
@@ -273,7 +272,7 @@ class ConversationPresenter:
 
     def _read(self, path: Path) -> Session | None:
         try:
-            return read_session(path)
+            return self._files.read_session(path)
         except SessionReadError as error:
             self._view.show_error(_("Cannot read the conversation.\n{error}").format(error=error))
             return None

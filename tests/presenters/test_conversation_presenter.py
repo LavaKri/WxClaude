@@ -1,10 +1,9 @@
 """The presenter of the current conversation, with a fake window: no wx, no window."""
 
-import json
-from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from fake_claude_files import FakeClaudeFiles
 
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce
@@ -12,6 +11,7 @@ from wxclaude.core.messages import Message
 from wxclaude.core.settings import Settings
 from wxclaude.core.usage import UsageTracker
 from wxclaude.presenters.conversation_presenter import ConversationPresenter
+from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
 
 pytestmark = pytest.mark.unit
@@ -83,29 +83,10 @@ class FakeWorkspaceView:
         raise AssertionError(details)
 
 
-@pytest.fixture(autouse=True)
-def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    folder = tmp_path / "claude-config"
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
-    return folder
-
-
-def _session(claude_config: Path, workspace: Path, identifier: str, prompt: str) -> None:
-    folder = claude_config / "projects" / "folder"
-    folder.mkdir(parents=True, exist_ok=True)
-    entry = {
-        "type": "user",
-        "cwd": str(workspace),
-        "uuid": f"u-{identifier}",
-        "timestamp": datetime.now(UTC).isoformat(),
-        "message": {"role": "user", "content": prompt},
-    }
-    (folder / f"{identifier}.jsonl").write_text(json.dumps(entry), encoding="utf-8")
-
-
 def _presenters(
-    tmp_path: Path,
+    tmp_path: Path, files: FakeClaudeFiles | None = None
 ) -> tuple[ConversationPresenter, FakeScreen, WorkspacePresenter, Settings]:
+    files = files or FakeClaudeFiles()
     settings = Settings.load(tmp_path / "config" / "settings.json")
     screen = FakeScreen()
     holder: list[ConversationPresenter] = []
@@ -115,10 +96,9 @@ def _presenters(
         changed=lambda: holder[0].update_title(),
         save_settings=lambda: None,
     )
-    workspaces = WorkspacePresenter(FakeWorkspaceView(), settings, links)
-    conversations = ConversationPresenter(
-        screen, settings, workspaces, UsageTracker(), lambda: None
-    )
+    workspaces = WorkspacePresenter(FakeWorkspaceView(), settings, links, files)
+    shared = Shared(settings, UsageTracker(), files)
+    conversations = ConversationPresenter(screen, shared, workspaces, lambda: None)
     holder.append(conversations)
     return conversations, screen, workspaces, settings
 
@@ -157,12 +137,11 @@ def test_a_cancelled_name_changes_nothing(tmp_path: Path) -> None:
     assert settings.conversation_counter == 1
 
 
-def test_the_most_recent_conversation_is_selected_and_refreshed(
-    tmp_path: Path, claude_config: Path
-) -> None:
-    identifier = "d278c1fc-1d73-4c16-a899-5bdb1831fe5c"
-    _session(claude_config, tmp_path, identifier, "Hello")
-    conversations, screen, workspaces, _settings = _presenters(tmp_path)
+def test_the_most_recent_conversation_is_selected_and_refreshed(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "older", "Before")
+    identifier = files.add_session(tmp_path, "newer", "Hello").id
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
     workspaces.open(tmp_path)
     assert conversations.conversation_id == identifier
     assert [message.text for message in screen.messages] == ["Hello"]
@@ -170,18 +149,28 @@ def test_the_most_recent_conversation_is_selected_and_refreshed(
     assert screen.said[-1] is Announce.CONVERSATION_REFRESHED
 
 
-def test_resume_lists_the_conversations_of_the_workspace(
-    tmp_path: Path, claude_config: Path
-) -> None:
-    conversations, screen, workspaces, _settings = _presenters(tmp_path)
+def test_resume_lists_the_conversations_of_the_workspace(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
     workspaces.open(tmp_path)
     conversations.resume()
     assert screen.errors == ["This workspace has no conversation yet."]
-    _session(claude_config, tmp_path, "aaaaaaaa-1d73-4c16-a899-5bdb1831fe5c", "One")
-    screen.index = 0
+    files.add_session(tmp_path, "one", "One")
+    files.add_session(tmp_path, "two", "Two")
+    screen.index = 1  # the list is the most recent first: "one"
     conversations.resume()
     assert screen.calls[-2:] == ["clear prompt", "focus view"]
-    assert conversations.conversation_id.startswith("aaaaaaaa")
+    assert conversations.conversation_id == "one"
+
+
+def test_a_session_that_cannot_be_read_is_reported(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    info = files.add_session(tmp_path, "broken", "x")
+    del files.contents[info.path]
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    assert conversations.conversation_id == ""
+    assert screen.errors == ["Cannot read the conversation.\nCannot read broken.jsonl"]
 
 
 def test_a_branch_proposes_a_numbered_name_and_starts_a_new_identifier(tmp_path: Path) -> None:

@@ -1,10 +1,10 @@
 """The presenter of a message sent to Claude, with a fake view: no wx, no window."""
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
+from fake_claude_files import FakeClaudeFiles
 
 from wxclaude.core.announcements import Announce
 from wxclaude.core.events import (
@@ -21,8 +21,10 @@ from wxclaude.core.messages import Message
 from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.runner import ClaudeRunner
 from wxclaude.core.settings import Settings
+from wxclaude.core.tasks import Task
 from wxclaude.core.usage import UsageTracker
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
+from wxclaude.presenters.shared import Shared
 
 pytestmark = pytest.mark.unit
 
@@ -90,22 +92,18 @@ class FakeRunner(ClaudeRunner):
         self.answers.append(("deny", message))
 
 
-@pytest.fixture(autouse=True)
-def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    folder = tmp_path / "claude-config"
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
-    return folder
-
-
-def _presenter(view: FakeView, workspace: Path) -> tuple[RunPresenter, FakeRunner]:
+def _presenter(
+    view: FakeView, workspace: Path, files: FakeClaudeFiles | None = None
+) -> tuple[RunPresenter, FakeRunner]:
     runner = FakeRunner()
+    shared = Shared(Settings.load(None), UsageTracker(), files or FakeClaudeFiles())
     links = RunLinks(
         workspace=lambda: workspace,
         conversation_id=lambda: CONVERSATION,
         is_closing=lambda: False,
         state_changed=lambda: None,
     )
-    return RunPresenter(view, runner, Settings.load(None), UsageTracker(), links), runner
+    return RunPresenter(view, runner, shared, links), runner
 
 
 def test_progress_is_said_once_and_the_answer_is_shown(tmp_path: Path) -> None:
@@ -150,14 +148,14 @@ def test_always_allow_writes_the_rule_and_is_not_asked_again_in_the_message(
     tmp_path: Path,
 ) -> None:
     view = FakeView(Decision(Choice.ALLOW_ALWAYS))
-    presenter, runner = _presenter(view, tmp_path)
+    files = FakeClaudeFiles()
+    presenter, runner = _presenter(view, tmp_path, files)
     request = PermissionRequest("r1", "Bash", "t", {}, "", "", "Bash(touch x)")
     presenter.on_event(request)
     presenter.on_event(PermissionRequest("r2", "Bash", "t", {}, "", "", "Bash(touch x)"))
     assert len(view.asked) == 1
     assert runner.answers == [("allow", "r1"), ("allow", "r2")]
-    local = json.loads((tmp_path / ".claude" / "settings.local.json").read_text(encoding="utf-8"))
-    assert local["permissions"]["allow"] == ["Bash(touch x)"]
+    assert files.rules == [(tmp_path, "Bash(touch x)")]
 
 
 def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
@@ -176,15 +174,10 @@ def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
     assert Announce.PERMISSION_EXPIRED in view.announces()
 
 
-def test_a_step_put_in_progress_replaces_the_tool_progress(
-    tmp_path: Path, claude_config: Path
-) -> None:
-    folder = claude_config / "tasks" / CONVERSATION
-    folder.mkdir(parents=True)
-    task = {"id": "1", "subject": "Alpha", "status": "pending"}
-    (folder / "1.json").write_text(json.dumps(task), encoding="utf-8")
+def test_a_step_put_in_progress_replaces_the_tool_progress(tmp_path: Path) -> None:
+    files = FakeClaudeFiles(tasks={CONVERSATION: [Task("1", "Alpha", "", "pending")]})
     view = FakeView()
-    presenter, _runner = _presenter(view, tmp_path)
+    presenter, _runner = _presenter(view, tmp_path, files)
     presenter.on_event(ToolUsed("t", "TaskUpdate", {"taskId": "1", "status": "in_progress"}))
     assert view.steps == ["Step 1 of 1: Alpha"]
     assert view.said == [(Announce.STEP_STARTED, {"number": 1, "total": 1, "subject": "Alpha"})]
@@ -196,7 +189,8 @@ def test_nothing_is_started_without_a_workspace() -> None:
     view = FakeView()
     runner = FakeRunner()
     links = RunLinks(lambda: None, lambda: CONVERSATION, lambda: False, lambda: None)
-    presenter = RunPresenter(view, runner, Settings.load(None), UsageTracker(), links)
+    shared = Shared(Settings.load(None), UsageTracker(), FakeClaudeFiles())
+    presenter = RunPresenter(view, runner, shared, links)
     assert not presenter.start("hello", Settings.load(None).default_agent)
     assert not presenter.busy
     assert view.messages == []

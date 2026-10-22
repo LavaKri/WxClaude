@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+from fake_claude_files import FakeClaudeFiles
 
 from wxclaude.core.settings import Settings
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
@@ -51,18 +52,13 @@ class Window:
         )
 
 
-@pytest.fixture(autouse=True)
-def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    folder = tmp_path / "claude-config"
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
-    return folder
-
-
 def _presenter(
     view: FakeView, settings: Settings | None = None
 ) -> tuple[WorkspacePresenter, Window]:
     window = Window()
-    presenter = WorkspacePresenter(view, settings or Settings.load(None), window.links())
+    presenter = WorkspacePresenter(
+        view, settings or Settings.load(None), window.links(), FakeClaudeFiles()
+    )
     return presenter, window
 
 

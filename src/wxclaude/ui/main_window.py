@@ -5,6 +5,7 @@ from pathlib import Path
 import wx
 
 from wxclaude.core.agents import Agent
+from wxclaude.core.claude_files import DiskClaudeFiles
 from wxclaude.core.claude_settings import ToolSettings
 from wxclaude.core.errors import ClaudeSettingsError, SettingsError
 from wxclaude.core.runner import ClaudeRunner
@@ -21,6 +22,7 @@ from wxclaude.presenters.file_presenter import FilePresenter
 from wxclaude.presenters.message_presenter import MessagePresenter
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.search_presenter import SearchPresenter
+from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
 from wxclaude.ui.conversation_screen import WxConversationScreen
 from wxclaude.ui.conversation_view import ConversationView
@@ -47,6 +49,8 @@ class MainWindow(wx.Frame):
         self._settings = settings
         self._closing = False
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
+        self._files_of_claude = DiskClaudeFiles()  # sessions, tasks, plans, rules of Claude Code
+        self._shared = Shared(settings, self._usage, self._files_of_claude)
         self._create_helpers()
         self._build_panel(runner or ClaudeRunner())
         self._build_menu_bar()
@@ -78,6 +82,7 @@ class MainWindow(wx.Frame):
                 changed=lambda: self._workspace_changed(),
                 save_settings=lambda: self._save_settings(),
             ),
+            self._files_of_claude,
         )
         self._actions = MessagePresenter(
             WxMessageView(
@@ -85,6 +90,7 @@ class MainWindow(wx.Frame):
             ),
             lambda: self.conversation_id,
             self._usage,
+            self._files_of_claude,
         )
 
     def _build_panel(self, runner: ClaudeRunner) -> None:
@@ -102,8 +108,7 @@ class MainWindow(wx.Frame):
         self._run = RunPresenter(
             self._run_view,
             runner,
-            self._settings,
-            self._usage,
+            self._shared,
             RunLinks(
                 workspace=lambda: self._workspaces.workspace,
                 conversation_id=lambda: self.conversation_id,
@@ -142,9 +147,8 @@ class MainWindow(wx.Frame):
         panel.SetSizer(sizer)
         self._conversations = ConversationPresenter(
             WxConversationScreen(self, self._conversation, self._prompt, self._feedback),
-            self._settings,
+            self._shared,
             self._workspaces,
-            self._usage,
             lambda: self._refresh_enabled(),
         )
 

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
-from wxclaude.core.claude_projects import list_projects
+from wxclaude.core.claude_files import ClaudeFiles
 from wxclaude.core.settings import Settings
 from wxclaude.core.workspace_state import WorkspaceState
 from wxclaude.core.workspaces import add_recent, remove_missing, workspace_label
@@ -52,8 +52,11 @@ class WorkspaceLinks:
 class WorkspacePresenter:
     """The current workspace and the ways to open another one."""
 
-    def __init__(self, view: WorkspaceView, settings: Settings, links: WorkspaceLinks) -> None:
+    def __init__(
+        self, view: WorkspaceView, settings: Settings, links: WorkspaceLinks, files: ClaudeFiles
+    ) -> None:
         self._view = view
+        self._files = files
         self._settings = settings
         self._links = links
         self.workspace: Path | None = None
@@ -88,7 +91,7 @@ class WorkspacePresenter:
 
     def choose_project(self) -> None:
         """Open one of the folders Claude Code has already worked in."""
-        projects = list_projects()
+        projects = self._files.list_projects()
         if not projects:
             self._view.show_error(_("Claude Code has no project yet."))
             return

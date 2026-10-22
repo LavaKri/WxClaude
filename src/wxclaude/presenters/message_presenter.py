@@ -8,11 +8,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
+from wxclaude.core.claude_files import ClaudeFiles
 from wxclaude.core.details import DetailAction, Link, Table, message_details
 from wxclaude.core.errors import PlanReadError, TaskReadError
 from wxclaude.core.messages import Message, ToolUse
-from wxclaude.core.plans import Plan, load_plans
-from wxclaude.core.tasks import TaskList, load_tasks
+from wxclaude.core.plans import Plan
+from wxclaude.core.tasks import TaskList
 from wxclaude.core.usage import UsageTracker
 from wxclaude.i18n import _
 
@@ -84,16 +85,21 @@ class MessagePresenter:
     """
 
     def __init__(
-        self, view: MessageView, conversation_id: Callable[[], str], usage: UsageTracker
+        self,
+        view: MessageView,
+        conversation_id: Callable[[], str],
+        usage: UsageTracker,
+        files: ClaudeFiles,
     ) -> None:
         self._view = view
+        self._files = files
         self._conversation_id = conversation_id
         self._usage = usage
 
     def show_tasks(self) -> None:
         """The tasks Claude wrote for this conversation (read from its task folder)."""
         try:
-            tasks = load_tasks(self._conversation_id())
+            tasks = self._files.load_tasks(self._conversation_id())
         except TaskReadError as error:
             self._view.show_error(_("Cannot read the tasks.\n{error}").format(error=error))
             return
@@ -102,7 +108,7 @@ class MessagePresenter:
     def show_plans(self) -> None:
         """The plans Claude wrote in this conversation (named by its session file)."""
         try:
-            plans = load_plans(self._conversation_id())
+            plans = self._files.load_plans(self._conversation_id())
         except PlanReadError as error:
             self._view.show_error(_("Cannot read the plans.\n{error}").format(error=error))
             return
