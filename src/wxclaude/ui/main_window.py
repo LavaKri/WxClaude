@@ -203,6 +203,7 @@ class MainWindow(wx.Frame):
                 find_next=lambda _event: search.find_next(),
                 find_previous=lambda _event: search.find_previous(),
                 tasks=lambda _event: self._actions.show_tasks(),
+                plans=lambda _event: self._actions.show_plans(),
                 usage=lambda _event: self._actions.show_usage(),
                 open_workspace_folder=lambda _event: self._files.open_folder(
                     self._workspaces.workspace

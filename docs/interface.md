@@ -31,8 +31,9 @@ the last prompt), Rename, New conversation branch (provisional: a new identifier
 Delete (greyed until it is built), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
-**Tools**: Task list (Ctrl+T, as in the CLI), Claude usage (Ctrl+Shift+U), Open the workspace folder
-(in the file explorer; needs a workspace), Workspace settings (needs a workspace), Preferences.
+**Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open
+the workspace folder (in the file explorer; needs a workspace), Workspace settings (needs a
+workspace), Preferences.
 
 The context menu of the conversation (tools used, table, links, copy) is in
 `conversation-display.md`, with the usage dialog.
@@ -46,6 +47,18 @@ when it still waits for tasks that are not completed, `blocked by 3 4`; for exam
 blocked by 1`. A read-only field below gives the description of the selected task. A file that is not
 a readable task is named on the last line of the list. Without any task the list says so. The
 dialog shows what the folder holds when it opens; it is not refreshed while it is open.
+
+## Plan
+
+*Tools > Plan…* shows the plans Claude wrote in the current conversation (in the mode *Plan only
+(plan)*), to read them; there is nothing to approve here. It needs a conversation, like the task
+list, and is never greyed for lack of a plan: without any, the list says "No plan in this
+conversation yet.". A list, one plan per line (the name of its file, `<config>/plans/<name>.md`;
+`, file missing, text from the session` when the file is gone), the last one selected; a read-only
+field below gives the text of the selected plan. The plans are the `Write` calls of the session file
+to the plans folder, so it is the same with the stdio protocol and with the HTTP hook
+(`claude-cli.md`, "Permission channels"); the text is read from the file, which Claude may have
+edited since. The dialog shows what exists when it opens.
 
 **Help**: About.
 

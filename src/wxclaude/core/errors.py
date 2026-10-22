@@ -29,6 +29,10 @@ class TaskReadError(WxClaudeError):
     """The folder holding the tasks of a session cannot be read."""
 
 
+class PlanReadError(WxClaudeError):
+    """The session file that names the plans of a conversation cannot be read."""
+
+
 class ScreenReaderOutputError(WxClaudeError):
     """A message cannot be sent to the screen reader (or its output cannot be set up)."""
 

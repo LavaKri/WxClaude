@@ -1,4 +1,5 @@
-"""Tests of the main window: details of the messages (context menu actions), usage and task list."""
+"""Tests of the main window: details of the messages (context menu actions), usage, task list and
+plans."""
 
 import json
 from pathlib import Path
@@ -8,6 +9,7 @@ import wx
 from main_window_support import (
     _Errors,
     _send,
+    _session,
 )
 
 from wxclaude.core.announcements import RecordingMessageSink
@@ -197,6 +199,55 @@ def test_the_task_list_reads_the_tasks_of_the_conversation(
     states = _capture_dialogs(conversation, monkeypatch)
     conversation._actions.show_tasks()
     assert states[0]["lines"] == ["1, Write, in progress"]
+
+
+def _plan_item(window: MainWindow) -> wx.MenuItem:
+    return next(item for item in window._menu.needs_conversation if item.GetItemLabel() == "Pla&n…")
+
+
+def test_the_plan_item_is_greyed_without_a_conversation(window: MainWindow) -> None:
+    assert not _plan_item(window).IsEnabled()
+
+
+def test_the_plan_item_is_available_with_a_conversation(conversation: MainWindow) -> None:
+    assert _plan_item(conversation).IsEnabled()
+
+
+def test_the_plan_dialog_lists_the_plans_of_the_conversation_and_selects_the_last(
+    conversation: MainWindow, claude_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan_file = claude_config / "plans" / "calm-fox.md"
+    plan_file.parent.mkdir(parents=True)
+    plan_file.write_text("# The plan", encoding="utf-8")
+    other = claude_config / "plans" / "later.md"
+    other.write_text("# Later", encoding="utf-8")
+    _session(
+        claude_config, conversation._workspaces.workspace, identifier=conversation.conversation_id
+    )
+    session_file = next((claude_config / "projects" / "folder").glob("*.jsonl"))
+    entries = [json.loads(line) for line in session_file.read_text(encoding="utf-8").splitlines()]
+    for index, path in enumerate((plan_file, other)):
+        entries[1]["message"]["content"].append(
+            {
+                "type": "tool_use",
+                "id": f"t{index}",
+                "name": "Write",
+                "input": {"file_path": str(path), "content": "x"},
+            }
+        )
+    session_file.write_text("\n".join(json.dumps(entry) for entry in entries), encoding="utf-8")
+    states = _capture_dialogs(conversation, monkeypatch)
+    conversation._actions.show_plans()
+    assert states[0]["lines"] == ["calm-fox.md", "later.md"]
+    assert states[0]["selection"] == 1
+
+
+def test_the_plan_dialog_of_a_conversation_without_plan_says_so(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    states = _capture_dialogs(conversation, monkeypatch)
+    conversation._actions.show_plans()
+    assert states[0]["lines"] == ["No plan in this conversation yet."]
 
 
 def test_the_task_list_of_a_conversation_without_tasks_says_so(

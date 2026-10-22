@@ -50,6 +50,7 @@ class MenuHandlers:
     find_next: Handler
     find_previous: Handler
     tasks: Handler
+    plans: Handler
     usage: Handler
     open_workspace_folder: Handler
     workspace_settings: Handler
@@ -152,6 +153,7 @@ class MainMenu:
         h = self._handlers
         return [
             MenuEntry(_("Task &list…"), h.tasks, TASKS_COMMAND, Needs.CONVERSATION),
+            MenuEntry(_("Pla&n…"), h.plans, needs=Needs.CONVERSATION),
             MenuEntry(_("Claude &usage…"), h.usage, USAGE_COMMAND),
             MenuEntry(
                 _("Open the workspace &folder"), h.open_workspace_folder, needs=Needs.WORKSPACE

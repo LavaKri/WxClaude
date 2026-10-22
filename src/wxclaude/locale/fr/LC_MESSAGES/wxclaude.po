@@ -425,6 +425,31 @@ msgstr "La sortie vers le lecteur d'écran est inutilisable.\n{error}"
 msgid "Task &list…"
 msgstr "Liste de &tâches…"
 
+msgid "Pla&n…"
+msgstr "Pla&n…"
+
+msgid "Plan"
+msgstr "Plan"
+
+msgid "&Plans"
+msgstr "&Plans"
+
+msgid "&Text of the plan"
+msgstr "&Texte du plan"
+
+msgid "No plan in this conversation yet."
+msgstr "Aucun plan dans cette conversation pour l'instant."
+
+msgid "{name}, file missing, text from the session"
+msgstr "{name}, fichier absent, texte tiré de la session"
+
+msgid ""
+"Cannot read the plans.\n"
+"{error}"
+msgstr ""
+"Impossible de lire les plans.\n"
+"{error}"
+
 msgid "Task list"
 msgstr "Liste de tâches"
 

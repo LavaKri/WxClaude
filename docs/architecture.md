@@ -76,6 +76,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
 | `usage.py` | `UsageTracker`: subscription gauges and tokens / cost spent, as lines of the usage dialog. |
 | `tasks.py` | The tasks Claude wrote for a session (`<config>/tasks/<id>/*.json`), read only. |
+| `plans.py` | The plans of a conversation: the `Write` calls of its session file to `<config>/plans/`, with their text (from the file, else from the session), read only. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 | `export.py` | Writes the conversation text to a file. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
@@ -104,7 +105,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
 | `list_dialog.py` | `ListDialog(parent, spec, actions)`: a list of lines (from a `ListSpec`), the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
-| `tasks_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; tools used, rows of a table and links of a message; usage of Claude. |
+| `tasks_dialog.py`, `plans_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; plans; tools used, rows of a table and links of a message; usage of Claude. |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |

@@ -80,7 +80,8 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
 5. **Details dialogs** (`core/details.py`, `ui/details_dialogs.py`, context menu of
    `ConversationView`): tools used, tables, links, copy a message. **Claude usage** dialog
    (`core/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
-   (`core/tasks.py`, `ui/tasks_dialog.py`). All three dialogs share `ui/list_dialog.py`.
+   (`core/tasks.py`, `ui/tasks_dialog.py`). **Plans** of a conversation, to read (`core/plans.py`,
+   `ui/plans_dialog.py`, *Tools > Plan…*). The dialogs share `ui/list_dialog.py`.
    The context menu of the conversation is always ours (the native one of the field is never
    shown, see `conversation-display.md`).
 6. Around them: skeleton and menus, Preferences (General, Claude, Workspace, Agent, Shortcuts,
@@ -102,8 +103,8 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
 7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
    manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
-   settings, the menu to read the plan of a conversation, the tools announced by the CLI added to
-   the list, and the other settings of the `.claude` files.
+   settings, the tools announced by the CLI added to the list, and the other settings of the
+   `.claude` files.
 
 ## Working notes for a new session
 

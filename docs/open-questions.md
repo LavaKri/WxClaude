@@ -6,13 +6,6 @@ the file it belongs to and delete it from this one.
 
 ## To decide
 
-- **Read the plan of a conversation.** A menu item "Plan…" (always enabled with a conversation, as
-  Task list) opening a read-only dialog, for both permission channels: the plan is a `Write` of
-  the session file to `~/.claude/plans/<name>.md`; with the stdio protocol the result of
-  `ExitPlanMode` also says "Your plan has been saved to: <path>". To check before building: the
-  folder of the plans may be configurable, and one case only was seen (haiku). The `ListDialog`
-  can list the plans of the conversation, the text of the selected one as its detail.
-
 - **Help page in HTML.** A page of help, opened from the Help menu, that explains WxClaude to the
   user. It would hold, among other things, what the two interface types do (Preferences, Claude):
   the stdio protocol brings every permission question, the structured questions of Claude and the
@@ -27,6 +20,11 @@ the file it belongs to and delete it from this one.
 
 ## To verify
 
+- **Plans.** *Tools > Plan…* finds the plans as the `Write` calls of the session file to
+  `<config>/plans/`; only that case was seen (haiku, two runs). The folder of the plans may be
+  configurable (not checked), and a plan may also be written by another tool. With the stdio
+  protocol the `ExitPlanMode` request holds the text of the plan (`input.plan`) and its result says
+  where it was saved: not used.
 - **HTTP hook channel, not tested yet.** `updatedPermissions` (a rule for the session), `interrupt`,
   `decision.rule` (one documentation page), a waiting time above 10 minutes (the maximum accepted
   by the CLI), `tool_use_id` (the documentation lists it, the real POST has none).

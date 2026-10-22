@@ -1,5 +1,6 @@
 """What can be done with the messages: their details (tools, table, links), copying them, the task
-list of the conversation and the usage of Claude (see ``docs/conversation-display.md``)."""
+list and the plans of the conversation and the usage of Claude (see
+``docs/conversation-display.md``)."""
 
 from collections.abc import Callable
 from datetime import datetime
@@ -8,13 +9,15 @@ import wx
 
 from wxclaude.core.announcements import Announce
 from wxclaude.core.details import DetailAction, Link, message_details
-from wxclaude.core.errors import TaskReadError
+from wxclaude.core.errors import PlanReadError, TaskReadError
 from wxclaude.core.messages import Message
+from wxclaude.core.plans import load_plans
 from wxclaude.core.tasks import load_tasks
 from wxclaude.core.usage import UsageTracker
 from wxclaude.i18n import _
 from wxclaude.ui import desktop
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
+from wxclaude.ui.plans_dialog import PlansDialog
 from wxclaude.ui.tasks_dialog import TasksDialog
 from wxclaude.ui.usage_dialog import UsageDialog
 
@@ -51,6 +54,16 @@ class MessageActions:
             self._show_error(_("Cannot read the tasks.\n{error}").format(error=error))
             return
         with TasksDialog(self._parent, tasks) as dialog:
+            self._show_modal(dialog)
+
+    def show_plans(self) -> None:
+        """The plans Claude wrote in this conversation (named by its session file)."""
+        try:
+            plans = load_plans(self._conversation_id())
+        except PlanReadError as error:
+            self._show_error(_("Cannot read the plans.\n{error}").format(error=error))
+            return
+        with PlansDialog(self._parent, plans) as dialog:
             self._show_modal(dialog)
 
     def show_usage(self) -> None:
