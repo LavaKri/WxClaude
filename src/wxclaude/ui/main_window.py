@@ -5,27 +5,21 @@ from pathlib import Path
 
 import wx
 
-from wxclaude import __version__
 from wxclaude.core.agents import Agent
 from wxclaude.core.announcements import Announce
 from wxclaude.core.claude_projects import (
     SessionInfo,
     choose_conversation,
-    list_projects,
     list_sessions,
 )
 from wxclaude.core.claude_settings import ToolSettings
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.errors import (
     ClaudeSettingsError,
-    ExportError,
     JsonStoreError,
-    SessionReadError,
     SettingsError,
 )
-from wxclaude.core.export import export_text
 from wxclaude.core.runner import ClaudeRunner
-from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
     SEND_ALTERNATIVE_COMMAND,
@@ -33,20 +27,20 @@ from wxclaude.core.shortcuts import (
     ConfigurableCommand,
 )
 from wxclaude.core.usage import UsageTracker
-from wxclaude.core.workspace_state import WorkspaceState
-from wxclaude.core.workspaces import add_recent, describe, remove_missing, workspace_label
+from wxclaude.core.workspaces import describe
 from wxclaude.i18n import _
-from wxclaude.ui import desktop
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
+from wxclaude.ui.file_actions import FileActions
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_actions import MessageActions
 from wxclaude.ui.preferences_dialog import PreferencesDialog
 from wxclaude.ui.run_controller import RunController, RunLinks
 from wxclaude.ui.search_controller import SearchController
 from wxclaude.ui.shortcut_keys import shortcut_from_event
+from wxclaude.ui.workspace_opener import WorkspaceLinks, WorkspaceOpener
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 
 _POSITION_WIDTH = 150
@@ -64,17 +58,44 @@ class MainWindow(wx.Frame):
     def __init__(self, settings: Settings, runner: ClaudeRunner | None = None) -> None:
         super().__init__(None, title=_("WxClaude"), size=wx.Size(900, 650))
         self._settings = settings
-        self._workspace: Path | None = None
-        self._state: WorkspaceState | None = None  # what is remembered about the workspace
         self._agent = settings.default_agent
         self._closing = False
-        self._feedback = Feedback(self, lambda: self._closing)
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
         self._conversation_id = ""
         self._conversation_name = ""
         self._branch_count = 0  # branches made from the current conversation
+        self._create_helpers()
+        self._build_panel(runner or ClaudeRunner())
+        self._build_menu_bar()
+        status_bar = self.CreateStatusBar(2)  # the position in the conversation, then the messages
+        status_bar.SetStatusWidths([_POSITION_WIDTH, -1])
+        self._feedback.set_status(_("Ready"))
+        self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
+        self.Bind(wx.EVT_CLOSE, self._on_close)
+        self._conversation.set_show_hidden(not settings.hide_system_messages)
+        self._refresh_enabled()
+        self._menu.refresh_recent()
+        self._workspaces.restore_last_session()
+        wx.CallAfter(self._focus_main_field)
+        if settings.load_warning:
+            wx.CallAfter(self._feedback.show_file_warning, settings.load_warning)
 
-        # The window's own methods are looked up at each call, so that they can be replaced.
+    def _create_helpers(self) -> None:
+        """The objects that do the work for the window. The window's own methods are looked up at
+        each call, so that they can be replaced."""
+        self._feedback = Feedback(self, lambda: self._closing)
+        self._files = FileActions(self, self._feedback)
+        self._workspaces = WorkspaceOpener(
+            self,
+            self._feedback,
+            self._settings,
+            WorkspaceLinks(
+                close_conversation=lambda: self._close_conversation(),
+                select_conversation=lambda folder: self._select_workspace_conversation(folder),
+                changed=lambda: self._workspace_changed(),
+                save_settings=lambda: self._save_settings(),
+            ),
+        )
         self._actions = MessageActions(
             self,
             lambda dialog: self._feedback.modal(dialog),
@@ -83,6 +104,9 @@ class MainWindow(wx.Frame):
             lambda: self._conversation_id,
             self._usage,
         )
+
+    def _build_panel(self, runner: ClaudeRunner) -> None:
+        """The conversation view, the prompt and the buttons, and the objects that need them."""
         panel = wx.Panel(self)
         conversation_label = wx.StaticText(panel, label=_("Con&versation"))
         self._conversation = ConversationView(
@@ -97,16 +121,15 @@ class MainWindow(wx.Frame):
             lambda announce, **values: self._feedback.say(announce, **values),
             lambda message: self._feedback.show_info(message),
         )
-        # The window is looked up at each call, so that its methods can be replaced.
         self._run = RunController(
             self,
-            runner or ClaudeRunner(),
+            runner,
             self._conversation,
             self._feedback,
-            settings,
+            self._settings,
             self._usage,
             RunLinks(
-                workspace=lambda: self._workspace,
+                workspace=lambda: self._workspaces.workspace,
                 conversation_id=lambda: self._conversation_id,
                 is_closing=lambda: self._closing,
                 state_changed=lambda: self._refresh_enabled(),
@@ -142,19 +165,14 @@ class MainWindow(wx.Frame):
         sizer.Add(buttons, 0, wx.ALL, 6)
         panel.SetSizer(sizer)
 
-        self._build_menu_bar()
-        status_bar = self.CreateStatusBar(2)  # the position in the conversation, then the messages
-        status_bar.SetStatusWidths([_POSITION_WIDTH, -1])
-        self._feedback.set_status(_("Ready"))
-        self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
-        self.Bind(wx.EVT_CLOSE, self._on_close)
-        self._conversation.set_show_hidden(not settings.hide_system_messages)
+    def open_workspace(self, folder: Path) -> None:
+        """Make ``folder`` the working folder; the conversation of another folder is closed."""
+        self._workspaces.open(folder)
+
+    def _workspace_changed(self) -> None:
+        """A workspace was opened: the title and what is greyed follow."""
+        self._update_title()
         self._refresh_enabled()
-        self._menu.refresh_recent()
-        self._restore_last_session()
-        wx.CallAfter(self._focus_main_field)
-        if settings.load_warning:
-            wx.CallAfter(self._feedback.show_file_warning, settings.load_warning)
 
     @property
     def conversation_id(self) -> str:
@@ -169,9 +187,9 @@ class MainWindow(wx.Frame):
         self._menu = MainMenu(
             self,
             MenuHandlers(
-                open_workspace=self._on_open_workspace,
-                open_project=self._on_open_project,
-                export=self._on_export,
+                open_workspace=lambda _event: self._workspaces.choose_folder(),
+                open_project=lambda _event: self._workspaces.choose_project(),
+                export=lambda _event: self._files.export(self._conversation.GetValue()),
                 quit=lambda _event: self.Close(),
                 new_conversation=self._on_new_conversation,
                 resume_conversation=self._on_resume_conversation,
@@ -186,12 +204,14 @@ class MainWindow(wx.Frame):
                 find_previous=lambda _event: search.find_previous(),
                 tasks=lambda _event: self._actions.show_tasks(),
                 usage=lambda _event: self._actions.show_usage(),
-                open_workspace_folder=self._on_open_workspace_folder,
+                open_workspace_folder=lambda _event: self._files.open_folder(
+                    self._workspaces.workspace
+                ),
                 workspace_settings=self._on_workspace_settings,
                 preferences=self._on_preferences,
-                about=self._on_about,
-                recent_workspaces=self._recent_workspaces,
-                open_recent=self._open_recent,
+                about=lambda _event: self._files.about(),
+                recent_workspaces=lambda: self._workspaces.recent(),
+                open_recent=lambda folder: self._workspaces.open_recent(folder),
             ),
         )
         self._apply_shortcuts()
@@ -211,71 +231,7 @@ class MainWindow(wx.Frame):
             return _("Send with the &alternative agent ({shortcut})").format(shortcut=shortcut)
         return _("Send with the &alternative agent")
 
-    def _recent_workspaces(self) -> list[str]:
-        """The recent workspaces whose folder still exists (the others are dropped)."""
-        self._settings.recent_workspaces = remove_missing(self._settings.recent_workspaces)
-        return list(self._settings.recent_workspaces)
-
     # Workspaces ------------------------------------------------------------------------------
-
-    def open_workspace(self, folder: Path) -> None:
-        """Make ``folder`` the working folder; the conversation of another folder is closed."""
-        changed = folder != self._workspace
-        if changed:
-            self._close_conversation()
-        self._set_workspace(folder)
-        if changed:
-            self._select_workspace_conversation(folder)
-
-    def _set_workspace(self, folder: Path) -> None:
-        """Make ``folder`` the working folder and remember it in the recent list."""
-        if self._state is None or folder != self._workspace:
-            self._state = WorkspaceState.load(folder, self._settings.workspaces_dir)
-            if self._state.warning:
-                self._feedback.show_file_warning(self._state.warning)
-        self._workspace = folder
-        self._settings.last_workspace = str(folder)
-        self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
-        self._update_title()
-        self._refresh_enabled()
-        self._feedback.say(Announce.WORKSPACE_OPENED, folder=folder)
-        self._save_settings()
-
-    def _on_open_project(self, _event: wx.CommandEvent) -> None:
-        """Open one of the folders Claude Code has already worked in."""
-        projects = list_projects()
-        if not projects:
-            self._feedback.show_error(_("Claude Code has no project yet."))
-            return
-        labels = [workspace_label(str(project.folder)) for project in projects]
-        with wx.SingleChoiceDialog(
-            self, _("Choose a project:"), _("Open from Claude projects"), labels
-        ) as dialog:
-            if self._feedback.modal(dialog) == wx.ID_OK:
-                self.open_workspace(projects[dialog.GetSelection()].folder)
-
-    def _on_open_workspace(self, _event: wx.CommandEvent) -> None:
-        default = str(self._workspace) if self._workspace else ""
-        with wx.DirDialog(
-            self,
-            _("Choose the working folder"),
-            defaultPath=default,
-            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
-        ) as dialog:
-            if self._feedback.modal(dialog) == wx.ID_OK:
-                self.open_workspace(Path(dialog.GetPath()))
-
-    def _open_recent(self, folder: str) -> None:
-        """Open a recent workspace; a folder that is gone is dropped from the list."""
-        if Path(folder).is_dir():
-            self.open_workspace(Path(folder))
-            return
-        self._settings.recent_workspaces = remove_missing(self._settings.recent_workspaces)
-        self._feedback.show_error(
-            _("The folder {folder} no longer exists. It was removed from the recent list.").format(
-                folder=folder
-            )
-        )
 
     # Conversation ----------------------------------------------------------------------------
 
@@ -305,7 +261,7 @@ class MainWindow(wx.Frame):
 
     def _refresh_enabled(self) -> None:
         """Grey out what needs a workspace or a conversation that is not there."""
-        has_workspace = self._workspace is not None
+        has_workspace = self._workspaces.workspace is not None
         has_conversation = bool(self._conversation_id)
         self._menu.refresh_enabled(
             has_workspace=has_workspace, has_conversation=has_conversation, busy=self._run.busy
@@ -325,8 +281,10 @@ class MainWindow(wx.Frame):
     def _remember_conversation(self) -> None:
         """Keep what the settings remember: the current conversation of the workspace, its name
         and its main agent."""
-        if self._conversation_id and self._state is not None:
-            self._state.remember(self._conversation_id, self._conversation_name, self._agent)
+        if self._conversation_id and self._workspaces.state is not None:
+            self._workspaces.state.remember(
+                self._conversation_id, self._conversation_name, self._agent
+            )
             self._save_state()
 
     def _start_new_conversation(self, name: str) -> None:
@@ -335,36 +293,21 @@ class MainWindow(wx.Frame):
     def _update_title(self) -> None:
         """Window title: the conversation, the workspace, then the application."""
         parts = [self._conversation_name] if self._conversation_name else []
-        if self._workspace is not None:
-            parts.append(describe(str(self._workspace))[0])
+        if self._workspaces.workspace is not None:
+            parts.append(describe(str(self._workspaces.workspace))[0])
         parts.append(_("WxClaude"))
         self.SetTitle(" - ".join(parts))
-
-    def _restore_last_session(self) -> None:
-        """At startup: open the last workspace and select its conversation.
-
-        Without the option, at the first start, or if that workspace no longer exists, there is
-        no workspace and no conversation: only what opens a workspace is available.
-        """
-        settings = self._settings
-        if not (settings.reopen_last and settings.last_workspace):
-            return
-        folder = Path(settings.last_workspace)
-        if not folder.is_dir():
-            return
-        self._set_workspace(folder)
-        self._select_workspace_conversation(folder)
 
     def _select_workspace_conversation(self, workspace: Path) -> None:
         """Select the remembered conversation of ``workspace``, else its most recent one.
 
         A workspace without any conversation stays without: none is created.
         """
-        if self._state is None:
+        if self._workspaces.state is None:
             return
         sessions = list_sessions(workspace)
-        self._state.forget_missing({session.id for session in sessions})
-        chosen = choose_conversation(sessions, self._state.current_conversation)
+        self._workspaces.state.forget_missing({session.id for session in sessions})
+        chosen = choose_conversation(sessions, self._workspaces.state.current_conversation)
         if chosen is not None:
             self._load_conversation(chosen)
             return
@@ -374,15 +317,15 @@ class MainWindow(wx.Frame):
 
     def _load_conversation(self, chosen: SessionInfo) -> bool:
         """Show the conversation ``chosen`` and make it current; False if it cannot be read."""
-        try:
-            session = read_session(chosen.path)
-        except SessionReadError as error:
-            self._feedback.show_error(
-                _("Cannot read the conversation.\n{error}").format(error=error)
-            )
+        session = self._feedback.read_session(chosen.path)
+        if session is None:
             return False
         settings = self._settings
-        record = self._state.conversations.get(chosen.id) if self._state is not None else None
+        record = (
+            self._workspaces.state.conversations.get(chosen.id)
+            if self._workspaces.state is not None
+            else None
+        )
         name = (record.name if record else "") or chosen.title
         if not name:
             name = default_name(settings.conversation_counter)
@@ -418,35 +361,31 @@ class MainWindow(wx.Frame):
 
     def _on_resume_conversation(self, _event: wx.CommandEvent) -> None:
         """Choose one of the conversations Claude Code holds for the workspace and show it."""
-        if self._workspace is None:
+        if self._workspaces.workspace is None:
             return
-        sessions = list_sessions(self._workspace)
+        sessions = list_sessions(self._workspaces.workspace)
         if not sessions:
             self._feedback.show_error(_("This workspace has no conversation yet."))
             return
         labels = [_session_label(session) for session in sessions]
-        with wx.SingleChoiceDialog(
-            self, _("Choose a conversation:"), _("Resume a conversation"), labels
-        ) as dialog:
-            if self._feedback.modal(dialog) != wx.ID_OK:
-                return
-            chosen = sessions[dialog.GetSelection()]
-        self._load_conversation(chosen)
+        index = self._feedback.choose(
+            _("Resume a conversation"), _("Choose a conversation:"), labels
+        )
+        if index is not None:
+            self._load_conversation(sessions[index])
 
     def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:
         """Read the session file again: messages added since (by the CLI) appear."""
-        if self._workspace is None or not self._conversation_id:
+        if self._workspaces.workspace is None or not self._conversation_id:
             return
-        found = [s for s in list_sessions(self._workspace) if s.id == self._conversation_id]
+        found = [
+            s for s in list_sessions(self._workspaces.workspace) if s.id == self._conversation_id
+        ]
         if not found:
             self._feedback.say(Announce.CONVERSATION_NOT_SAVED)
             return
-        try:
-            session = read_session(found[0].path)
-        except SessionReadError as error:
-            self._feedback.show_error(
-                _("Cannot read the conversation.\n{error}").format(error=error)
-            )
+        session = self._feedback.read_session(found[0].path)
+        if session is None:
             return
         view = self._conversation
         before = len(view.document.spans)
@@ -473,26 +412,6 @@ class MainWindow(wx.Frame):
         self._start_new_conversation(name)  # a branch is a session of its own
         self._feedback.say(Announce.CONVERSATION_BRANCHED, name=name)
 
-    def _on_export(self, _event: wx.CommandEvent) -> None:
-        with wx.FileDialog(
-            self,
-            _("Export the conversation"),
-            defaultFile=_("conversation.txt"),
-            wildcard=_("Text files (*.txt)|*.txt|Markdown files (*.md)|*.md"),
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
-        ) as dialog:
-            if self._feedback.modal(dialog) != wx.ID_OK:
-                return
-            path = Path(dialog.GetPath())
-        try:
-            export_text(path, self._conversation.GetValue())
-        except ExportError as error:
-            self._feedback.show_error(
-                _("Cannot export the conversation.\n{error}").format(error=error)
-            )
-            return
-        self._feedback.say(Announce.CONVERSATION_EXPORTED, path=path)
-
     def _on_choose_agent(self, _event: wx.CommandEvent) -> None:
         with AgentDialog(self, self._agent) as dialog:
             if self._feedback.modal(dialog) == wx.ID_OK:
@@ -514,26 +433,6 @@ class MainWindow(wx.Frame):
         """At startup the focus is on the conversation view, at the last prompt if there is one."""
         self._conversation.focus_last_prompt()
 
-    def _on_open_workspace_folder(self, _event: wx.CommandEvent) -> None:
-        """Show the folder of the workspace in the file explorer."""
-        folder = self._workspace
-        if folder is None:
-            return
-        if not folder.is_dir():
-            self._feedback.show_error(
-                _("The folder {folder} no longer exists.").format(folder=folder)
-            )
-        elif not desktop.launch_folder(folder):
-            self._feedback.show_error(
-                _("The folder {folder} cannot be opened in the file explorer.").format(
-                    folder=folder
-                )
-            )
-
-    def _on_about(self, _event: wx.CommandEvent) -> None:
-        message = _("WxClaude {version}").format(version=__version__)
-        self._feedback.message_box(message, _("About"), wx.ICON_INFORMATION)
-
     # Prompt ----------------------------------------------------------------------------------
 
     def agent_for(self, *, alternative: bool) -> Agent:
@@ -553,9 +452,9 @@ class MainWindow(wx.Frame):
 
     def _on_workspace_settings(self, _event: wx.CommandEvent) -> None:
         """The permission rules of the workspace, in the settings files of Claude Code."""
-        if self._workspace is None:
+        if self._workspaces.workspace is None:
             return
-        tool_settings = ToolSettings.load(self._workspace)
+        tool_settings = ToolSettings.load(self._workspaces.workspace)
         with WorkspaceSettingsDialog(
             self, tool_settings, local_only=self._settings.local_tools_only
         ) as dialog:
@@ -599,10 +498,10 @@ class MainWindow(wx.Frame):
         self._run.runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
 
     def _save_state(self) -> None:
-        if self._state is None:
+        if self._workspaces.state is None:
             return
         try:
-            self._state.save()
+            self._workspaces.state.save()
         except JsonStoreError as error:
             self._feedback.show_error(
                 _("Cannot save the workspace data.\n{error}").format(error=error)

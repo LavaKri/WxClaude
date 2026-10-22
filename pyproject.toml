@@ -49,8 +49,6 @@ select = [
 # docs/working-rules.md, "Grouping arguments") as `ListDialog` does, then drop this exception.
 "src/wxclaude/ui/*" = ["PLR0913"]
 "tests/*" = ["PLR0913"]
-# To be removed once the main window is split (its constructor and its menu are too long).
-"src/wxclaude/ui/main_window.py" = ["PLR0913", "PLR0915"]
 
 [tool.mypy]
 python_version = "3.14"

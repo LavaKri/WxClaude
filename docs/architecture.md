@@ -82,7 +82,9 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 |---|---|
 | `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the workspaces and conversations. |
 | `run_controller.py` | `RunController`: a message sent to Claude (start, events, permission questions, progress, end, interrupt), linked to the window by `RunLinks`. |
-| `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`). |
+| `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list) and `read_session` (the error is shown). |
+| `workspace_opener.py` | `WorkspaceOpener`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
+| `file_actions.py` | `FileActions`: export the conversation, show the workspace folder in the file explorer, About. |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |

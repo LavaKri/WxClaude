@@ -51,7 +51,7 @@ def test_a_conversation_enables_everything_that_needs_one(conversation: MainWind
     assert conversation._prompt.IsEnabled()
     assert conversation.can_send
     assert is_conversation_id(conversation.conversation_id)
-    state = conversation._state
+    state = conversation._workspaces.state
     assert state is not None
     assert state.current_conversation == conversation.conversation_id
     assert state.conversations[conversation.conversation_id].name == "Notes"
@@ -129,8 +129,8 @@ def test_without_a_remembered_conversation_the_most_recent_one_is_selected(
     conversation.open_workspace(other)
     assert conversation.conversation_id == newest
     assert conversation.GetTitle() == "Newest - other - WxClaude"
-    assert conversation._state is not None
-    assert conversation._state.current_conversation == newest
+    assert conversation._workspaces.state is not None
+    assert conversation._workspaces.state.current_conversation == newest
 
 
 def test_refreshing_reads_the_session_file_again(
@@ -213,7 +213,7 @@ def test_the_workspace_folder_is_opened_in_the_file_explorer(
 ) -> None:
     opened, errors = _folder_tools(window, monkeypatch)
     window.open_workspace(tmp_path)
-    window._on_open_workspace_folder(wx.CommandEvent())
+    window._files.open_folder(window._workspaces.workspace)
     assert opened == [tmp_path]
     assert errors.messages == []
 
@@ -225,11 +225,11 @@ def test_a_workspace_folder_that_is_gone_or_refused_is_reported(
     folder.mkdir()
     opened, errors = _folder_tools(window, monkeypatch, accepted=False)
     window.open_workspace(folder)
-    window._on_open_workspace_folder(wx.CommandEvent())
+    window._files.open_folder(window._workspaces.workspace)
     assert opened == [folder]
     assert "cannot be opened" in errors.messages[0]
     folder.rmdir()
-    window._on_open_workspace_folder(wx.CommandEvent())
+    window._files.open_folder(window._workspaces.workspace)
     assert opened == [folder]  # not tried again
     assert "no longer exists" in errors.messages[1]
 

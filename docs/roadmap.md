@@ -11,7 +11,7 @@ WxClaude works end to end: a prompt starts `claude -p` (one process per message)
 shown, the session file of the CLI is the reference for the history, the permission questions of
 Claude are asked to the user, and the permission rules are edited in the settings files of Claude
 Code; the details of a message (tools, tables, links), the task list and the usage of Claude are
-shown in dialogs. 324 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+shown in dialogs. 342 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question, the allow / ask / deny rules of `.claude/settings.local.json`, and
 the `rate_limit_event` and `result` lines that feed the usage dialog.
@@ -82,7 +82,12 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
    status bar with the position among the prompts (`Message 3 of 8`), configurable shortcuts, agents, conversation names, workspaces (recent, from Claude
    projects, last one reopened, one state file each), robust JSON files, single instance, UI
    Automation announcements, open the workspace folder.
-
+7. **Code structure** (`working-rules.md`): the generic working rules, structure checks in the
+   linter configuration, `tests/test_code_size.py` (warns about files over 600 lines and classes
+   over 300), the Preferences split by page, the tests of the main window split by subject, and
+   the main window split by composition (`Feedback`, `MainMenu`, `SearchController`,
+   `MessageActions`, `RunController`, `WorkspaceOpener`, `FileActions`). The conversations are
+   still in `MainWindow` (see `open-questions.md`).
 ## Next milestones
 
 6. **Rename, branch (`--fork-session`), delete**, export. Rename and branch exist but are

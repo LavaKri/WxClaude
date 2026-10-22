@@ -5,11 +5,13 @@ where it was when the dialog closes (rule A of ``docs/focus.md``).
 """
 
 from collections.abc import Callable
+from pathlib import Path
 
 import wx
 
 from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
-from wxclaude.core.errors import ScreenReaderOutputError
+from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
+from wxclaude.core.session_reader import Session, read_session
 from wxclaude.i18n import _
 from wxclaude.ui.message_sinks import create_sink
 
@@ -89,6 +91,21 @@ class Feedback:
 
     def show_info(self, message: str) -> None:
         self.message_box(message, _("Find in the conversation"), wx.ICON_INFORMATION)
+
+    def choose(self, title: str, prompt: str, labels: list[str]) -> int | None:
+        """Ask the user to pick one of ``labels``; its index, None if cancelled."""
+        with wx.SingleChoiceDialog(self._frame, prompt, title, labels) as dialog:
+            if self.modal(dialog) != wx.ID_OK:
+                return None
+            return int(dialog.GetSelection())
+
+    def read_session(self, path: Path) -> Session | None:
+        """The session in ``path``; None (with the error shown) if it cannot be read."""
+        try:
+            return read_session(path)
+        except SessionReadError as error:
+            self.show_error(_("Cannot read the conversation.\n{error}").format(error=error))
+            return None
 
     def show_file_warning(self, details: str) -> None:
         """Tell the user that a file of the application was damaged (and what was done)."""

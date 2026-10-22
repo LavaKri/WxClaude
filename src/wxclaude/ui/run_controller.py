@@ -19,7 +19,6 @@ from wxclaude.core.errors import (
     ClaudeNotFoundError,
     ClaudeSettingsError,
     RunnerError,
-    SessionReadError,
 )
 from wxclaude.core.events import (
     AssistantText,
@@ -33,7 +32,6 @@ from wxclaude.core.messages import Message, Role
 from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
-from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.usage import UsageTracker
 from wxclaude.i18n import _
@@ -232,12 +230,8 @@ class RunController:
         path = find_session_file(self._links.conversation_id())
         if path is None:
             return
-        try:
-            session = read_session(path)
-        except SessionReadError as error:
-            self._feedback.show_error(
-                _("Cannot read the conversation.\n{error}").format(error=error)
-            )
+        session = self._feedback.read_session(path)
+        if session is None:
             return
         view = self._view
         if view.shows(session.messages):
