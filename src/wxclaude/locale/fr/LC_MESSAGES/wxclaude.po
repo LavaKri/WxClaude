@@ -602,6 +602,9 @@ msgstr "Permission accordée pour l'outil {tool}."
 msgid "Permission refused for the tool {tool}."
 msgstr "Permission refusée pour l'outil {tool}."
 
+msgid "The question about the tool {tool} expired: Claude denied the tool."
+msgstr "La question sur l'outil {tool} a expiré : Claude a refusé l'outil."
+
 msgid "Claude could not be answered.\n{error}"
 msgstr "Impossible de répondre à Claude.\n{error}"
 
@@ -723,6 +726,18 @@ msgstr "&Chemin de claude-p"
 
 msgid "&Select…"
 msgstr "&Sélection…"
+
+msgid "Stdio protocol"
+msgstr "Protocole stdio"
+
+msgid "HTTP hook"
+msgstr "Hook HTTP"
+
+msgid "Interface &type"
+msgstr "Type d'&interface"
+
+msgid "&Wait for your answer, in minutes (HTTP hook)"
+msgstr "&Attente de votre réponse, en minutes (hook HTTP)"
 
 msgid "Select the claude executable"
 msgstr "Sélectionner l'exécutable de claude"

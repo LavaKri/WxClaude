@@ -52,10 +52,15 @@ class ToolResult:
 
 @dataclass(frozen=True, slots=True)
 class PermissionDenied:
-    """A tool was not allowed to run."""
+    """A tool was not allowed to run.
+
+    ``reason_type`` is the ``decision_reason_type`` of the CLI: ``hook`` when our own answer
+    refused the tool (the user was told already), ``mode`` for ``dontAsk``, '' when not given.
+    """
 
     tool_name: str
     message: str
+    reason_type: str = ""
 
 
 @dataclass(frozen=True, slots=True)

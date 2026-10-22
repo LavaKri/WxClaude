@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from wxclaude.core.events import PermissionRequest
+from wxclaude.core.events import PermissionDenied, PermissionRequest
 from wxclaude.core.stream import parse_stream_line
 
 pytestmark = pytest.mark.unit
@@ -65,6 +65,14 @@ def test_a_request_without_suggestions_has_no_rule() -> None:
     (request,) = _parse(entry)
     assert isinstance(request, PermissionRequest)
     assert request.suggested_rule == ""
+
+
+def test_a_denial_line_carries_why_the_tool_was_denied() -> None:
+    line = {"type": "system", "subtype": "permission_denied", "tool_name": "Write", "message": "no"}
+    assert _parse(line) == [PermissionDenied("Write", "no", "")]
+    assert _parse({**line, "decision_reason_type": "hook"}) == [
+        PermissionDenied("Write", "no", "hook")
+    ]
 
 
 def test_other_control_requests_give_nothing() -> None:

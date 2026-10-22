@@ -59,7 +59,13 @@ def _system(entry: dict[str, object]) -> list[RunEvent]:
     if subtype == "thinking_tokens":
         return [Thinking(_int(entry.get("estimated_tokens")))]
     if subtype == "permission_denied":
-        return [PermissionDenied(_text(entry.get("tool_name")), _text(entry.get("message")))]
+        return [
+            PermissionDenied(
+                _text(entry.get("tool_name")),
+                _text(entry.get("message")),
+                _text(entry.get("decision_reason_type")),
+            )
+        ]
     return []
 
 

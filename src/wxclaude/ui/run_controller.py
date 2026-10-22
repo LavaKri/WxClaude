@@ -22,6 +22,7 @@ from wxclaude.core.errors import (
 )
 from wxclaude.core.events import (
     AssistantText,
+    PermissionExpired,
     PermissionRequest,
     RateLimit,
     RunEvent,
@@ -76,6 +77,8 @@ class RunController:
         self._turn_result: TurnResult | None = None
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
+        self._open_question: tuple[PermissionRequest, wx.Dialog] | None = None
+        self._expired: set[str] = set()  # questions the CLI stopped waiting for (hook channel)
         self._local_messages = 0  # messages added by this run, for their identifiers
 
     @property
@@ -96,6 +99,8 @@ class RunController:
             find_session_file(conversation_id) is not None,
             workspace,
         )
+        self.runner.permission_channel = self._settings.permission_channel
+        self.runner.hook_timeout_seconds = self._settings.hook_timeout_minutes * 60
         try:
             self.runner.start(request, self._post_event)
         except (ClaudeNotFoundError, RunnerError) as error:
@@ -106,6 +111,7 @@ class RunController:
         self._turn_result = None
         self._last_progress = ""
         self._turn_allowed = set()
+        self._expired = set()
         self._links.state_changed()
         self._view.append_message(Message(self._local_id(), Role.USER, text))
         self._show_progress(Progress(Announce.CLAUDE_THINKING))
@@ -141,6 +147,9 @@ class RunController:
         elif isinstance(event, PermissionRequest):
             self._on_permission_request(event)
             return
+        elif isinstance(event, PermissionExpired):
+            self._on_permission_expired(event)
+            return
         elif isinstance(event, RateLimit):
             self._usage.record_rate_limit(event, datetime.now())
         elif isinstance(event, TurnResult):
@@ -163,6 +172,8 @@ class RunController:
                 self._feedback.announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
             )
             decision = self._ask_permission(request)
+            if request.request_id in self._expired:
+                return  # the CLI stopped waiting while the question was open: nothing to answer
         try:
             if decision.choice is Choice.DENY:
                 self.runner.deny(request, decision.denial_message())
@@ -190,10 +201,22 @@ class RunController:
                 _("The rule could not be saved.\n{error}").format(error=error)
             )
 
+    def _on_permission_expired(self, expired: PermissionExpired) -> None:
+        """The CLI stopped waiting and denied the tool: close the question if it is still open."""
+        self._expired.add(expired.request_id)
+        question = self._open_question
+        if question is not None and question[0].request_id == expired.request_id:
+            question[1].EndModal(wx.ID_NO)
+        self._feedback.say(Announce.PERMISSION_EXPIRED, tool=expired.tool_name)
+
     def _ask_permission(self, request: PermissionRequest) -> Decision:
         """Show the question; closing the dialog without answering is a denial."""
         with PermissionDialog(self._parent, request) as dialog:
-            self._feedback.modal(dialog)
+            self._open_question = (request, dialog)
+            try:
+                self._feedback.modal(dialog)
+            finally:
+                self._open_question = None
             decision: Decision = dialog.decision
         return decision
 

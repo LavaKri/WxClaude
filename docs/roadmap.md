@@ -37,8 +37,12 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
   the last one) selects and loads its remembered conversation, else its most recent one, else none
   (never created automatically).
 - **One process per message** (`claude -p` is started for each prompt), not one long-lived
-  process. Its input is `stream-json` and stays open while Claude works, to answer the permission
-  questions (`--permission-prompt-tool stdio`).
+  process. Its input is `stream-json` and stays open while Claude works.
+- **Two permission channels**, chosen in Preferences > Claude and applied per message: the stdio
+  control protocol (default: all the questions, plan approval) and the HTTP hook (the documented
+  interface of the CLI; no structured question, no plan approval, the CLI stops waiting after
+  the waiting time). A conversation can switch at any time. Details and test results in
+  `claude-cli.md`, "Permission channels"; the other ways that were considered are listed there.
 - **One instance** of WxClaude per user; a second launch brings the first window to the front.
 - **Names of conversations** are kept by WxClaude only; the session files of the CLI are never
   written by WxClaude.
@@ -70,7 +74,9 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
    read again after each turn.
 4. **Permissions**: the question dialog (allow, always allow, deny with an explanation), "always
    allow" written in `.claude/settings.local.json`, and the **Workspace settings** dialog (tab Tools)
-   that edits the allow / ask / deny rules of the settings files.
+   that edits the allow / ask / deny rules of the settings files. The two permission channels
+   (stdio protocol, HTTP hook) behind `PermissionChannel`, the choice and the waiting time in
+   Preferences > Claude.
 5. **Details dialogs** (`core/details.py`, `ui/details_dialogs.py`, context menu of
    `ConversationView`): tools used, tables, links, copy a message. **Claude usage** dialog
    (`core/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
@@ -96,8 +102,8 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
 7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
    manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
-   settings, the dialogue mode with claude-p in the Claude tab of the Preferences, the tools announced by the CLI added to the list,
-   and the other settings of the `.claude` files.
+   settings, the menu to read the plan of a conversation, the tools announced by the CLI added to
+   the list, and the other settings of the `.claude` files.
 
 ## Working notes for a new session
 

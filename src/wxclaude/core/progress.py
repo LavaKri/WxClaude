@@ -31,7 +31,7 @@ def progress_for(event: RunEvent) -> Progress | None:
         return Progress(Announce.CLAUDE_USING_TOOL, {"tool": event.name})
     if isinstance(event, AssistantText):
         return Progress(Announce.CLAUDE_ANSWERING)
-    if isinstance(event, PermissionDenied):
+    if isinstance(event, PermissionDenied) and event.reason_type != "hook":
         return Progress(Announce.PERMISSION_DENIED, {"tool": event.tool_name})
     return None
 

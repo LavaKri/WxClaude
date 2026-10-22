@@ -123,6 +123,35 @@ def test_the_claude_path_options_default_to_the_automatic_search_and_round_trip(
     assert invalid.claude_path == ""
 
 
+def test_the_permission_channel_defaults_to_stdio_with_ten_minutes_and_round_trips(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert (settings.permission_channel, settings.hook_timeout_minutes) == ("stdio", 10)
+    settings.permission_channel = "hook"
+    settings.hook_timeout_minutes = 3
+    settings.save()
+    again = Settings.load(store)
+    assert (again.permission_channel, again.hook_timeout_minutes) == ("hook", 3)
+
+
+@pytest.mark.parametrize(
+    ("channel", "minutes"), [("pigeon", 0), (3, 11), ("", -1), (None, True), ("hook", 2.5)]
+)
+def test_an_invalid_permission_channel_or_waiting_time_is_ignored(
+    tmp_path: Path, channel: object, minutes: object
+) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text(
+        json.dumps({"permission_channel": channel, "hook_timeout_minutes": minutes}),
+        encoding="utf-8",
+    )
+    loaded = Settings.load(store)
+    assert loaded.hook_timeout_minutes == 10
+    assert loaded.permission_channel == ("hook" if channel == "hook" else "stdio")
+
+
 def test_the_default_agent_is_always_complete(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     store.write_text('{"default_agent": {"model": "opus"}}', encoding="utf-8")

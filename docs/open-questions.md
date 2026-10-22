@@ -6,13 +6,32 @@ the file it belongs to and delete it from this one.
 
 ## To decide
 
-- **Dialogue mode with claude-p** (list in the Claude tab of the Preferences). WxClaude only has one
-  mode today: the CLI waits for the answer to its permission question (stdio control protocol). The
-  other mode of the project the idea comes from is "stop Claude, then resume it after the answer"
-  (the CLI denies, the application resumes with the tool allowed): it would have to be built to
-  be offered.
+- **Read the plan of a conversation.** A menu item "Plan…" (always enabled with a conversation, as
+  Task list) opening a read-only dialog, for both permission channels: the plan is a `Write` of
+  the session file to `~/.claude/plans/<name>.md`; with the stdio protocol the result of
+  `ExitPlanMode` also says "Your plan has been saved to: <path>". To check before building: the
+  folder of the plans may be configurable, and one case only was seen (haiku). The `ListDialog`
+  can list the plans of the conversation, the text of the selected one as its detail.
+
+- **Help page in HTML.** A page of help, opened from the Help menu, that explains WxClaude to the
+  user. It would hold, among other things, what the two interface types do (Preferences, Claude):
+  the stdio protocol brings every permission question, the structured questions of Claude and the
+  approval of its plans; the HTTP hook only brings the permission questions of the tools, Claude
+  cannot ask structured questions, in the mode Plan only (plan) it cannot submit its plan, a
+  question not answered within the waiting time is denied by Claude Code, and in the mode Do not ask
+  (dontAsk) nothing is asked with either type. To decide: how it is opened (browser or a dialog),
+  the languages, and whether it is package data like `data/tools.txt`.
+- **The `&` of the labels in the Preferences.** The access keys (`&Language`, `&Path of claude-p`,
+  ...) may hinder the reading of the labels with a screen reader. To check, and if so, remove them
+  from the Preferences (the accessible name already comes without the `&`, see `core/labels.py`).
 
 ## To verify
+
+- **HTTP hook channel, not tested yet.** `updatedPermissions` (a rule for the session), `interrupt`,
+  `decision.rule` (one documentation page), a waiting time above 10 minutes (the maximum accepted
+  by the CLI), `tool_use_id` (the documentation lists it, the real POST has none).
+- **Screen readers and the Preferences, Claude tab.** The list *Interface type* and the spin
+  control are to be checked with NVDA and JAWS.
 
 - **UI Automation notifications and JAWS.** They reach NVDA and Narrator; test JAWS, with a focusable
   progress field as a fallback if they do not.

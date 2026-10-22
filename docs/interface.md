@@ -67,6 +67,11 @@ not ask about it again, in this message or in the next ones (and neither does th
 If the file cannot be read (invalid JSON) it is left as it is and an error says so. A tool that was
 denied without a question (a *deny* rule, or the `dontAsk` mode) is only shown as progress.
 
+With the HTTP hook channel (Preferences, Claude), the CLI stops waiting after the waiting time
+and denies the tool: if the dialog is still open it is closed, and "The question about the tool ...
+expired: Claude denied the tool." is announced. A tool refused by the user's own answer is announced
+once ("Permission refused ...", not "Permission denied ..." as well).
+
 ## Workspace settings
 
 *Tools > Workspace settings...* edits the permission rules that Claude Code keeps in the `.claude`
@@ -144,7 +149,11 @@ effort or the permission mode does not.
 - **Claude** (after General): *Automatic search for claude-p* (checked by default: `claude` is looked
   for in the PATH); *Path of claude-p* and *Select…* (file dialog), both greyed while the search is
   automatic. OK is refused, with the focus on the path, if the search is off and the path is empty
-  or not a file. The dialogue mode with claude-p (a list) is not built yet, see `open-questions.md`.
+  or not a file. *Interface type* (a drop-down list, *Stdio protocol* by default or *HTTP hook*): how
+  Claude's permission questions reach WxClaude, applied to the next message (the conversation can
+  switch at any time). *Wait for your answer, in minutes (HTTP hook)* (1 to 10, 10 by default) is
+  greyed with the stdio protocol. What the HTTP hook cannot do is in `claude-cli.md`,
+  "Permission channels" (a help page will say it to the user, see `open-questions.md`).
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested.", is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).

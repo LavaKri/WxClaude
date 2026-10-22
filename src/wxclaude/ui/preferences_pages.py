@@ -10,14 +10,17 @@ from pathlib import Path
 import wx
 
 from wxclaude.core.labels import accessible_name
+from wxclaude.core.permission_channel import CHANNEL_KINDS, HOOK, STDIO
 from wxclaude.core.screen_reader import available_outputs, default_output, output_named
-from wxclaude.core.settings import SUPPORTED_LANGUAGES, Settings
-from wxclaude.i18n import _
+from wxclaude.core.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
+from wxclaude.i18n import N_, _
 from wxclaude.ui.agent_panel import AgentPanel, permission_levels_lines
 from wxclaude.ui.fields import read_only_field
 
 # Names of the languages, each in its own language (never translated).
 _LANGUAGE_NAMES = {"fr": "Français", "en": "English"}
+# Names of the ways Claude's permission questions reach WxClaude (message ids).
+_CHANNEL_NAMES = {STDIO: N_("Stdio protocol"), HOOK: N_("HTTP hook")}
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +75,7 @@ class GeneralPage(PreferencesPage):
 
 
 class ClaudePage(PreferencesPage):
-    """Where the claude program is: found in the PATH, or chosen by hand."""
+    """Where the claude program is (found in the PATH, or chosen by hand) and how it asks."""
 
     def __init__(self, parent: wx.Window, settings: Settings) -> None:
         super().__init__(parent)
@@ -91,14 +94,45 @@ class ClaudePage(PreferencesPage):
         sizer.Add(self.auto_search, 0, wx.ALL, 8)
         sizer.Add(path_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(row, 0, wx.EXPAND | wx.ALL, 8)
+        self._add_channel_controls(sizer, settings)
         self.SetSizer(sizer)
         self._update_path()
+        self._update_minutes()
+
+    def _add_channel_controls(self, sizer: wx.BoxSizer, settings: Settings) -> None:
+        """The type of interface with Claude Code (how its permission questions reach WxClaude)."""
+        channel_text = _("Interface &type")
+        channel_label = wx.StaticText(self, label=channel_text)
+        self.channel = wx.Choice(
+            self,
+            choices=[_(_CHANNEL_NAMES[kind]) for kind in CHANNEL_KINDS],
+            name=accessible_name(channel_text),
+        )
+        self.channel.SetSelection(CHANNEL_KINDS.index(settings.permission_channel))
+        self.channel.Bind(wx.EVT_CHOICE, lambda _event: self._update_minutes())
+        minutes_text = _("&Wait for your answer, in minutes (HTTP hook)")
+        minutes_label = wx.StaticText(self, label=minutes_text)
+        self.minutes = wx.SpinCtrl(
+            self,
+            min=HOOK_TIMEOUT_MINUTES.start,
+            max=HOOK_TIMEOUT_MINUTES.stop - 1,
+            initial=settings.hook_timeout_minutes,
+            name=accessible_name(minutes_text),
+        )
+        sizer.Add(channel_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        sizer.Add(self.channel, 0, wx.ALL, 8)
+        sizer.Add(minutes_label, 0, wx.LEFT | wx.RIGHT, 8)
+        sizer.Add(self.minutes, 0, wx.ALL, 8)
 
     def _update_path(self) -> None:
         """The path is only used (and editable) without the automatic search."""
         manual = not self.auto_search.GetValue()
         self.path.Enable(manual)
         self.browse.Enable(manual)
+
+    def _update_minutes(self) -> None:
+        """The waiting time only exists with the HTTP hook."""
+        self.minutes.Enable(CHANNEL_KINDS[self.channel.GetSelection()] == HOOK)
 
     def _on_browse(self) -> None:
         current = Path(self.path.GetValue())
@@ -128,6 +162,8 @@ class ClaudePage(PreferencesPage):
     def apply(self, settings: Settings) -> None:
         settings.claude_auto_search = self.auto_search.GetValue()
         settings.claude_path = self.path.GetValue().strip()
+        settings.permission_channel = CHANNEL_KINDS[self.channel.GetSelection()]
+        settings.hook_timeout_minutes = self.minutes.GetValue()
 
 
 class WorkspacePage(PreferencesPage):

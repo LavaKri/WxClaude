@@ -14,6 +14,8 @@ invalid values fall back to their default; unknown keys are ignored.
 | `reopen_last` | At startup, open the last workspace | `true` |
 | `claude_auto_search` | Look for `claude` in the PATH | `true` |
 | `claude_path` | The `claude` executable chosen by hand, used when the automatic search is off | empty |
+| `permission_channel` | How Claude's permission questions reach WxClaude: `stdio` (control protocol) or `hook` (HTTP hook); see `claude-cli.md` | `stdio` |
+| `hook_timeout_minutes` | With the `hook` channel, how long the CLI waits for the answer (1 to 10) | `10` |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |
 | `announce_progress` | Announce the progress of Claude while it answers | `true` |

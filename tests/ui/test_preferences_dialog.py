@@ -123,6 +123,29 @@ def test_the_claude_path_is_applied_to_the_settings(
     assert settings.claude_path == "C:/tools/claude.exe"
 
 
+def test_the_permission_channel_is_stdio_by_default_and_the_waiting_time_is_greyed(
+    dialog: PreferencesDialog,
+) -> None:
+    page = dialog.claude
+    assert page.channel.GetSelection() == 0
+    assert page.channel.GetString(0) == "Stdio protocol"
+    assert page.channel.GetString(1) == "HTTP hook"
+    assert page.minutes.GetValue() == 10
+    assert not page.minutes.IsEnabled()
+    page.channel.SetSelection(1)
+    page._update_minutes()
+    assert page.minutes.IsEnabled()
+
+
+def test_the_permission_channel_and_the_waiting_time_are_applied_to_the_settings(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
+    dialog.claude.channel.SetSelection(1)
+    dialog.claude.minutes.SetValue(4)
+    dialog.apply(settings)
+    assert (settings.permission_channel, settings.hook_timeout_minutes) == ("hook", 4)
+
+
 def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
     dialog: PreferencesDialog, tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

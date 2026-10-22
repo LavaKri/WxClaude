@@ -31,6 +31,13 @@ def test_events_that_stand_for_progress() -> None:
     )
 
 
+def test_a_denial_we_decided_ourselves_is_not_announced_again() -> None:
+    assert progress_for(PermissionDenied("Bash", "no", "hook")) is None
+    assert progress_for(PermissionDenied("Bash", "no", "mode")) == Progress(
+        Announce.PERMISSION_DENIED, {"tool": "Bash"}
+    )
+
+
 def test_events_that_say_nothing() -> None:
     assert progress_for(SessionInit("s", "m", "p")) is None
     assert progress_for(ToolResult("t", False)) is None

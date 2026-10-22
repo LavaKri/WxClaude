@@ -47,7 +47,7 @@ Tests: CLI 2.1.286, Windows, `haiku`, effort `low`, 2026-10-22, empty folder, pr
 
 | | Stdio control protocol (`stdio`) | PermissionRequest HTTP hook (`hook`) |
 |---|---|---|
-| Status in WxClaude | implemented, default | implemented in `core/` (`hook_channel.py`), checked with the real CLI through the runner (allow, deny); not selectable yet (Preferences) |
+| Status in WxClaude | implemented, default | implemented (`hook_channel.py`), chosen in Preferences > Claude, checked with the real CLI through the runner (allow, deny) |
 | Flags | `--permission-prompt-tool stdio` | `--settings '{"hooks": {"PermissionRequest": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:<port>/<token>", "timeout": <seconds>}]}]}}'` |
 | Channel | JSON lines, CLI stdout and stdin | HTTP POST from the CLI to a local server; the response is held until the user answers |
 | Needs besides the process | nothing | an HTTP server on `127.0.0.1` |

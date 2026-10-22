@@ -12,7 +12,7 @@ from main_window_support import (
 
 from wxclaude.core.announcements import RecordingMessageSink
 from wxclaude.core.claude_settings import Approval, Source
-from wxclaude.core.events import PermissionRequest
+from wxclaude.core.events import PermissionExpired, PermissionRequest
 from wxclaude.core.permissions import DEFAULT_DENIAL, Choice, Decision
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
@@ -133,6 +133,78 @@ def test_a_rule_allowed_earlier_in_the_message_is_answered_without_a_question(
     conversation._run._on_permission_request(request)
     assert answers == [request]
     assert asked == []
+
+
+def _hook_decision(log: Path) -> dict[str, object]:
+    text = Path(str(log) + ".responses").read_text(encoding="utf-8")
+    lines = [line for line in text.splitlines() if line.strip()]
+    decision: dict[str, object] = json.loads(lines[-1])["hookSpecificOutput"]["decision"]
+    return decision
+
+
+def test_the_chosen_channel_and_waiting_time_are_given_to_the_runner(
+    conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _permission_setup(conversation, monkeypatch, tmp_path, Decision(Choice.ALLOW))
+    conversation._settings.permission_channel = "hook"
+    conversation._settings.hook_timeout_minutes = 2
+    _send(conversation, "hello")
+    assert conversation._run.runner.permission_channel == "hook"
+    assert conversation._run.runner.hook_timeout_seconds == 120
+
+
+def test_through_the_hook_allowing_lets_the_tool_run_and_denying_explains(
+    conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    conversation._settings.permission_channel = "hook"
+    decisions = (Decision(Choice.ALLOW), Decision(Choice.DENY, "Not in this folder"))
+    asked, log, sink = _permission_setup(conversation, monkeypatch, tmp_path, *decisions)
+    _send(conversation, "first")
+    assert _hook_decision(log) == {"behavior": "allow"}
+    assert "Permission granted for the tool Bash." in sink.messages
+    _send(conversation, "second")
+    assert _hook_decision(log) == {"behavior": "deny", "message": "Not in this folder"}
+    assert len(asked) == 2
+
+
+class _OpenQuestion:
+    """Stands for the permission dialog while it is open."""
+
+    def __init__(self) -> None:
+        self.ended: list[int] = []
+
+    def EndModal(self, code: int) -> None:  # noqa: N802  (the name of the wx method)
+        self.ended.append(code)
+
+
+def test_a_question_that_expired_closes_its_dialog_and_is_not_answered(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sink = RecordingMessageSink()
+    conversation._feedback.announcements.message_sink = sink
+    run = conversation._run
+    request = PermissionRequest("r", "Write", "", {}, "", "", "")
+    dialog = _OpenQuestion()
+    run._open_question = (request, dialog)  # type: ignore[assignment]
+    run._on_run_event(PermissionExpired("r", "Write"))
+    assert dialog.ended == [wx.ID_NO]
+    assert "The question about the tool Write expired: Claude denied the tool." in sink.messages
+    answers: list[object] = []
+    monkeypatch.setattr(run.runner, "deny", lambda *args: answers.append(args))
+    monkeypatch.setattr(run.runner, "allow", lambda *args: answers.append(args))
+    monkeypatch.setattr(run, "_ask_permission", lambda _request: Decision(Choice.DENY))
+    run._on_permission_request(request)
+    assert answers == []
+
+
+def test_another_question_expiring_leaves_the_open_dialog_alone(
+    conversation: MainWindow,
+) -> None:
+    run = conversation._run
+    dialog = _OpenQuestion()
+    run._open_question = (PermissionRequest("r", "Write", "", {}, "", "", ""), dialog)  # type: ignore[assignment]
+    run._on_run_event(PermissionExpired("other", "Bash"))
+    assert dialog.ended == []
 
 
 def _workspace_settings_edit(

@@ -41,6 +41,7 @@ class Announce(enum.Enum):
     PERMISSION_ASKED = N_("Claude asks permission for the tool {tool}.")
     PERMISSION_GRANTED = N_("Permission granted for the tool {tool}.")
     PERMISSION_REFUSED = N_("Permission refused for the tool {tool}.")
+    PERMISSION_EXPIRED = N_("The question about the tool {tool} expired: Claude denied the tool.")
     HEADING = N_("{title}, title {level}")
     NO_NEXT_HEADING = N_("No next heading.")
     NO_PREVIOUS_HEADING = N_("No previous heading.")
