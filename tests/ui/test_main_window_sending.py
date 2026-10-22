@@ -50,7 +50,7 @@ def test_sending_runs_claude_and_shows_the_answer(
     conversation._feedback.announcements.message_sink = sink
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
-    assert conversation._busy
+    assert conversation._run.busy
     assert not conversation.can_send
     assert conversation._prompt.GetValue() == ""
     assert "# You say: hello" in conversation._conversation.GetValue()
@@ -127,13 +127,13 @@ def test_a_missing_claude_keeps_the_prompt(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("PATH", str(tmp_path))
-    conversation._runner = ClaudeRunner()
+    conversation._run.runner = ClaudeRunner()
     errors = _Errors(conversation)
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     assert len(errors.messages) == 1
     assert conversation._prompt.GetValue() == "hello"
-    assert not conversation._busy
+    assert not conversation._run.busy
     assert conversation._conversation.GetValue() == ""
 
 
@@ -176,11 +176,11 @@ def test_the_first_status_field_gives_the_position_among_the_prompts(
 
 
 def test_the_runner_uses_the_claude_file_chosen_in_the_preferences(window: MainWindow) -> None:
-    assert window._runner.claude_path == ""
+    assert window._run.runner.claude_path == ""
     window._settings.claude_auto_search = False
     window._settings.claude_path = "C:/tools/claude.exe"
     window._apply_claude_path()
-    assert window._runner.claude_path == "C:/tools/claude.exe"
+    assert window._run.runner.claude_path == "C:/tools/claude.exe"
     window._settings.claude_auto_search = True
     window._apply_claude_path()
-    assert window._runner.claude_path == ""
+    assert window._run.runner.claude_path == ""

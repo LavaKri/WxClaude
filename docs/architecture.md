@@ -24,7 +24,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 ## A turn
 
-1. `MainWindow` builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
+1. `RunController` (`ui/run_controller.py`) builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
    session file exists, workspace) and calls `ClaudeRunner.start`. The view shows the prompt at
    once and the window is busy (Send greyed, Interrupt active).
 2. `ClaudeRunner` starts the process (`--input-format stream-json --output-format stream-json
@@ -39,7 +39,7 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
    the text it would hold differs from what is shown; if it is the same, the view only takes the
    messages from the file (`adopt_details`) so that they carry their tools. `RateLimit` and
    `TurnResult` events feed the `UsageTracker`.
-5. When Claude asks a permission (`PermissionRequest`), the window answers with `ClaudeRunner.allow`
+5. When Claude asks a permission (`PermissionRequest`), the controller answers with `ClaudeRunner.allow`
    or `deny`: at once if the rule was allowed earlier in this message, else after the question
    dialog. *Always allow* writes an allow rule in `.claude/settings.local.json`
    (`claude_settings.allow_always`) and keeps it for the rest of the message; the CLI reads the file
@@ -80,7 +80,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 | Module | Role |
 |---|---|
-| `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the runner events, the permission questions, the workspaces and conversations. |
+| `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the workspaces and conversations. |
+| `run_controller.py` | `RunController`: a message sent to Claude (start, events, permission questions, progress, end, interrupt), linked to the window by `RunLinks`. |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`). |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |

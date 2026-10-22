@@ -34,7 +34,7 @@ def _permission_setup(
         asked.append(request)
         return answers.pop(0)
 
-    monkeypatch.setattr(window, "_ask_permission", ask)
+    monkeypatch.setattr(window._run, "_ask_permission", ask)
     sink = RecordingMessageSink()
     window._feedback.announcements.message_sink = sink
     return asked, log, sink
@@ -127,10 +127,10 @@ def test_a_rule_allowed_earlier_in_the_message_is_answered_without_a_question(
 ) -> None:
     asked, _log, _sink = _permission_setup(conversation, monkeypatch, tmp_path)
     request = PermissionRequest("r", "Bash", "t", {}, "", "", "Bash(touch fake.txt)")
-    conversation._turn_allowed.add(request.suggested_rule)
+    conversation._run._turn_allowed.add(request.suggested_rule)
     answers: list[PermissionRequest] = []
-    monkeypatch.setattr(conversation._runner, "allow", answers.append)
-    conversation._on_permission_request(request)
+    monkeypatch.setattr(conversation._run.runner, "allow", answers.append)
+    conversation._run._on_permission_request(request)
     assert answers == [request]
     assert asked == []
 

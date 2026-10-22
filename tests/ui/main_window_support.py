@@ -83,7 +83,7 @@ def _session(
 def _wait_until_idle(window: MainWindow, timeout: float = 30) -> None:
     """Let the events of the runner reach the window until Claude is done."""
     deadline = time.monotonic() + timeout
-    while window._busy:
+    while window._run.busy:
         assert time.monotonic() < deadline, "Claude did not finish"
         wx.Yield()
         time.sleep(0.02)

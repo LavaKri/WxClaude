@@ -11,34 +11,20 @@ from wxclaude.core.announcements import Announce
 from wxclaude.core.claude_projects import (
     SessionInfo,
     choose_conversation,
-    find_session_file,
     list_projects,
     list_sessions,
 )
-from wxclaude.core.claude_settings import ToolSettings, allow_always
+from wxclaude.core.claude_settings import ToolSettings
 from wxclaude.core.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.errors import (
-    ClaudeNotFoundError,
     ClaudeSettingsError,
     ExportError,
     JsonStoreError,
-    RunnerError,
     SessionReadError,
     SettingsError,
 )
-from wxclaude.core.events import (
-    AssistantText,
-    PermissionRequest,
-    RateLimit,
-    RunEvent,
-    TurnEnded,
-    TurnResult,
-)
 from wxclaude.core.export import export_text
-from wxclaude.core.messages import Message, Role
-from wxclaude.core.permissions import Choice, Decision
-from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
-from wxclaude.core.runner import ClaudeRunner, RunRequest
+from wxclaude.core.runner import ClaudeRunner
 from wxclaude.core.session_reader import read_session
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import (
@@ -57,8 +43,8 @@ from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_actions import MessageActions
-from wxclaude.ui.permission_dialog import PermissionDialog
 from wxclaude.ui.preferences_dialog import PreferencesDialog
+from wxclaude.ui.run_controller import RunController, RunLinks
 from wxclaude.ui.search_controller import SearchController
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
@@ -81,17 +67,9 @@ class MainWindow(wx.Frame):
         self._workspace: Path | None = None
         self._state: WorkspaceState | None = None  # what is remembered about the workspace
         self._agent = settings.default_agent
-        self._runner = runner or ClaudeRunner()
-        self._apply_claude_path()
-        self._busy = False  # True while Claude is answering
         self._closing = False
         self._feedback = Feedback(self, lambda: self._closing)
-        self._turn_agent = settings.default_agent  # the agent of the message being answered
-        self._turn_result: TurnResult | None = None
-        self._last_progress = ""  # the last progress shown, not repeated
-        self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
-        self._local_messages = 0  # messages added by this run, for their identifiers
         self._conversation_id = ""
         self._conversation_name = ""
         self._branch_count = 0  # branches made from the current conversation
@@ -119,6 +97,22 @@ class MainWindow(wx.Frame):
             lambda announce, **values: self._feedback.say(announce, **values),
             lambda message: self._feedback.show_info(message),
         )
+        # The window is looked up at each call, so that its methods can be replaced.
+        self._run = RunController(
+            self,
+            runner or ClaudeRunner(),
+            self._conversation,
+            self._feedback,
+            settings,
+            self._usage,
+            RunLinks(
+                workspace=lambda: self._workspace,
+                conversation_id=lambda: self._conversation_id,
+                is_closing=lambda: self._closing,
+                state_changed=lambda: self._refresh_enabled(),
+            ),
+        )
+        self._apply_claude_path()
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
         self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
@@ -314,14 +308,14 @@ class MainWindow(wx.Frame):
         has_workspace = self._workspace is not None
         has_conversation = bool(self._conversation_id)
         self._menu.refresh_enabled(
-            has_workspace=has_workspace, has_conversation=has_conversation, busy=self._busy
+            has_workspace=has_workspace, has_conversation=has_conversation, busy=self._run.busy
         )
         self._prompt.Enable(has_conversation)
 
     @property
     def can_send(self) -> bool:
         """Can a prompt be sent now? It needs a conversation, and Claude must not be answering."""
-        return bool(self._conversation_id) and not self._busy
+        return bool(self._conversation_id) and not self._run.busy
 
     def _set_conversation_name(self, name: str) -> None:
         self._conversation_name = name
@@ -553,114 +547,9 @@ class MainWindow(wx.Frame):
         text = self._prompt.GetValue().strip()
         if not text or not self.can_send:
             return
-        if self._start_turn(text, self.agent_for(alternative=alternative)):
+        if self._run.start(text, self.agent_for(alternative=alternative)):
             self._prompt.Clear()
             self._conversation.focus_last_prompt()  # the prompt that was just sent
-
-    def _start_turn(self, text: str, agent: Agent) -> bool:
-        """Start Claude on ``text``; False (with the error shown) if it cannot be started."""
-        if self._workspace is None:
-            return False
-        request = RunRequest(
-            text,
-            agent,
-            self._conversation_id,
-            find_session_file(self._conversation_id) is not None,
-            self._workspace,
-        )
-        try:
-            self._runner.start(request, self._post_event)
-        except (ClaudeNotFoundError, RunnerError) as error:
-            self._feedback.show_error(_("Claude cannot be started.\n{error}").format(error=error))
-            return False
-        self._busy = True
-        self._turn_agent = agent
-        self._turn_result = None
-        self._last_progress = ""
-        self._turn_allowed = set()
-        self._refresh_enabled()
-        self._conversation.append_message(Message(self._local_id(), Role.USER, text))
-        self._show_progress(Progress(Announce.CLAUDE_THINKING))
-        return True
-
-    def _local_id(self) -> str:
-        self._local_messages += 1
-        return f"local-{self._local_messages}"
-
-    def _post_event(self, event: RunEvent) -> None:
-        """Called by the threads of the runner: hand the event over to the interface thread."""
-        wx.CallAfter(self._on_run_event, event)
-
-    def _on_run_event(self, event: RunEvent) -> None:
-        if self._closing:
-            return
-        if isinstance(event, AssistantText):
-            self._conversation.append_message(
-                Message(
-                    self._local_id(),
-                    Role.ASSISTANT,
-                    event.text.strip(),
-                    model=event.model,
-                    effort=self._turn_agent.effort if event.model else None,
-                )
-            )
-        elif isinstance(event, PermissionRequest):
-            self._on_permission_request(event)
-            return
-        elif isinstance(event, RateLimit):
-            self._usage.record_rate_limit(event, datetime.now())
-        elif isinstance(event, TurnResult):
-            self._turn_result = event
-            self._usage.record_result(event)
-        elif isinstance(event, TurnEnded):
-            self._finish_turn(event)
-            return
-        progress = progress_for(event)
-        if progress is not None:
-            self._show_progress(progress)
-
-    def _on_permission_request(self, request: PermissionRequest) -> None:
-        """Claude asks before running a tool: a rule allowed earlier in this message, else ask."""
-        rule = request.suggested_rule
-        if rule and rule in self._turn_allowed:
-            decision = Decision(Choice.ALLOW)
-        else:
-            self._feedback.set_status(
-                self._feedback.announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
-            )
-            decision = self._ask_permission(request)
-        try:
-            if decision.choice is Choice.DENY:
-                self._runner.deny(request, decision.denial_message())
-                self._feedback.say(Announce.PERMISSION_REFUSED, tool=request.tool_name)
-                return
-            if decision.choice is Choice.ALLOW_ALWAYS and rule:
-                self._remember_always_allowed(rule)
-            self._runner.allow(request)
-            self._feedback.say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
-        except RunnerError as error:
-            self._feedback.show_error(
-                _("Claude could not be answered.\n{error}").format(error=error)
-            )
-
-    def _remember_always_allowed(self, rule: str) -> None:
-        """Write the rule in the personal settings file, and keep it for the rest of the message."""
-        self._turn_allowed.add(rule)
-        if self._workspace is None:
-            return
-        try:
-            allow_always(self._workspace, rule)
-        except ClaudeSettingsError as error:
-            self._feedback.show_error(
-                _("The rule could not be saved.\n{error}").format(error=error)
-            )
-
-    def _ask_permission(self, request: PermissionRequest) -> Decision:
-        """Show the question; closing the dialog without answering is a denial."""
-        with PermissionDialog(self, request) as dialog:
-            self._feedback.modal(dialog)
-            decision: Decision = dialog.decision
-        return decision
 
     def _on_workspace_settings(self, _event: wx.CommandEvent) -> None:
         """The permission rules of the workspace, in the settings files of Claude Code."""
@@ -682,58 +571,8 @@ class MainWindow(wx.Frame):
         if written:
             self._feedback.say(Announce.WORKSPACE_SETTINGS_SAVED)
 
-    def _show_progress(self, progress: Progress) -> None:
-        """Progress goes to the status bar, and to the screen reader if the option is on."""
-        text = self._feedback.announcements.text(progress.announce, **progress.values)
-        if text == self._last_progress:
-            return
-        self._last_progress = text
-        if self._settings.announce_progress:
-            self._feedback.say(progress.announce, **progress.values)
-        else:
-            self._feedback.set_status(text)
-
-    def _finish_turn(self, ended: TurnEnded) -> None:
-        self._busy = False
-        self._refresh_enabled()
-        outcome = turn_outcome(self._turn_result, ended)
-        self._turn_result = None
-        self._reconcile_with_session_file()
-        if outcome.outcome is Outcome.DONE:
-            self._feedback.say(Announce.CLAUDE_DONE)
-        elif outcome.outcome is Outcome.INTERRUPTED:
-            self._feedback.say(Announce.CLAUDE_INTERRUPTED)
-        else:
-            first_line = outcome.details.splitlines()[0] if outcome.details else ""
-            self._feedback.say(Announce.CLAUDE_FAILED, details=first_line)
-            self._feedback.show_error(
-                _("Claude could not answer.\n{details}").format(details=outcome.details)
-            )
-
-    def _reconcile_with_session_file(self) -> None:
-        """The session file of the CLI is the reference: show it if it differs from the view."""
-        path = find_session_file(self._conversation_id)
-        if path is None:
-            return
-        try:
-            session = read_session(path)
-        except SessionReadError as error:
-            self._feedback.show_error(
-                _("Cannot read the conversation.\n{error}").format(error=error)
-            )
-            return
-        view = self._conversation
-        if view.shows(session.messages):
-            view.adopt_details(session.messages)  # the messages shown live have no tools yet
-        else:
-            caret = view.GetInsertionPoint()
-            view.set_messages(session.messages)
-            view.SetInsertionPoint(min(caret, view.GetLastPosition()))
-
     def _on_interrupt(self, _event: wx.CommandEvent) -> None:
-        if self._busy:
-            self._feedback.say(Announce.CLAUDE_INTERRUPTING)
-            self._runner.interrupt()
+        self._run.interrupt()
 
     def _on_prompt_key(self, event: wx.KeyEvent) -> None:
         shortcut = shortcut_from_event(event)
@@ -750,14 +589,14 @@ class MainWindow(wx.Frame):
         event.Enable(self.can_send)
 
     def _on_update_interrupt(self, event: wx.UpdateUIEvent) -> None:
-        event.Enable(self._busy)
+        event.Enable(self._run.busy)
 
     # Misc ------------------------------------------------------------------------------------
 
     def _apply_claude_path(self) -> None:
         """Tell the runner which claude executable to start: the chosen file, or the PATH."""
         settings = self._settings
-        self._runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
+        self._run.runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
 
     def _save_state(self) -> None:
         if self._state is None:
@@ -777,6 +616,6 @@ class MainWindow(wx.Frame):
 
     def _on_close(self, event: wx.CloseEvent) -> None:
         self._closing = True
-        self._runner.interrupt()
+        self._run.runner.interrupt()
         self._save_settings()
         event.Skip()
