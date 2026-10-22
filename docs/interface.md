@@ -60,7 +60,11 @@ to the plans folder, so it is the same with the stdio protocol and with the HTTP
 (`claude-cli.md`, "Permission channels"); the text is read from the file, which Claude may have
 edited since. The dialog shows what exists when it opens.
 
-**Help**: About.
+**Help**: WxClaude help (F1), About. The help page is one Markdown file per language
+(`src/wxclaude/help/fr.md`, `en.md`, package data; no table, no table of contents). F1 turns it into
+a plain HTML file (no CSS) in `<temp>/wxclaude-help/` and opens it in the default browser; a language
+without a page falls back on English. It only describes what exists and was tested, names no
+shortcut, and is updated with the features.
 
 ## Permissions
 
@@ -166,7 +170,7 @@ effort or the permission mode does not.
   Claude's permission questions reach WxClaude, applied to the next message (the conversation can
   switch at any time). *Wait for your answer, in minutes (HTTP hook)* (1 to 10, 10 by default) is
   greyed with the stdio protocol. What the HTTP hook cannot do is in `claude-cli.md`,
-  "Permission channels" (a help page will say it to the user, see `open-questions.md`).
+  "Permission channels".
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested.", is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).

@@ -55,6 +55,7 @@ class MenuHandlers:
     open_workspace_folder: Handler
     workspace_settings: Handler
     preferences: Handler
+    show_help: Handler
     about: Handler
     recent_workspaces: Callable[[], list[str]]
     open_recent: Callable[[str], None]
@@ -90,8 +91,9 @@ class MainMenu:
         tools_menu = wx.Menu()
         add_entries(window, tools_menu, self._tools_entries(), registry)
         help_menu = wx.Menu()
+        help_entry = MenuEntry(_("WxClaude &help\tF1"), handlers.show_help)
         about = MenuEntry(_("&About"), handlers.about, item_id=wx.ID_ABOUT)
-        add_entries(window, help_menu, [about], registry)
+        add_entries(window, help_menu, [help_entry, about], registry)
 
         menu_bar = wx.MenuBar()
         menu_bar.Append(self._file_menu, _("&File"))

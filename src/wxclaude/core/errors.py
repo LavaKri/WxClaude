@@ -13,6 +13,10 @@ class ExportError(WxClaudeError):
     """A conversation cannot be exported."""
 
 
+class HelpError(WxClaudeError):
+    """The help page is missing or cannot be written."""
+
+
 class JsonStoreError(WxClaudeError):
     """A JSON file of the application cannot be written."""
 

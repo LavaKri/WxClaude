@@ -1,5 +1,5 @@
 """What the user does with files and the desktop: export the conversation, show the workspace
-folder in the file explorer, About."""
+folder in the file explorer, the help page, About."""
 
 from pathlib import Path
 
@@ -7,8 +7,9 @@ import wx
 
 from wxclaude import __version__
 from wxclaude.core.announcements import Announce
-from wxclaude.core.errors import ExportError
+from wxclaude.core.errors import ExportError, HelpError
 from wxclaude.core.export import export_text
+from wxclaude.core.help import write_help_page
 from wxclaude.i18n import _
 from wxclaude.ui import desktop
 from wxclaude.ui.feedback import Feedback
@@ -55,6 +56,20 @@ class FileActions:
                 _("The folder {folder} cannot be opened in the file explorer.").format(
                     folder=folder
                 )
+            )
+
+    def show_help(self, language: str) -> None:
+        """Open the help page of ``language`` in the browser."""
+        try:
+            page = write_help_page(language)
+        except HelpError as error:
+            self._feedback.show_error(
+                _("The help page cannot be prepared.\n{error}").format(error=error)
+            )
+            return
+        if not desktop.launch_file(page):
+            self._feedback.show_error(
+                _("The help page {page} cannot be opened in the browser.").format(page=page)
             )
 
     def about(self) -> None:

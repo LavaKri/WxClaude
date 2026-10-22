@@ -30,7 +30,7 @@ wxclaude = "wxclaude.__main__:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-wxclaude = ["locale/*/LC_MESSAGES/*.mo", "data/*.txt"]
+wxclaude = ["locale/*/LC_MESSAGES/*.mo", "data/*.txt", "help/*.md"]
 
 [tool.ruff]
 line-length = 100

@@ -210,6 +210,7 @@ class MainWindow(wx.Frame):
                 ),
                 workspace_settings=self._on_workspace_settings,
                 preferences=self._on_preferences,
+                show_help=lambda _event: self._files.show_help(self._settings.language),
                 about=lambda _event: self._files.about(),
                 recent_workspaces=lambda: self._workspaces.recent(),
                 open_recent=lambda folder: self._workspaces.open_recent(folder),

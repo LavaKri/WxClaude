@@ -23,6 +23,11 @@ def launch_url(url: str) -> bool:
     return bool(wx.LaunchDefaultBrowser(url))
 
 
+def launch_file(path: Path) -> bool:
+    """Open ``path`` with the application the desktop associates with it (the browser for HTML)."""
+    return bool(wx.LaunchDefaultApplication(str(path)))
+
+
 def launch_folder(folder: Path) -> bool:
     """Open ``folder`` with the default application (the file explorer); False if refused."""
     return bool(wx.LaunchDefaultApplication(str(folder)))

@@ -6,14 +6,9 @@ the file it belongs to and delete it from this one.
 
 ## To decide
 
-- **Help page in HTML.** A page of help, opened from the Help menu, that explains WxClaude to the
-  user. It would hold, among other things, what the two interface types do (Preferences, Claude):
-  the stdio protocol brings every permission question, the structured questions of Claude and the
-  approval of its plans; the HTTP hook only brings the permission questions of the tools, Claude
-  cannot ask structured questions, in the mode Plan only (plan) it cannot submit its plan, a
-  question not answered within the waiting time is denied by Claude Code, and in the mode Do not ask
-  (dontAsk) nothing is asked with either type. To decide: how it is opened (browser or a dialog),
-  the languages, and whether it is package data like `data/tools.txt`.
+- **Help page.** Built (see `interface.md`). To check: the page with NVDA and JAWS in the browser,
+  the exact names of the Preferences pages in the French text, and the Claude Code install and login
+  steps when they change.
 - **The `&` of the labels in the Preferences.** The access keys (`&Language`, `&Path of claude-p`,
   ...) may hinder the reading of the labels with a screen reader. To check, and if so, remove them
   from the Preferences (the accessible name already comes without the `&`, see `core/labels.py`).

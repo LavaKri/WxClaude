@@ -9,13 +9,21 @@ improve is in `open-questions.md`.
 
 WxClaude works end to end: a prompt starts `claude -p` (one process per message), the answer is
 shown, the session file of the CLI is the reference for the history, the permission questions of
-Claude are asked to the user, and the permission rules are edited in the settings files of Claude
-Code; the details of a message (tools, tables, links), the task list and the usage of Claude are
-shown in dialogs. 342 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
+the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
+details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
+shown in dialogs. 391 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
-message, a permission question, the allow / ask / deny rules of `.claude/settings.local.json`, and
-the `rate_limit_event` and `result` lines that feed the usage dialog.
-**Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`).
+message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
+a structured question, the expiry of the hook), the allow / ask / deny rules of
+`.claude/settings.local.json`, and the `rate_limit_event` and `result` lines that feed the usage
+dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`):
+the new list *Interface type* and spin control of Preferences > Claude, and the *Plan* dialog.
+
+Last work (permission channels), in order: the channel behind `PermissionChannel`, the HTTP hook
+(`core/hook_channel.py`), the choice in the Preferences, *Tools > Plan…*. What is left of it is in
+`open-questions.md`: the hook options not tested yet, the `&` of the Preferences labels. The help
+page (F1, Markdown in `src/wxclaude/help/`, rendered to HTML on opening) exists in French and English and grows with the features.
 
 ## Decisions taken
 
@@ -112,6 +120,10 @@ the `rate_limit_event` and `result` lines that feed the usage dialog.
   general working rules (structure, size, tests, texts, accessibility) are in `working-rules.md`.
 - Manual tests with the real CLI use `haiku` with effort `low`; the protocol facts that were verified
   are in `claude-cli.md`.
+- Every run of the CLI in a folder adds a project to `~/.claude/projects/`, and *Open from Claude
+  projects* lists the projects whose folder still exists. Run the real CLI in a dedicated work
+  folder, and when done delete the work folder and its entry in `~/.claude/projects/` (a test
+  folder in `Temp` that is left shows up in the user's list). Never leave scripts in the project.
 - The tests of the UI create real wx windows; a fake `claude` replaces the CLI everywhere in the
   tests (`FAKE_CLAUDE` scenarios, see the top of `tests/fakes/fake_claude.py`), and `CLAUDE_CONFIG_DIR`
   is redirected so that the real `~/.claude` is never read.

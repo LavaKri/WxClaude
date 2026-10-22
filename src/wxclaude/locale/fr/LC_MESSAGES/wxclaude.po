@@ -75,6 +75,15 @@ msgstr "&Supprimer la conversation"
 msgid "&Modify the agent…"
 msgstr "&Modifier l'agent…"
 
+msgid "WxClaude &help\tF1"
+msgstr "A&ide de WxClaude\tF1"
+
+msgid "The help page cannot be prepared.\n{error}"
+msgstr "La page d'aide ne peut pas être préparée.\n{error}"
+
+msgid "The help page {page} cannot be opened in the browser."
+msgstr "La page d'aide {page} ne peut pas être ouverte dans le navigateur."
+
 msgid "&About"
 msgstr "À &propos"
 
