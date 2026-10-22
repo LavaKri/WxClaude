@@ -1,6 +1,8 @@
 import json
 import sys
 import threading
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -8,7 +10,7 @@ import pytest
 from wxclaude.core.agents import Agent
 from wxclaude.core.errors import RunnerError
 from wxclaude.core.events import PermissionRequest, RunEvent, ToolResult, TurnEnded
-from wxclaude.core.permission_channel import StdioChannel
+from wxclaude.core.permission_channel import HOOK, StdioChannel, make_channel
 from wxclaude.core.runner import ClaudeRunner, RunRequest, build_arguments
 
 pytestmark = pytest.mark.unit
@@ -119,6 +121,77 @@ def test_a_rule_of_the_settings_file_means_no_question(
     asker.wait()
     assert asker.requests == []
     assert not asker.tool_result.is_error
+
+
+def _hook_runner() -> ClaudeRunner:
+    runner = _runner()
+    runner.permission_channel = HOOK
+    return runner
+
+
+def test_the_hook_channel_passes_settings_instead_of_the_permission_tool(tmp_path: Path) -> None:
+    channel = make_channel(HOOK, lambda _event: None, 90)
+    try:
+        arguments = build_arguments(_request(tmp_path), channel)
+    finally:
+        channel.close()
+    assert "--permission-prompt-tool" not in arguments
+    assert arguments[arguments.index("--input-format") + 1] == "stream-json"
+    assert json.loads(arguments[arguments.index("--settings") + 1])["hooks"]["PermissionRequest"]
+
+
+def test_through_the_hook_a_permission_question_can_be_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE", "permission")
+    log = tmp_path / "log.json"
+    monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
+    runner = _hook_runner()
+    asker = Asker(runner, allow=True)
+    runner.start(_request(tmp_path), asker)
+    ended = asker.wait()
+    (question,) = asker.requests
+    assert question.tool_name == "Bash"
+    assert question.suggested_rule == "Bash(touch fake.txt)"
+    assert not asker.tool_result.is_error
+    assert ended.exit_code == 0
+    reply = json.loads(Path(str(log) + ".responses").read_text(encoding="utf-8"))
+    assert reply["hookSpecificOutput"]["decision"] == {"behavior": "allow"}
+
+
+def test_through_the_hook_a_permission_question_can_be_denied_with_an_explanation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE", "permission")
+    log = tmp_path / "log.json"
+    monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
+    runner = _hook_runner()
+    asker = Asker(runner, allow=False, message="Not in this folder")
+    runner.start(_request(tmp_path), asker)
+    asker.wait()
+    assert asker.tool_result.is_error
+    reply = json.loads(Path(str(log) + ".responses").read_text(encoding="utf-8"))
+    assert reply["hookSpecificOutput"]["decision"] == {
+        "behavior": "deny",
+        "message": "Not in this folder",
+    }
+
+
+def test_the_hook_server_is_gone_when_the_message_has_ended(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE", "permission")
+    log = tmp_path / "log.json"
+    monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
+    runner = _hook_runner()
+    asker = Asker(runner, allow=True)
+    runner.start(_request(tmp_path), asker)
+    asker.wait()
+    given = json.loads(log.read_text(encoding="utf-8"))["arguments"]
+    settings = json.loads(given[given.index("--settings") + 1])
+    url = settings["hooks"]["PermissionRequest"][0]["hooks"][0]["url"]
+    with pytest.raises(urllib.error.URLError):  # the connection is refused
+        urllib.request.urlopen(url, data=b"{}", timeout=5)
 
 
 def test_answering_when_nothing_runs_is_an_error() -> None:

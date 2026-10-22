@@ -4,7 +4,8 @@ import json
 import pytest
 
 from wxclaude.core.errors import RunnerError
-from wxclaude.core.permission_channel import STDIO, StdioChannel, make_channel
+from wxclaude.core.hook_channel import HookChannel
+from wxclaude.core.permission_channel import HOOK, STDIO, StdioChannel, make_channel
 from wxclaude.core.process_input import ProcessInput
 
 pytestmark = pytest.mark.unit
@@ -50,6 +51,11 @@ def test_answering_on_a_closed_input_is_an_error() -> None:
 
 
 def test_a_channel_is_made_from_its_name() -> None:
-    assert isinstance(make_channel(STDIO), StdioChannel)
+    assert isinstance(make_channel(STDIO, lambda _event: None, 600), StdioChannel)
+    hook = make_channel(HOOK, lambda _event: None, 600)
+    try:
+        assert isinstance(hook, HookChannel)
+    finally:
+        hook.close()
     with pytest.raises(RunnerError):
-        make_channel("carrier-pigeon")
+        make_channel("carrier-pigeon", lambda _event: None, 600)

@@ -6,13 +6,18 @@ tool needs a permission; the channel only carries the question to the interface,
 ``{"behavior": "allow", "updatedInput": ...}`` or ``{"behavior": "deny", "message": ...}``.
 """
 
+from collections.abc import Callable
 from typing import Protocol
 
 from wxclaude.core.errors import RunnerError
+from wxclaude.core.events import RunEvent
+from wxclaude.core.hook_channel import HookChannel
 from wxclaude.core.process_input import ProcessInput
 
 STDIO = "stdio"
-CHANNEL_KINDS = (STDIO,)
+HOOK = "hook"
+CHANNEL_KINDS = (STDIO, HOOK)
+DEFAULT_HOOK_TIMEOUT_SECONDS = 600  # the default of the CLI for its hooks
 
 
 class PermissionChannel(Protocol):
@@ -57,8 +62,16 @@ class StdioChannel:
         self._input = None
 
 
-def make_channel(kind: str) -> PermissionChannel:
-    """A new channel of ``kind`` (one of ``CHANNEL_KINDS``); raises ``RunnerError``."""
+def make_channel(
+    kind: str, on_event: Callable[[RunEvent], None], hook_timeout_seconds: int
+) -> PermissionChannel:
+    """A new channel of ``kind`` (one of ``CHANNEL_KINDS``); raises ``RunnerError``.
+
+    ``on_event`` receives the questions of a channel that does not go through the output of the
+    process (the hook); ``hook_timeout_seconds`` is how long the CLI waits for an answer.
+    """
     if kind == STDIO:
         return StdioChannel()
+    if kind == HOOK:
+        return HookChannel(on_event, hook_timeout_seconds)
     raise RunnerError(f"Unknown permission channel: {kind}")

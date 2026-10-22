@@ -22,7 +22,12 @@ from typing import IO
 from wxclaude.core.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
 from wxclaude.core.events import PermissionRequest, RunEvent, TurnEnded, TurnResult
-from wxclaude.core.permission_channel import STDIO, PermissionChannel, make_channel
+from wxclaude.core.permission_channel import (
+    DEFAULT_HOOK_TIMEOUT_SECONDS,
+    STDIO,
+    PermissionChannel,
+    make_channel,
+)
 from wxclaude.core.process_input import ProcessInput
 from wxclaude.core.stream import parse_stream_line
 
@@ -104,6 +109,7 @@ class ClaudeRunner:
         self._command = list(command) if command is not None else None
         self.claude_path = ""  # the claude executable chosen by hand; '' looks in the PATH
         self.permission_channel = STDIO  # how the permission questions travel, per message
+        self.hook_timeout_seconds = DEFAULT_HOOK_TIMEOUT_SECONDS  # the CLI's wait, hook channel
         self._process: subprocess.Popen[str] | None = None
         self._channel: PermissionChannel | None = None
         self._interrupted = False
@@ -121,7 +127,31 @@ class ClaudeRunner:
         message is already running.
         """
         command = self._command if self._command is not None else find_claude(self.claude_path)
-        channel = make_channel(self.permission_channel)
+        channel = make_channel(self.permission_channel, on_event, self.hook_timeout_seconds)
+        try:
+            process, stdin = self._spawn(command, request, channel)
+        except RunnerError:
+            channel.close()  # a hook server was started for nothing
+            raise
+        run = _Run(process, stdin, channel, request.prompt, on_event)
+        run.readers = [
+            threading.Thread(
+                target=self._read_stdout,
+                args=(process.stdout, stdin, on_event, run.diagnostics),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=self._read_stderr, args=(process.stderr, run.stderr_lines), daemon=True
+            ),
+        ]
+        for reader in run.readers:
+            reader.start()
+        threading.Thread(target=self._supervise, args=(run,), daemon=True).start()
+
+    def _spawn(
+        self, command: Sequence[str], request: RunRequest, channel: PermissionChannel
+    ) -> tuple[subprocess.Popen[str], ProcessInput]:
+        """Start the process and give its input to the channel."""
         argv = [*command, *build_arguments(request, channel)]
         with self._lock:
             if self._process is not None:
@@ -145,20 +175,7 @@ class ClaudeRunner:
             stdin = ProcessInput(process.stdin)
             channel.bind(stdin)
             self._interrupted = False
-        run = _Run(process, stdin, channel, request.prompt, on_event)
-        run.readers = [
-            threading.Thread(
-                target=self._read_stdout,
-                args=(process.stdout, stdin, on_event, run.diagnostics),
-                daemon=True,
-            ),
-            threading.Thread(
-                target=self._read_stderr, args=(process.stderr, run.stderr_lines), daemon=True
-            ),
-        ]
-        for reader in run.readers:
-            reader.start()
-        threading.Thread(target=self._supervise, args=(run,), daemon=True).start()
+        return process, stdin
 
     def allow(self, request: PermissionRequest) -> None:
         """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""

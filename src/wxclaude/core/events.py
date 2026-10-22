@@ -75,6 +75,17 @@ class PermissionRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class PermissionExpired:
+    """The CLI stopped waiting for the answer to a permission question and denied the tool.
+
+    Only the hook channel has a waiting time; the question can no longer be answered.
+    """
+
+    request_id: str
+    tool_name: str
+
+
+@dataclass(frozen=True, slots=True)
 class RateWindow:
     """One usage gauge: a window (``five_hour``, ``seven_day``...), how full it is (a fraction
     between 0 and 1) and when it resets (seconds since the epoch)."""
@@ -127,6 +138,7 @@ RunEvent = (
     | ToolResult
     | PermissionDenied
     | PermissionRequest
+    | PermissionExpired
     | RateLimit
     | TurnResult
     | TurnEnded

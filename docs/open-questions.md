@@ -85,6 +85,12 @@ the file it belongs to and delete it from this one.
   by the last run (the `tools` of the `init` line) are not added yet.
 - The Workspace settings only edit the rules; other keys of the files (`env`, additional directories,
   instructions) are for later tabs.
+- **Answer the stdio permission questions from a worker thread.** `ClaudeRunner.allow` and `deny`
+  write to the stdin of the CLI from the window thread. The line is short and the CLI is waiting
+  for it, but a full pipe (large `updatedInput`, CLI not reading) would freeze the window. A worker
+  thread removes the risk; the `RunnerError` of `allow` and `deny` would then come back with
+  `wx.CallAfter` instead of being raised on the spot. The hook channel does no input or output in
+  the window thread: the window thread only hands the decision to the thread of the HTTP handler.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
 - Rename and branch are provisional (a rename only changes the name WxClaude keeps; a branch starts
   a new identifier with the same text on screen): see milestone 6 of `roadmap.md`.

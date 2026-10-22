@@ -7,7 +7,9 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
 - ``denied``: like ``ok`` with a permission denial before the answer;
 - ``permission``: like ``ok`` but the tool call needs a permission: a ``control_request`` is sent
   and the ``control_response`` read on stdin decides (allow: the tool runs; deny: its message is
-  the tool result), unless ``.claude/settings.local.json`` already allows ``Bash(touch fake.txt)``;
+  the tool result), unless ``.claude/settings.local.json`` already allows ``Bash(touch fake.txt)``.
+  With ``--settings`` (a PermissionRequest hook of type http) the question is a POST to the URL of
+  the hook and the response decides, with the same results;
 - ``error``: a result with ``is_error`` and exit code 1;
 - ``crash``: nothing on stdout, a message on stderr, exit code 2;
 - ``garbage``: a line that is not JSON, then like ``ok``;
@@ -23,6 +25,7 @@ import json
 import os
 import sys
 import time
+import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -110,8 +113,49 @@ def rule_allowed() -> bool:
     return RULE in permissions.get("allow", [])
 
 
+def ask_permission_by_hook(log: str | None) -> tuple[bool, str]:
+    """Like the CLI with a PermissionRequest hook of type http: POST the question and wait.
+
+    The URL is read from ``--settings``. An empty response means no decision: the tool is denied
+    as in any ``-p`` run. The decision read is written to ``<log>.responses``.
+    """
+    settings = json.loads(option("--settings"))
+    url = settings["hooks"]["PermissionRequest"][0]["hooks"][0]["url"]
+    body = {
+        "hook_event_name": "PermissionRequest",
+        "permission_mode": option("--permission-mode"),
+        "tool_name": "Bash",
+        "tool_input": {"command": "touch fake.txt", "description": "Create fake.txt"},
+        "permission_suggestions": [
+            {
+                "type": "addRules",
+                "rules": [{"toolName": "Bash", "ruleContent": "touch fake.txt"}],
+                "behavior": "allow",
+                "destination": "localSettings",
+            }
+        ],
+    }
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        reply = json.loads(response.read())
+    if log:
+        with Path(log + ".responses").open("a", encoding="utf-8") as file:
+            file.write(json.dumps(reply) + "\n")
+    decision = reply.get("hookSpecificOutput", {}).get("decision", {})
+    if decision.get("behavior") == "allow":
+        return True, "ran"
+    return False, str(decision.get("message", "you haven't granted it yet"))
+
+
 def ask_permission(log: str | None) -> tuple[bool, str]:
     """Send the permission question and read the answer: (allowed, tool result text)."""
+    if "--settings" in sys.argv:
+        return ask_permission_by_hook(log)
     emit(
         {
             "type": "control_request",

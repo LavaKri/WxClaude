@@ -63,7 +63,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `announcements.py` | `Announce` messages, `AnnouncementCenter` and the message sinks. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
-| `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel`. See `claude-cli.md`, "Permission channels". |
+| `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
+| `hook_channel.py` | `HookChannel`: a server on `127.0.0.1` (one per message, a token in the URL) that receives the POST of the CLI's `PermissionRequest` hook, hands it to the interface as a `PermissionRequest` event and writes the response from its own thread; the interface thread only stores the decision. A question nobody answers gives `PermissionExpired`. |
 | `process_input.py` | `ProcessInput`: the JSON lines written to the standard input of the process, from several threads, closed once. |
 | `stream.py`, `events.py` | The `stream-json` lines turned into typed events. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |

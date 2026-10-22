@@ -47,12 +47,12 @@ Tests: CLI 2.1.286, Windows, `haiku`, effort `low`, 2026-10-22, empty folder, pr
 
 | | Stdio control protocol (`stdio`) | PermissionRequest HTTP hook (`hook`) |
 |---|---|---|
-| Status in WxClaude | implemented | tested, not implemented |
+| Status in WxClaude | implemented, default | implemented in `core/` (`hook_channel.py`), checked with the real CLI through the runner (allow, deny); not selectable yet (Preferences) |
 | Flags | `--permission-prompt-tool stdio` | `--settings '{"hooks": {"PermissionRequest": [{"hooks": [{"type": "http", "url": "http://127.0.0.1:<port>/<token>", "timeout": <seconds>}]}]}}'` |
 | Channel | JSON lines, CLI stdout and stdin | HTTP POST from the CLI to a local server; the response is held until the user answers |
 | Needs besides the process | nothing | an HTTP server on `127.0.0.1` |
 | Request | `control_request`: `request_id`, `request` {`subtype` `can_use_tool`, `tool_name`, `input`, `description`, `tool_use_id`, `blocked_path`, `permission_suggestions`} | POST body: `cwd`, `hook_event_name`, `permission_mode`, `permission_suggestions`, `prompt_id`, `session_id`, `tool_input`, `tool_name`, `transcript_path`; no `tool_use_id` (the documentation lists it), no `description`, no `blocked_path` [test] |
-| Answer allow | `control_response` `{"subtype": "success", "request_id", "response": {"behavior": "allow", "updatedInput": <input>}}` | `{"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "allow"}}}`; file written in the same turn [test] |
+| Answer allow | `control_response` `{"subtype": "success", "request_id", "response": {"behavior": "allow", "updatedInput": <input>}}` | `{"hookSpecificOutput": {"hookEventName": "PermissionRequest", "decision": {"behavior": "allow"}}}`; file written in the same turn [test]; WxClaude leaves `updatedInput` out when it is the input of the request |
 | Answer deny | same, `{"behavior": "deny", "message": "<text>"}`; Claude gets the text as the tool result | `{"behavior": "deny", "message": "<text>"}`; Claude gets the text as the tool result [test]; the CLI still sends `permission_denied` (`decision_reason_type` `hook`, `decision_reason`) and lists it in `result.permission_denials` [test] |
 | Other answer fields | not tested | `updatedInput`, `updatedPermissions`, `interrupt` [doc, not tested]; `decision.rule` appears in one documentation page [not tested] |
 | Waiting time | no limit known; closing stdin cancels the question [doc] | `timeout` in seconds, default 600 for most events [doc]. Expiry (`timeout` 10, no answer) [test]: the CLI waited, then denied as a plain `-p` denial (`permission_denied` without `decision_reason_type`, "you haven't granted it yet"), result `success`, Claude asks the user to approve; indistinguishable from a denial in the stream |

@@ -101,7 +101,7 @@ def _user(entry: dict[str, object]) -> list[RunEvent]:
     ]
 
 
-def _suggested_rule(suggestions: object) -> str:
+def suggested_rule(suggestions: object) -> str:
     """The rule to allow that the CLI proposes (``Bash(touch x)``, ``Edit``), '' if none."""
     for suggestion in suggestions if isinstance(suggestions, list) else []:
         if not isinstance(suggestion, dict) or suggestion.get("type") != "addRules":
@@ -130,7 +130,7 @@ def _control_request(entry: dict[str, object]) -> list[RunEvent]:
             input=raw_input if isinstance(raw_input, dict) else {},
             description=_text(request.get("description")),
             blocked_path=_text(request.get("blocked_path")),
-            suggested_rule=_suggested_rule(request.get("permission_suggestions")),
+            suggested_rule=suggested_rule(request.get("permission_suggestions")),
         )
     ]
 
