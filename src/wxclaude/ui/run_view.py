@@ -1,0 +1,71 @@
+"""The wx side of a message sent to Claude: the view of ``presenters/run_presenter.py``."""
+
+from collections.abc import Callable
+
+import wx
+
+from wxclaude.core.announcements import Announce
+from wxclaude.core.events import PermissionRequest, RunEvent
+from wxclaude.core.messages import Message
+from wxclaude.core.permissions import Decision
+from wxclaude.ui.conversation_view import ConversationView
+from wxclaude.ui.feedback import Feedback
+from wxclaude.ui.permission_dialog import PermissionDialog
+
+
+class WxRunView:
+    """Shows a run in the conversation view and the status bar, asks with the permission dialog.
+
+    ``parent`` is the window of the dialogs.
+    """
+
+    def __init__(self, parent: wx.Window, view: ConversationView, feedback: Feedback) -> None:
+        self._parent = parent
+        self._view = view
+        self._feedback = feedback
+        self._open_question: tuple[PermissionRequest, wx.Dialog] | None = None
+
+    def call_after(self, function: Callable[[RunEvent], None], event: RunEvent) -> None:
+        """Hand the event over to the interface thread."""
+        wx.CallAfter(function, event)
+
+    def append_message(self, message: Message) -> None:
+        self._view.append_message(message)
+
+    def show_session(self, messages: list[Message]) -> None:
+        """Show the messages of the session file if they differ from the view; the caret stays."""
+        view = self._view
+        if view.shows(messages):
+            view.adopt_details(messages)  # the messages shown live have no tools yet
+        else:
+            caret = view.GetInsertionPoint()
+            view.set_messages(messages)
+            view.SetInsertionPoint(min(caret, view.GetLastPosition()))
+
+    def ask_permission(self, request: PermissionRequest) -> Decision:
+        """Show the question; closing the dialog without answering is a denial."""
+        with PermissionDialog(self._parent, request) as dialog:
+            self._open_question = (request, dialog)
+            try:
+                self._feedback.modal(dialog)
+            finally:
+                self._open_question = None
+            decision: Decision = dialog.decision
+        return decision
+
+    def close_permission(self, request_id: str) -> None:
+        question = self._open_question
+        if question is not None and question[0].request_id == request_id:
+            question[1].EndModal(wx.ID_NO)
+
+    def say(self, announce: Announce, **values: object) -> None:
+        self._feedback.say(announce, **values)
+
+    def set_status(self, text: str) -> None:
+        self._feedback.set_status(text)
+
+    def show_step(self, text: str) -> None:
+        self._feedback.show_step(text)
+
+    def show_error(self, message: str) -> None:
+        self._feedback.show_error(message)

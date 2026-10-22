@@ -24,9 +24,11 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 - Full check, as four separate commands (never chained): `.venv\Scripts\python.exe -m pytest`, then `.venv\Scripts\python.exe -m ruff check`, `.venv\Scripts\python.exe -m ruff format --check`, `.venv\Scripts\python.exe -m mypy src`
 
 ## Layout
-- `src/wxclaude/core/`: logic, models, CLI runner. **Never imports `wx`.**
-- `src/wxclaude/ui/`: wx windows and dialogs; thin, no business logic.
-- `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.
+Model-View-Presenter, adopted one screen at a time (see `docs/architecture.md`):
+- `src/wxclaude/core/`: the model: logic, files, CLI runner. **Never imports `wx`.**
+- `src/wxclaude/presenters/`: the logic of a screen. **Never imports `wx`.** Talks to its view through a `Protocol`; tested with a fake view.
+- `src/wxclaude/ui/`: wx windows, dialogs and the views of the presenters; thin, no business logic.
+- `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/presenters/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.
 - `docs/`: specifications, one file per topic (architecture, interface, settings, accessibility, focus). Update them when behaviour changes.
 
 ## Rules
@@ -34,7 +36,7 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 - **Never use subagents** (no Agent tool, no Explore/Plan agents): do all the research and work directly with the other tools.
 - **Never chain shell commands.** One command per tool call: no `;`, `&&`, `||`, `&`, no pipes used to string commands together, no `cd x && ...`. Run independent commands as parallel tool calls and dependent ones one after the other.
 - Code, comments, docstrings, specs: English. UI default language: French; every visible string goes through `_()`; no string concatenation (use `str.format` with named fields).
-- Full type annotations; mypy strict on `core/`. `@dataclass(slots=True)`, `Protocol` for contracts, `pathlib.Path`, explicit file encodings.
+- Full type annotations; mypy strict on `core/` and `presenters/`. `@dataclass(slots=True)`, `Protocol` for contracts, `pathlib.Path`, explicit file encodings.
 - Specific exceptions derived from `WxClaudeError`; never a bare `except` or a swallowed error. User-facing errors are announced.
 - Ruff (line length 100), mypy and pytest must pass before proposing a commit.
 - Run only the tests you need while working; the full suite, ruff and mypy run once, just before proposing a commit.

@@ -34,7 +34,7 @@ def _permission_setup(
         asked.append(request)
         return answers.pop(0)
 
-    monkeypatch.setattr(window._run, "_ask_permission", ask)
+    monkeypatch.setattr(window._run_view, "ask_permission", ask)
     sink = RecordingMessageSink()
     window._feedback.announcements.message_sink = sink
     return asked, log, sink
@@ -185,14 +185,16 @@ def test_a_question_that_expired_closes_its_dialog_and_is_not_answered(
     run = conversation._run
     request = PermissionRequest("r", "Write", "", {}, "", "", "")
     dialog = _OpenQuestion()
-    run._open_question = (request, dialog)  # type: ignore[assignment]
-    run._on_run_event(PermissionExpired("r", "Write"))
+    conversation._run_view._open_question = (request, dialog)  # type: ignore[assignment]
+    run.on_event(PermissionExpired("r", "Write"))
     assert dialog.ended == [wx.ID_NO]
     assert "The question about the tool Write expired: Claude denied the tool." in sink.messages
     answers: list[object] = []
     monkeypatch.setattr(run.runner, "deny", lambda *args: answers.append(args))
     monkeypatch.setattr(run.runner, "allow", lambda *args: answers.append(args))
-    monkeypatch.setattr(run, "_ask_permission", lambda _request: Decision(Choice.DENY))
+    monkeypatch.setattr(
+        conversation._run_view, "ask_permission", lambda _request: Decision(Choice.DENY)
+    )
     run._on_permission_request(request)
     assert answers == []
 
@@ -202,8 +204,9 @@ def test_another_question_expiring_leaves_the_open_dialog_alone(
 ) -> None:
     run = conversation._run
     dialog = _OpenQuestion()
-    run._open_question = (PermissionRequest("r", "Write", "", {}, "", "", ""), dialog)  # type: ignore[assignment]
-    run._on_run_event(PermissionExpired("other", "Bash"))
+    question = (PermissionRequest("r", "Write", "", {}, "", "", ""), dialog)
+    conversation._run_view._open_question = question  # type: ignore[assignment]
+    run.on_event(PermissionExpired("other", "Bash"))
     assert dialog.ended == []
 
 

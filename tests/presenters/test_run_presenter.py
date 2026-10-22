@@ -1,0 +1,202 @@
+"""The presenter of a message sent to Claude, with a fake view: no wx, no window."""
+
+import json
+from collections.abc import Callable
+from pathlib import Path
+
+import pytest
+
+from wxclaude.core.announcements import Announce
+from wxclaude.core.events import (
+    AssistantText,
+    PermissionExpired,
+    PermissionRequest,
+    RunEvent,
+    Thinking,
+    ToolUsed,
+    TurnEnded,
+    TurnResult,
+)
+from wxclaude.core.messages import Message
+from wxclaude.core.permissions import Choice, Decision
+from wxclaude.core.runner import ClaudeRunner
+from wxclaude.core.settings import Settings
+from wxclaude.core.usage import UsageTracker
+from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
+
+pytestmark = pytest.mark.unit
+
+CONVERSATION = "d278c1fc-1d73-4c16-a899-5bdb1831fe5c"
+SUCCESS = TurnResult(False, "success", "", None, None, None, None)
+
+
+class FakeView:
+    """Records what the presenter shows; answers the permission questions with ``decisions``."""
+
+    def __init__(self, *decisions: Decision) -> None:
+        self.messages: list[Message] = []
+        self.said: list[tuple[Announce, dict[str, object]]] = []
+        self.status: list[str] = []
+        self.steps: list[str] = []
+        self.errors: list[str] = []
+        self.asked: list[PermissionRequest] = []
+        self.closed: list[str] = []
+        self.sessions: list[list[Message]] = []
+        self._decisions = list(decisions)
+
+    def call_after(self, function: Callable[[RunEvent], None], event: RunEvent) -> None:
+        function(event)
+
+    def append_message(self, message: Message) -> None:
+        self.messages.append(message)
+
+    def show_session(self, messages: list[Message]) -> None:
+        self.sessions.append(messages)
+
+    def ask_permission(self, request: PermissionRequest) -> Decision:
+        self.asked.append(request)
+        return self._decisions.pop(0)
+
+    def close_permission(self, request_id: str) -> None:
+        self.closed.append(request_id)
+
+    def say(self, announce: Announce, **values: object) -> None:
+        self.said.append((announce, values))
+
+    def set_status(self, text: str) -> None:
+        self.status.append(text)
+
+    def show_step(self, text: str) -> None:
+        self.steps.append(text)
+
+    def show_error(self, message: str) -> None:
+        self.errors.append(message)
+
+    def announces(self) -> list[Announce]:
+        return [announce for announce, _values in self.said]
+
+
+class FakeRunner(ClaudeRunner):
+    """Records the answers instead of writing to a process."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.answers: list[tuple[str, str]] = []
+
+    def allow(self, request: PermissionRequest) -> None:
+        self.answers.append(("allow", request.request_id))
+
+    def deny(self, request: PermissionRequest, message: str) -> None:
+        self.answers.append(("deny", message))
+
+
+@pytest.fixture(autouse=True)
+def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    folder = tmp_path / "claude-config"
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
+    return folder
+
+
+def _presenter(view: FakeView, workspace: Path) -> tuple[RunPresenter, FakeRunner]:
+    runner = FakeRunner()
+    links = RunLinks(
+        workspace=lambda: workspace,
+        conversation_id=lambda: CONVERSATION,
+        is_closing=lambda: False,
+        state_changed=lambda: None,
+    )
+    return RunPresenter(view, runner, Settings.load(None), UsageTracker(), links), runner
+
+
+def test_progress_is_said_once_and_the_answer_is_shown(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+    for event in (Thinking(), Thinking(), AssistantText(" Hi ", "m"), SUCCESS):
+        presenter.on_event(event)
+    presenter.on_event(TurnEnded(0, False, "", []))
+    assert view.announces() == [
+        Announce.CLAUDE_THINKING,
+        Announce.CLAUDE_ANSWERING,
+        Announce.CLAUDE_DONE,
+    ]
+    assert [message.text for message in view.messages] == ["Hi"]
+    assert view.steps == [""]  # the step field is emptied at the end of the turn
+
+
+def test_a_failed_turn_goes_to_the_status_bar_and_a_dialog(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+    presenter.on_event(TurnEnded(2, False, "not logged in", []))
+    assert view.status == ["Claude could not answer: not logged in"]
+    assert view.errors == ["Claude could not answer.\nnot logged in"]
+    assert Announce.CLAUDE_DONE not in view.announces()
+
+
+def test_a_permission_is_asked_then_answered(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.ALLOW), Decision(Choice.DENY, "No"))
+    presenter, runner = _presenter(view, tmp_path)
+    presenter.on_event(PermissionRequest("r1", "Bash", "t", {}, "", "", ""))
+    presenter.on_event(PermissionRequest("r2", "Write", "t", {}, "", "", ""))
+    assert runner.answers == [("allow", "r1"), ("deny", "No")]
+    assert view.announces() == [
+        Announce.PERMISSION_ASKED,
+        Announce.PERMISSION_GRANTED,
+        Announce.PERMISSION_ASKED,
+        Announce.PERMISSION_REFUSED,
+    ]
+
+
+def test_always_allow_writes_the_rule_and_is_not_asked_again_in_the_message(
+    tmp_path: Path,
+) -> None:
+    view = FakeView(Decision(Choice.ALLOW_ALWAYS))
+    presenter, runner = _presenter(view, tmp_path)
+    request = PermissionRequest("r1", "Bash", "t", {}, "", "", "Bash(touch x)")
+    presenter.on_event(request)
+    presenter.on_event(PermissionRequest("r2", "Bash", "t", {}, "", "", "Bash(touch x)"))
+    assert len(view.asked) == 1
+    assert runner.answers == [("allow", "r1"), ("allow", "r2")]
+    local = json.loads((tmp_path / ".claude" / "settings.local.json").read_text(encoding="utf-8"))
+    assert local["permissions"]["allow"] == ["Bash(touch x)"]
+
+
+def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, runner = _presenter(view, tmp_path)
+    request = PermissionRequest("r1", "Write", "t", {}, "", "", "")
+
+    def ask(asked: PermissionRequest) -> Decision:
+        presenter.on_event(PermissionExpired(asked.request_id, asked.tool_name))  # while open
+        return Decision(Choice.ALLOW)
+
+    view.ask_permission = ask  # type: ignore[method-assign]
+    presenter.on_event(request)
+    assert view.closed == ["r1"]
+    assert runner.answers == []
+    assert Announce.PERMISSION_EXPIRED in view.announces()
+
+
+def test_a_step_put_in_progress_replaces_the_tool_progress(
+    tmp_path: Path, claude_config: Path
+) -> None:
+    folder = claude_config / "tasks" / CONVERSATION
+    folder.mkdir(parents=True)
+    task = {"id": "1", "subject": "Alpha", "status": "pending"}
+    (folder / "1.json").write_text(json.dumps(task), encoding="utf-8")
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+    presenter.on_event(ToolUsed("t", "TaskUpdate", {"taskId": "1", "status": "in_progress"}))
+    assert view.steps == ["Step 1 of 1: Alpha"]
+    assert view.said == [(Announce.STEP_STARTED, {"number": 1, "total": 1, "subject": "Alpha"})]
+    presenter.on_event(ToolUsed("t2", "Read", {}))
+    assert view.said[-1] == (Announce.CLAUDE_USING_TOOL, {"tool": "Read"})
+
+
+def test_nothing_is_started_without_a_workspace() -> None:
+    view = FakeView()
+    runner = FakeRunner()
+    links = RunLinks(lambda: None, lambda: CONVERSATION, lambda: False, lambda: None)
+    presenter = RunPresenter(view, runner, Settings.load(None), UsageTracker(), links)
+    assert not presenter.start("hello", Settings.load(None).default_agent)
+    assert not presenter.busy
+    assert view.messages == []

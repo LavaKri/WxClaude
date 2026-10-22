@@ -56,7 +56,7 @@ mypy_path = "src"
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = "wxclaude.core.*"
+module = ["wxclaude.core.*", "wxclaude.presenters.*"]
 strict = true
 
 [[tool.mypy.overrides]]

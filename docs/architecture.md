@@ -2,10 +2,16 @@
 
 WxClaude is a wxPython desktop front end for `claude -p --output-format stream-json`.
 
-- `core/`: logic, never imports `wx` (mypy strict).
-- `ui/`: thin wx layer.
-- Worker threads (CLI readers) never touch wx; they post to the UI with
-  `wx.CallAfter`.
+The code follows Model-View-Presenter, moved to it one screen at a time:
+
+- `core/`: the model (logic, files, the CLI), never imports `wx` (mypy strict).
+- `presenters/`: the logic of a screen, never imports `wx` (mypy strict). A presenter talks to its
+  view only through a `Protocol` and is tested with a fake view, without a window.
+- `ui/`: the wx views: windows, dialogs, controls, and the classes that implement the `Protocol` of
+  a presenter. The screens that have no presenter yet keep their logic here.
+- `tests/test_layers.py` checks that `core/` and `presenters/` never import `wx`.
+- Worker threads (CLI readers) never touch wx; they hand their events to the view, which posts
+  them to the UI with `wx.CallAfter`.
 - The rules of structure and size of the code are in `working-rules.md`.
 
 ## Scope
@@ -24,7 +30,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 
 ## A turn
 
-1. `RunController` (`ui/run_controller.py`) builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
+1. `RunPresenter` (`presenters/run_presenter.py`, its view `WxRunView` in `ui/run_view.py`)
+   builds a `RunRequest` (prompt, complete agent, conversation id, `resume` if the
    session file exists, workspace) and calls `ClaudeRunner.start`. The view shows the prompt at
    once and the window is busy (Send greyed, Interrupt active).
 2. `ClaudeRunner` starts the process (`--input-format stream-json --output-format stream-json`
@@ -32,7 +39,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
    `StdioChannel`) with three threads: stdout (each line is parsed by
    `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt as a JSON
    line to stdin, waits for the end and sends `TurnEnded`, always the last event.
-3. Events reach the interface through `wx.CallAfter`. Text blocks are appended to the view;
+3. Events reach the presenter on the interface thread through `RunView.call_after`
+   (`wx.CallAfter`). Text blocks are appended to the view;
    `progress.progress_for` turns the others into progress (announced where the category "Progress
    of Claude" says; the same text is not repeated).
 4. At `TurnEnded`, `progress.turn_outcome` decides done / interrupted / failed. A failure is said in
@@ -82,12 +90,18 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `export.py` | Writes the conversation text to a file. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
 
+## Modules of `presenters/`
+
+| Module | Role |
+|---|---|
+| `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
+
 ## Modules of `ui/`
 
 | Module | Role |
 |---|---|
 | `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the workspaces and conversations. |
-| `run_controller.py` | `RunController`: a message sent to Claude (start, events, permission questions, progress, end, interrupt), linked to the window by `RunLinks`. |
+| `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list) and `read_session` (the error is shown). |
 | `workspace_opener.py` | `WorkspaceOpener`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
 | `file_actions.py` | `FileActions`: export the conversation, show the workspace folder in the file explorer, About. |

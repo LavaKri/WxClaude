@@ -29,6 +29,7 @@ from wxclaude.core.shortcuts import (
 from wxclaude.core.usage import UsageTracker
 from wxclaude.core.workspaces import describe
 from wxclaude.i18n import _
+from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
@@ -37,7 +38,7 @@ from wxclaude.ui.file_actions import FileActions
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_actions import MessageActions
 from wxclaude.ui.preferences_dialog import PreferencesDialog
-from wxclaude.ui.run_controller import RunController, RunLinks
+from wxclaude.ui.run_view import WxRunView
 from wxclaude.ui.search_controller import SearchController
 from wxclaude.ui.shortcut_keys import shortcut_from_event
 from wxclaude.ui.workspace_opener import WorkspaceLinks, WorkspaceOpener
@@ -123,11 +124,10 @@ class MainWindow(wx.Frame):
             lambda announce, **values: self._feedback.say(announce, **values),
             lambda message: self._feedback.show_info(message),
         )
-        self._run = RunController(
-            self,
+        self._run_view = WxRunView(self, self._conversation, self._feedback)
+        self._run = RunPresenter(
+            self._run_view,
             runner,
-            self._conversation,
-            self._feedback,
             self._settings,
             self._usage,
             RunLinks(

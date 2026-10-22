@@ -208,14 +208,14 @@ def test_a_step_put_in_progress_is_said_and_kept_in_the_second_status_field(
     status = conversation.GetStatusBar()
     assert status.GetStatusText(1) == ""
     run = conversation._run
-    run._on_run_event(ToolUsed("t1", "TaskUpdate", {"taskId": "2", "status": "in_progress"}))
+    run.on_event(ToolUsed("t1", "TaskUpdate", {"taskId": "2", "status": "in_progress"}))
     assert status.GetStatusText(1) == "Step 2 of 2: Beta"
     assert sink.messages == ["Step 2 of 2: Beta"]
-    run._on_run_event(ToolUsed("t2", "TaskUpdate", {"taskId": "2", "status": "completed"}))
+    run.on_event(ToolUsed("t2", "TaskUpdate", {"taskId": "2", "status": "completed"}))
     assert sink.messages[-1] == "Claude uses the tool TaskUpdate."  # not a step start
     assert status.GetStatusText(1) == "Step 2 of 2: Beta"
-    run._on_run_event(TurnResult(False, "success", "", None, None, None, None))
-    run._on_run_event(TurnEnded(0, False, "", []))
+    run.on_event(TurnResult(False, "success", "", None, None, None, None))
+    run.on_event(TurnEnded(0, False, "", []))
     assert status.GetStatusText(1) == ""  # waiting for the next prompt
 
 
@@ -223,7 +223,7 @@ def test_a_step_that_is_not_in_the_list_is_normal_progress(conversation: MainWin
     sink = RecordingMessageSink()
     conversation._feedback.announcements.message_sink = sink
     tool = ToolUsed("t1", "TaskUpdate", {"taskId": "9", "status": "in_progress"})
-    conversation._run._on_run_event(tool)
+    conversation._run.on_event(tool)
     assert sink.messages == ["Claude uses the tool TaskUpdate."]
     assert conversation.GetStatusBar().GetStatusText(1) == ""
 
