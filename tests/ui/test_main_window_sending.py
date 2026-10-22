@@ -101,7 +101,7 @@ def test_the_alternative_agent_is_used_by_the_alternative_send(
     _wait_until_idle(conversation)
     arguments = json.loads(log.read_text(encoding="utf-8"))["arguments"]
     assert arguments[arguments.index("--effort") + 1] == "low"
-    assert conversation._agent == OPUS  # the agent of the conversation is not changed
+    assert conversation._conversations.agent == OPUS  # the agent of the conversation is not changed
 
 
 def test_the_end_of_an_answer_is_a_sound_by_default_and_progress_follows_its_category(

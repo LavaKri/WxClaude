@@ -71,15 +71,6 @@ the file it belongs to and delete it from this one.
   Not checkable by a tool: whether a split makes sense, whether a data object holds only data
   (check 1 only keeps it from importing `wx`), and code duplicated between files (Pylint's
   `duplicate-code` could do it if it becomes a problem).
-- **Split `MainWindow` further.** The file is under the limit but the class (about 470 lines) is
-  not. What is left is the conversations: load, create, rename, branch, refresh, choose the
-  agent, the title, `_save_state`. They read and write the conversation id and name, the agent
-  and the branch count, which other objects also read: a small shared state object in `core/`
-  (`AppState`) and a `ConversationManager`, following `working-rules.md`. `tests/test_code_size.py`
-  warns about it at every run.
-- **Split the main window** (`ui/main_window.py`, over 1000 lines): its constructor and its menu
-  are too long for the checks, which are switched off for this one file in `pyproject.toml`
-  (`per-file-ignores`); remove that exception once it is split, following `working-rules.md`.
 - **Template for a new Python project with an interface.** `working-rules.md` is the first generic
   document. To look at more closely: which sections of the other documents are generic (the four
   focus rules of `focus.md`, the plans of `roadmap.md`, `open-questions.md`, `architecture.md` and

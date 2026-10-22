@@ -1,28 +1,47 @@
 """Opening a workspace: from a folder, from the Claude projects, from the recent list, at startup.
 
-The opener keeps the current workspace and what is remembered about it. What follows from a new
-workspace (closing the conversation, selecting another one, the title and the greyed items) is done
-by the window, through ``WorkspaceLinks``.
+The presenter keeps the current workspace and what is remembered about it. What follows from a
+new workspace (closing the conversation, selecting another one, the title and the greyed items) is
+done by the window, through ``WorkspaceLinks``; what is asked or shown goes through
+``WorkspaceView``.
 """
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-
-import wx
+from typing import Protocol
 
 from wxclaude.core.claude_projects import list_projects
 from wxclaude.core.settings import Settings
 from wxclaude.core.workspace_state import WorkspaceState
 from wxclaude.core.workspaces import add_recent, remove_missing, workspace_label
 from wxclaude.i18n import _
-from wxclaude.ui.feedback import Feedback
+
+
+class WorkspaceView(Protocol):
+    """What the presenter asks of the interface to open a workspace."""
+
+    def choose_folder(self, default: Path | None) -> Path | None:
+        """Ask for an existing folder (``default`` proposed); None if cancelled."""
+        ...
+
+    def choose(self, title: str, prompt: str, labels: list[str]) -> int | None:
+        """Ask the user to pick one of ``labels``; its index, None if cancelled."""
+        ...
+
+    def show_error(self, message: str) -> None:
+        """Tell the user that something failed."""
+        ...
+
+    def show_file_warning(self, details: str) -> None:
+        """Tell the user that a file of the application was damaged (and what was done)."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceLinks:
-    """What the opener asks of the window: close the conversation, select the one of a workspace,
-    refresh what depends on the workspace (title, greyed items), save the settings."""
+    """What the presenter asks of the window: close the conversation, select the one of a
+    workspace, refresh what depends on the workspace (title, greyed items), save the settings."""
 
     close_conversation: Callable[[], None]
     select_conversation: Callable[[Path], None]
@@ -30,14 +49,11 @@ class WorkspaceLinks:
     save_settings: Callable[[], None]
 
 
-class WorkspaceOpener:
+class WorkspacePresenter:
     """The current workspace and the ways to open another one."""
 
-    def __init__(
-        self, parent: wx.Window, feedback: Feedback, settings: Settings, links: WorkspaceLinks
-    ) -> None:
-        self._parent = parent
-        self._feedback = feedback
+    def __init__(self, view: WorkspaceView, settings: Settings, links: WorkspaceLinks) -> None:
+        self._view = view
         self._settings = settings
         self._links = links
         self.workspace: Path | None = None
@@ -57,7 +73,7 @@ class WorkspaceOpener:
         if self.state is None or folder != self.workspace:
             self.state = WorkspaceState.load(folder, self._settings.workspaces_dir)
             if self.state.warning:
-                self._feedback.show_file_warning(self.state.warning)
+                self._view.show_file_warning(self.state.warning)
         self.workspace = folder
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
@@ -66,26 +82,18 @@ class WorkspaceOpener:
 
     def choose_folder(self) -> None:
         """Ask for a folder and open it."""
-        default = str(self.workspace) if self.workspace else ""
-        with wx.DirDialog(
-            self._parent,
-            _("Choose the working folder"),
-            defaultPath=default,
-            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST,
-        ) as dialog:
-            if self._feedback.modal(dialog) == wx.ID_OK:
-                self.open(Path(dialog.GetPath()))
+        folder = self._view.choose_folder(self.workspace)
+        if folder is not None:
+            self.open(folder)
 
     def choose_project(self) -> None:
         """Open one of the folders Claude Code has already worked in."""
         projects = list_projects()
         if not projects:
-            self._feedback.show_error(_("Claude Code has no project yet."))
+            self._view.show_error(_("Claude Code has no project yet."))
             return
         labels = [workspace_label(str(project.folder)) for project in projects]
-        index = self._feedback.choose(
-            _("Open from Claude projects"), _("Choose a project:"), labels
-        )
+        index = self._view.choose(_("Open from Claude projects"), _("Choose a project:"), labels)
         if index is not None:
             self.open(projects[index].folder)
 
@@ -95,7 +103,7 @@ class WorkspaceOpener:
             self.open(Path(folder))
             return
         self._settings.recent_workspaces = remove_missing(self._settings.recent_workspaces)
-        self._feedback.show_error(
+        self._view.show_error(
             _("The folder {folder} no longer exists. It was removed from the recent list.").format(
                 folder=folder
             )

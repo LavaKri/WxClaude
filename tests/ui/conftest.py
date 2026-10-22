@@ -40,5 +40,5 @@ def window(wx_app: wx.App):
 def conversation(window: MainWindow, tmp_path: Path) -> MainWindow:
     """A window with a workspace and a conversation, as after "New conversation"."""
     window.open_workspace(tmp_path)
-    window._start_new_conversation("Notes")
+    window._conversations.start_new("Notes")
     return window

@@ -90,7 +90,8 @@ def test_the_remembered_conversation_of_the_last_workspace_is_selected(
     reopened = MainWindow(settings)
     assert reopened.GetTitle() == f"Mine - {tmp_path.name} - WxClaude"
     assert reopened.conversation_id == older
-    assert reopened._agent == Agent(model="opus", effort="high", permission_mode="manual")
+    expected = Agent(model="opus", effort="high", permission_mode="manual")
+    assert reopened._conversations.agent == expected
     assert reopened.can_send
     assert "# You say: Hello" in reopened._conversation.GetValue()
     reopened.Destroy()
@@ -106,12 +107,12 @@ def test_an_unknown_session_takes_the_agent_of_its_last_message(
     window = MainWindow(settings)
     expected = Agent(model="claude-haiku-4-5", effort="max", permission_mode="plan")
     assert window.conversation_id == identifier
-    assert window._agent == expected
+    assert window._conversations.agent == expected
     window.Destroy()
     wx.SafeYield()
     # It is now remembered: another start finds the same agent in the workspace file.
     again = MainWindow(settings)
-    assert again._agent == expected
+    assert again._conversations.agent == expected
     state = WorkspaceState.load(tmp_path, settings.workspaces_dir)
     assert state.conversations[identifier].agent == expected
     again.Destroy()
@@ -150,11 +151,13 @@ def test_refreshing_reads_the_session_file_again(
     }
     with session_file.open("a", encoding="utf-8") as file:
         file.write("\n" + json.dumps(extra))
-    window._agent = Agent(model="haiku")
+    window._conversations.agent = Agent(model="haiku")
     window._on_refresh_conversation(wx.CommandEvent())
     assert len(view.document.spans) == 3
     assert "Added elsewhere" in view.GetValue()
-    assert window._agent == Agent(model="haiku")  # the agent comes from the memory, not the file
+    assert window._conversations.agent == Agent(
+        model="haiku"
+    )  # the agent comes from the memory, not the file
 
 
 def test_refreshing_a_conversation_without_history_says_so(conversation: MainWindow) -> None:

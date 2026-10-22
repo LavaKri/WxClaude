@@ -74,7 +74,7 @@ def test_another_conversation_starts_the_spending_again(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _send(conversation, "hello")
-    conversation._start_new_conversation("Other")
+    conversation._conversations.start_new("Other")
     states = _capture_dialogs(conversation, monkeypatch)
     conversation._actions.show_usage()
     report = str(states[0]["report"])

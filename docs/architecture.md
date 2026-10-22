@@ -95,24 +95,31 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | Module | Role |
 |---|---|
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
+| `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window; what is remembered in the workspace file. |
+| `workspace_presenter.py` | `WorkspacePresenter`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
+| `search_presenter.py` | `SearchPresenter`: Find, Find next and Find previous in the conversation; keeps the last search. |
+| `message_presenter.py` | `MessagePresenter`: the details of a message (tools, table, links), copying it or its exchange, the task list, the plans and the usage of Claude. |
+| `file_presenter.py` | `FilePresenter`: export the conversation, show the workspace folder in the file explorer, the help page, About. |
+| `announcements_presenter.py` | `AnnouncementsPresenter`: the destination of each category of announcements, edited in the Screen reader page until OK. |
 
 ## Modules of `ui/`
 
 | Module | Role |
 |---|---|
-| `main_window.py` | The conversation view, the prompt and the buttons, and what links the other objects; the workspaces and conversations. |
+| `main_window.py` | The conversation view, the prompt and the buttons, the menus, and the wiring of the presenters and their views. |
+| `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs). |
 | `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list) and `read_session` (the error is shown). |
-| `workspace_opener.py` | `WorkspaceOpener`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
-| `file_actions.py` | `FileActions`: export the conversation, show the workspace folder in the file explorer, About. |
+| `workspace_view.py` | `WxWorkspaceView`: the view of `WorkspacePresenter` (folder dialog, messages). |
+| `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs); `add_entries` appends and binds them. |
 | `main_menu.py` | `MainMenu`: the menu bar of the main window (tables, recent workspaces, shortcuts, greying), told what each item does by `MenuHandlers`. |
-| `message_actions.py` | `MessageActions`: the dialogs of a message (tools, table, links), copying it, the task list and the usage of Claude. |
-| `search_controller.py` | `SearchController`: Find, Find next and Find previous in the conversation view; keeps the last search. |
+| `message_view.py` | `WxMessageView`: the view of `MessagePresenter` (dialogs of the details, tasks, plans and usage; clipboard, browser). |
+| `search_view.py` | `WxSearchView`: the view of `SearchPresenter` (Find dialog, selection in the conversation view). |
 | `desktop.py` | The clipboard, the browser and the file explorer; each function says whether the desktop refused. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |

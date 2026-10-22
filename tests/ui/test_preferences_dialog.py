@@ -55,7 +55,6 @@ def test_the_screen_reader_page_lists_the_categories_with_their_default_destinat
     assert page.category_list.GetItemCount() == len(CATEGORIES)
     assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message.wav"
     assert page.category_list.GetFirstSelected() == 0
-    assert page.selected_category() is CATEGORIES[0]
     assert page.destination_choice.GetCount() == len(CATEGORIES[0].choices)
 
 
@@ -64,13 +63,12 @@ def test_a_destination_is_applied_only_with_ok_and_the_default_can_be_restored(
 ) -> None:
     page = dialog.screen_reader
     page.category_list.Select(CATEGORIES.index(END_OF_ANSWER))
-    page.destination_choice.SetSelection(END_OF_ANSWER.choices.index(Destination.MESSAGE))
-    page._on_destination_chosen()
+    page.presenter.choose(END_OF_ANSWER.choices.index(Destination.MESSAGE))
     assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message"
     assert settings.destination_for(END_OF_ANSWER) is Destination.SOUND_1  # not yet
     dialog.apply(settings)
     assert settings.destination_for(END_OF_ANSWER) is Destination.MESSAGE
-    page._on_default()
+    page.presenter.restore_default()
     dialog.apply(settings)
     assert settings.announcements == {}
 

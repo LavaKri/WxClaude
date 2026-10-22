@@ -1,42 +1,53 @@
 """Search in the conversation: Find…, Find next and Find previous (see ``docs/interface.md``)."""
 
-from collections.abc import Callable
-
-import wx
+from typing import Protocol
 
 from wxclaude.core.announcements import Announce
 from wxclaude.core.search import SearchOptions, find_next, find_previous, line_at
 from wxclaude.i18n import _
-from wxclaude.ui.conversation_view import ConversationView
-from wxclaude.ui.search_dialog import SearchDialog
 
 
-class SearchController:
-    """Keeps the last search and walks through its occurrences in the conversation view.
+class SearchView(Protocol):
+    """What the presenter asks of the interface to search the conversation."""
 
-    ``show_modal`` shows a dialog and returns its result, ``say`` announces, ``show_info`` tells
-    the user that there is no more occurrence.
-    """
+    def ask_search(self, last: SearchOptions | None) -> SearchOptions | None:
+        """Ask what to look for (``last`` proposed); None if cancelled."""
+        ...
 
-    def __init__(
-        self,
-        view: ConversationView,
-        show_modal: Callable[[wx.Dialog], int],
-        say: Callable[..., None],
-        show_info: Callable[[str], None],
-    ) -> None:
+    def text(self) -> str:
+        """The text of the conversation, as displayed."""
+        ...
+
+    def selection(self) -> tuple[int, int]:
+        """The selection of the conversation (Python indexes; the caret twice without one)."""
+        ...
+
+    def select(self, start: int, end: int) -> None:
+        """Select ``start`` to ``end`` in the conversation and give it the focus."""
+        ...
+
+    def say(self, announce: Announce, **values: object) -> None:
+        """Announce, where the category of ``announce`` says."""
+        ...
+
+    def show_info(self, message: str) -> None:
+        """Tell the user that there is no more occurrence."""
+        ...
+
+
+class SearchPresenter:
+    """Keeps the last search and walks through its occurrences in the conversation."""
+
+    def __init__(self, view: SearchView) -> None:
         self._view = view
-        self._show_modal = show_modal
-        self._say = say
-        self._show_info = show_info
         self.options: SearchOptions | None = None  # the last search
 
     def find(self) -> None:
         """Ask what to look for, then go to the next occurrence."""
-        with SearchDialog(self._view.GetTopLevelParent(), self.options) as dialog:
-            if self._show_modal(dialog) != wx.ID_OK:
-                return
-            self.options = dialog.options
+        options = self._view.ask_search(self.options)
+        if options is None:
+            return
+        self.options = options
         self.search(backwards=False)
 
     def find_next(self) -> None:
@@ -58,14 +69,13 @@ class SearchController:
 
         The search starts after the selection (before it when going backwards), so repeating it
         walks through the occurrences. The occurrence is selected, gets the focus and its whole
-        line is announced; at the end a dialog says there is no more.
+        line is announced; at the end the user is told there is no more.
         """
         options = self.options
         if options is None:
             return
-        view = self._view
-        text = view.text
-        start, end = view.selection_indexes()
+        text = self._view.text()
+        start, end = self._view.selection()
         match = find_previous(text, options, start) if backwards else find_next(text, options, end)
         if match is None:
             message = (
@@ -73,7 +83,7 @@ class SearchController:
                 if backwards
                 else _('No next occurrence of "{term}".')
             )
-            self._show_info(message.format(term=options.term))
+            self._view.show_info(message.format(term=options.term))
             return
-        view.select_range(match.start, match.end)
-        self._say(Announce.SEARCH_FOUND, line=line_at(text, match.start))
+        self._view.select(match.start, match.end)
+        self._view.say(Announce.SEARCH_FOUND, line=line_at(text, match.start))

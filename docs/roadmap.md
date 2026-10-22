@@ -12,7 +12,7 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs. 422 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+shown in dialogs. 455 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question, the expiry of the hook), the allow / ask / deny rules of
@@ -106,19 +106,16 @@ question of permission).
 7. **Code structure** (`working-rules.md`): the generic working rules, structure checks in the
    linter configuration, `tests/test_code_size.py` (warns about files over 600 lines and classes
    over 300), the Preferences split by page, the tests of the main window split by subject, and
-   the main window split by composition (`Feedback`, `MainMenu`, `SearchController`,
-   `MessageActions`, `WorkspaceOpener`, `FileActions`). The conversations are
-   still in `MainWindow` (see `open-questions.md`).
-8. **Model-View-Presenter, first presenter**: `presenters/` (no wx, mypy strict, tested with a
-   fake view), `RunPresenter` taken out of the former `RunController`, its wx view `WxRunView`,
-   and `tests/test_layers.py` (no wx in `core/` and `presenters/`).
+   the main window split by composition (`Feedback`, `MainMenu`).
+8. **Model-View-Presenter**: `presenters/` (no wx, mypy strict, tested with a fake view) and
+   `tests/test_layers.py` (no wx in `core/` and `presenters/`). Every screen with logic has its
+   presenter and its wx view: sending a message (`RunPresenter`), the current conversation
+   (`ConversationPresenter`), the workspaces, the search, the details of the messages, the files,
+   the announcement categories of the Preferences. `MainWindow` only builds and wires them (under
+   300 lines).
 
 ## Next milestones
 
-0. **Model-View-Presenter, the other screens**, one at a time, tests green at each step: the
-   workspaces (`WorkspaceOpener`), the search (`SearchController`), the actions on the messages
-   (`MessageActions`, `FileActions`), the Screen reader page, then `MainWindow`, which should go
-   back under 300 lines.
 
 6. **Rename, branch (`--fork-session`), delete**, export. Rename and branch exist but are
    provisional: a rename only changes the name kept by WxClaude, a branch only starts a new
