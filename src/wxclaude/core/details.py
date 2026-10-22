@@ -30,6 +30,7 @@ class DetailAction(StrEnum):
     TABLE = "table"
     LINKS = "links"
     COPY_MESSAGE = "copy_message"
+    COPY_EXCHANGE = "copy_exchange"
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +92,7 @@ class MessageDetails:
 
     def actions(self, line: int) -> list[DetailAction]:
         """What the context menu offers at ``line`` (-1 on the title): what the message holds,
-        and always to copy it."""
+        and always to copy it or its whole exchange."""
         actions: list[DetailAction] = []
         if self.tools:
             actions.append(DetailAction.TOOLS)
@@ -100,6 +101,7 @@ class MessageDetails:
         if self.links:
             actions.append(DetailAction.LINKS)
         actions.append(DetailAction.COPY_MESSAGE)
+        actions.append(DetailAction.COPY_EXCHANGE)
         return actions
 
 

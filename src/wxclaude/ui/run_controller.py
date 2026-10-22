@@ -19,6 +19,7 @@ from wxclaude.core.errors import (
     ClaudeNotFoundError,
     ClaudeSettingsError,
     RunnerError,
+    TaskReadError,
 )
 from wxclaude.core.events import (
     AssistantText,
@@ -26,6 +27,7 @@ from wxclaude.core.events import (
     PermissionRequest,
     RateLimit,
     RunEvent,
+    ToolUsed,
     TurnEnded,
     TurnResult,
 )
@@ -34,6 +36,7 @@ from wxclaude.core.permissions import Choice, Decision
 from wxclaude.core.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.runner import ClaudeRunner, RunRequest
 from wxclaude.core.settings import Settings
+from wxclaude.core.tasks import load_tasks, started_task_id, step_of
 from wxclaude.core.usage import UsageTracker
 from wxclaude.i18n import _
 from wxclaude.ui.conversation_view import ConversationView
@@ -107,6 +110,7 @@ class RunController:
             self._feedback.show_error(_("Claude cannot be started.\n{error}").format(error=error))
             return False
         self._busy = True
+        self._feedback.show_step("")
         self._turn_agent = agent
         self._turn_result = None
         self._last_progress = ""
@@ -144,6 +148,8 @@ class RunController:
                     effort=self._turn_agent.effort if event.model else None,
                 )
             )
+        elif isinstance(event, ToolUsed) and self._show_step(event):
+            return
         elif isinstance(event, PermissionRequest):
             self._on_permission_request(event)
             return
@@ -162,15 +168,33 @@ class RunController:
         if progress is not None:
             self._show_progress(progress)
 
+    def _show_step(self, tool: ToolUsed) -> bool:
+        """Claude puts a task of its list in progress: say which step, and keep it in the status
+        bar. False when the call is not that (or the task is not in the list): normal progress."""
+        task_id = started_task_id(tool.name, tool.input)
+        if task_id is None:
+            return False
+        try:
+            tasks = load_tasks(self._links.conversation_id())
+        except TaskReadError as error:
+            self._feedback.show_error(_("Cannot read the tasks.\n{error}").format(error=error))
+            return False
+        step = step_of(task_id, tasks)
+        if step is None:
+            return False
+        values = {"number": step.number, "total": step.total, "subject": step.subject}
+        self._feedback.show_step(self._feedback.announcements.text(Announce.STEP_STARTED, **values))
+        self._feedback.say(Announce.STEP_STARTED, **values)
+        self._last_progress = ""  # what comes next is said again, it is about another step
+        return True
+
     def _on_permission_request(self, request: PermissionRequest) -> None:
         """Claude asks before running a tool: a rule allowed earlier in this message, else ask."""
         rule = request.suggested_rule
         if rule and rule in self._turn_allowed:
             decision = Decision(Choice.ALLOW)
         else:
-            self._feedback.set_status(
-                self._feedback.announcements.text(Announce.PERMISSION_ASKED, tool=request.tool_name)
-            )
+            self._feedback.say(Announce.PERMISSION_ASKED, tool=request.tool_name)
             decision = self._ask_permission(request)
             if request.request_id in self._expired:
                 return  # the CLI stopped waiting while the question was open: nothing to answer
@@ -221,18 +245,17 @@ class RunController:
         return decision
 
     def _show_progress(self, progress: Progress) -> None:
-        """Progress goes to the status bar, and to the screen reader if the option is on."""
+        """Progress goes where the category of its announcement says; the same text twice in a
+        row is said once."""
         text = self._feedback.announcements.text(progress.announce, **progress.values)
         if text == self._last_progress:
             return
         self._last_progress = text
-        if self._settings.announce_progress:
-            self._feedback.say(progress.announce, **progress.values)
-        else:
-            self._feedback.set_status(text)
+        self._feedback.say(progress.announce, **progress.values)
 
     def _finish_turn(self, ended: TurnEnded) -> None:
         self._busy = False
+        self._feedback.show_step("")  # waiting for the next prompt
         self._links.state_changed()
         outcome = turn_outcome(self._turn_result, ended)
         self._turn_result = None
@@ -243,7 +266,10 @@ class RunController:
             self._feedback.say(Announce.CLAUDE_INTERRUPTED)
         else:
             first_line = outcome.details.splitlines()[0] if outcome.details else ""
-            self._feedback.say(Announce.CLAUDE_FAILED, details=first_line)
+            # The dialog below tells it to the screen reader: the status bar is enough here.
+            self._feedback.set_status(
+                self._feedback.announcements.text(Announce.CLAUDE_FAILED, details=first_line)
+            )
             self._feedback.show_error(
                 _("Claude could not answer.\n{details}").format(details=outcome.details)
             )

@@ -6,7 +6,6 @@ from pathlib import Path
 import wx
 
 from wxclaude import __version__
-from wxclaude.core.announcements import Announce
 from wxclaude.core.errors import ExportError, HelpError
 from wxclaude.core.export import export_text
 from wxclaude.core.help import write_help_page
@@ -40,8 +39,6 @@ class FileActions:
             self._feedback.show_error(
                 _("Cannot export the conversation.\n{error}").format(error=error)
             )
-            return
-        self._feedback.say(Announce.CONVERSATION_EXPORTED, path=path)
 
     def open_folder(self, folder: Path | None) -> None:
         """Show the folder of the workspace in the file explorer."""

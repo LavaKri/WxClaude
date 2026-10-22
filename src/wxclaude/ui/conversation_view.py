@@ -26,6 +26,7 @@ _MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
     DetailAction.TABLE: lambda: _("Show the t&able…"),
     DetailAction.LINKS: lambda: _("Show the &links…"),
     DetailAction.COPY_MESSAGE: lambda: _("&Copy the message"),
+    DetailAction.COPY_EXCHANGE: lambda: _("Copy the &exchange"),
 }
 
 
@@ -125,6 +126,10 @@ class ConversationView(wx.TextCtrl):
         """The text of the view."""
         return self._document.text
 
+    def exchange_of(self, message: Message) -> str:
+        """The prompt of the exchange ``message`` belongs to and all the answers to it."""
+        return self._document.exchange_of(message.id)
+
     def selection_indexes(self) -> tuple[int, int]:
         """The selection as Python string indexes (both the caret when nothing is selected)."""
         start, end = self.GetSelection()
@@ -206,6 +211,13 @@ class ConversationView(wx.TextCtrl):
         for action in message_details(span.message).actions(line):
             item = menu.Append(wx.ID_ANY, _MENU_LABELS[action]())
             menu.Bind(wx.EVT_MENU, self._menu_handler(action, span.message, line), item)
+        # The same jumps as the keys T and Shift+T (the shortcut shown is the key itself).
+        for text, backwards in (
+            (_("&Next heading\tT"), False),
+            (_("&Previous heading\tShift+T"), True),
+        ):
+            item = menu.Append(wx.ID_ANY, text)
+            menu.Bind(wx.EVT_MENU, self._heading_handler(backwards=backwards), item)
         self.PopupMenu(menu, position)
         menu.Destroy()
 
@@ -215,6 +227,12 @@ class ConversationView(wx.TextCtrl):
         def handle(_event: wx.CommandEvent) -> None:
             if self._on_action is not None:
                 wx.CallAfter(self._on_action, action, message, line)  # once the menu is closed
+
+        return handle
+
+    def _heading_handler(self, *, backwards: bool) -> Callable[[wx.CommandEvent], None]:
+        def handle(_event: wx.CommandEvent) -> None:
+            wx.CallAfter(self._jump, None, backwards=backwards)  # once the menu is closed
 
         return handle
 
@@ -274,4 +292,4 @@ class ConversationView(wx.TextCtrl):
         self.SetInsertionPoint(position)
         self.ShowPosition(position)
         self.report_position()
-        self._say(Announce.HEADING, title=heading.title, level=heading.level)
+        self._say(Announce.HEADING, title=heading.title, level=heading.level, line=heading.title)

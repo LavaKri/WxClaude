@@ -171,7 +171,23 @@ def test_the_menu_offers_what_the_message_holds(
         "Show the t&able…",
         "Show the &links…",
         "&Copy the message",
+        "Copy the &exchange",
+        "&Next heading	T",
+        "&Previous heading	Shift+T",
     ]
+
+
+def test_the_menu_jumps_to_the_next_and_the_previous_heading(
+    view: ConversationView, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    view.SetInsertionPoint(0)
+    labels = _open_menu(view, monkeypatch, choose=2)  # copy, copy, then "Next heading"
+    wx.SafeYield()
+    assert labels[2] == "&Next heading	T"
+    assert view.GetInsertionPoint() == view.text.index("## Answer")
+    _open_menu(view, monkeypatch, choose=-1)  # "Previous heading", the last item
+    wx.SafeYield()
+    assert view.GetInsertionPoint() == 0
 
 
 def test_the_table_is_only_offered_on_its_lines(
@@ -185,7 +201,7 @@ def test_a_prompt_only_offers_to_be_copied(
     view: ConversationView, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     view.SetInsertionPoint(0)
-    assert _open_menu(view, monkeypatch) == ["&Copy the message"]
+    assert _open_menu(view, monkeypatch)[:2] == ["&Copy the message", "Copy the &exchange"]
 
 
 def test_choosing_an_item_hands_the_message_and_the_line_over(
@@ -235,7 +251,7 @@ def test_shift_f10_opens_our_menu_and_the_native_field_never_sees_the_key(
         view, "PopupMenu", lambda menu, _pos: labels.append(_menu_labels(menu)) or True
     )
     assert _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_F10, shift=True) == []
-    assert labels[0][-1] == "&Copy the message"
+    assert labels[0][-4:-2] == ["&Copy the message", "Copy the &exchange"]
     assert _key(view, wx.wxEVT_KEY_UP, wx.WXK_F10, shift=True) == []  # no native menu on key up
     assert _key(view, wx.wxEVT_KEY_UP, wx.WXK_WINDOWS_MENU) == []
     assert _key(view, wx.wxEVT_KEY_UP, ord("A")) == [True]  # other keys are left alone

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from wxclaude.core.errors import TaskReadError
-from wxclaude.core.tasks import Task, TaskList, load_tasks
+from wxclaude.core.tasks import Step, Task, TaskList, load_tasks, started_task_id, step_of
 
 pytestmark = pytest.mark.unit
 
@@ -16,6 +16,20 @@ def _write(config: Path, name: str, content: object) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     text = content if isinstance(content, str) else json.dumps(content)
     (folder / name).write_text(text, encoding="utf-8")
+
+
+def test_only_a_task_update_to_in_progress_starts_a_step() -> None:
+    assert started_task_id("TaskUpdate", {"taskId": "2", "status": "in_progress"}) == "2"
+    assert started_task_id("TaskUpdate", {"taskId": 3, "status": "in_progress"}) == "3"
+    assert started_task_id("TaskUpdate", {"taskId": "2", "status": "completed"}) is None
+    assert started_task_id("TaskUpdate", {"status": "in_progress"}) is None
+    assert started_task_id("TaskCreate", {"subject": "A", "status": "in_progress"}) is None
+
+
+def test_a_step_is_the_place_of_the_task_in_the_list() -> None:
+    tasks = TaskList([Task("1", "Alpha", "", "completed"), Task("2", "Beta", "", "in_progress")])
+    assert step_of("2", tasks) == Step(2, 2, "Beta")
+    assert step_of("7", tasks) is None
 
 
 def test_no_folder_means_no_task(tmp_path: Path) -> None:

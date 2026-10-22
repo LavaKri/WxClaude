@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from wxclaude.core.agents import DEFAULT_AGENT, Agent
+from wxclaude.core.announcements import END_OF_ANSWER, PROGRESS, Destination
 from wxclaude.core.conversations import new_conversation_id
 from wxclaude.core.errors import SettingsError
 from wxclaude.core.screen_reader import default_output
@@ -88,20 +89,48 @@ def test_last_session_round_trip_and_invalid_values(tmp_path: Path) -> None:
     assert (invalid.reopen_last, invalid.conversation_counter) == (True, 1)
 
 
-def test_the_conversation_and_progress_options_default_to_true_and_round_trip(
+def test_the_hide_system_messages_option_defaults_to_true_and_round_trips(
     tmp_path: Path,
 ) -> None:
     store = tmp_path / "settings.json"
     settings = Settings.load(store)
-    assert (settings.hide_system_messages, settings.announce_progress) == (True, True)
+    assert settings.hide_system_messages is True
     settings.hide_system_messages = False
-    settings.announce_progress = False
+    settings.save()
+    assert Settings.load(store).hide_system_messages is False
+    store.write_text('{"hide_system_messages": "no"}', encoding="utf-8")
+    assert Settings.load(store).hide_system_messages is True
+
+
+def test_the_destination_of_a_category_defaults_and_only_a_change_is_stored(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert settings.destination_for(END_OF_ANSWER) is Destination.SOUND_1
+    settings.set_destination(END_OF_ANSWER, Destination.MESSAGE)
+    settings.set_destination(PROGRESS, Destination.MESSAGE)  # the default: not stored
+    assert settings.announcements == {"end_of_answer": "message"}
     settings.save()
     loaded = Settings.load(store)
-    assert (loaded.hide_system_messages, loaded.announce_progress) == (False, False)
-    store.write_text('{"hide_system_messages": "no", "announce_progress": 0}', encoding="utf-8")
-    invalid = Settings.load(store)
-    assert (invalid.hide_system_messages, invalid.announce_progress) == (True, True)
+    assert loaded.destination_for(END_OF_ANSWER) is Destination.MESSAGE
+    loaded.set_destination(END_OF_ANSWER, Destination.SOUND_1)
+    assert loaded.announcements == {}
+
+
+def test_an_unknown_or_unaccepted_destination_in_the_file_is_ignored(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text(
+        json.dumps(
+            {"announcements": {"progress": "sound_1", "end_of_answer": "x", "nothing": "none"}}
+        ),
+        encoding="utf-8",
+    )
+    settings = Settings.load(store)
+    assert settings.announcements == {}
+    assert settings.destination_for(PROGRESS) is Destination.MESSAGE
+    store.write_text('{"announcements": 3}', encoding="utf-8")
+    assert Settings.load(store).announcements == {}
 
 
 def test_the_claude_path_options_default_to_the_automatic_search_and_round_trip(

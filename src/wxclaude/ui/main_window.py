@@ -44,6 +44,7 @@ from wxclaude.ui.workspace_opener import WorkspaceLinks, WorkspaceOpener
 from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
 
 _POSITION_WIDTH = 150
+_STEP_WIDTH = 260
 
 
 def _session_label(session: SessionInfo) -> str:
@@ -67,8 +68,9 @@ class MainWindow(wx.Frame):
         self._create_helpers()
         self._build_panel(runner or ClaudeRunner())
         self._build_menu_bar()
-        status_bar = self.CreateStatusBar(2)  # the position in the conversation, then the messages
-        status_bar.SetStatusWidths([_POSITION_WIDTH, -1])
+        # The position in the conversation, the step of Claude, then the messages.
+        status_bar = self.CreateStatusBar(3)
+        status_bar.SetStatusWidths([_POSITION_WIDTH, _STEP_WIDTH, -1])
         self._feedback.set_status(_("Ready"))
         self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
         self.Bind(wx.EVT_CLOSE, self._on_close)
@@ -83,7 +85,7 @@ class MainWindow(wx.Frame):
     def _create_helpers(self) -> None:
         """The objects that do the work for the window. The window's own methods are looked up at
         each call, so that they can be replaced."""
-        self._feedback = Feedback(self, lambda: self._closing)
+        self._feedback = Feedback(self, lambda: self._closing, self._settings.destination_for)
         self._files = FileActions(self, self._feedback)
         self._workspaces = WorkspaceOpener(
             self,
@@ -99,10 +101,10 @@ class MainWindow(wx.Frame):
         self._actions = MessageActions(
             self,
             lambda dialog: self._feedback.modal(dialog),
-            lambda announce, **values: self._feedback.say(announce, **values),
             lambda message: self._feedback.show_error(message),
             lambda: self._conversation_id,
             self._usage,
+            lambda message: self._conversation.exchange_of(message),
         )
 
     def _build_panel(self, runner: ClaudeRunner) -> None:
@@ -344,7 +346,6 @@ class MainWindow(wx.Frame):
         self._branch_count = 0
         self._set_conversation(chosen.id, name)
         self._conversation.focus_last_prompt()
-        self._feedback.say(Announce.CONVERSATION_RESUMED, name=name)
         return True
 
     def _on_new_conversation(self, _event: wx.CommandEvent) -> None:
@@ -358,7 +359,6 @@ class MainWindow(wx.Frame):
         self._agent = self._settings.default_agent
         self._branch_count = 0
         self._start_new_conversation(name)
-        self._feedback.say(Announce.NEW_CONVERSATION, name=name)
         self._prompt.SetFocus()  # enabled by now: there is a conversation
 
     def _on_resume_conversation(self, _event: wx.CommandEvent) -> None:
@@ -401,7 +401,6 @@ class MainWindow(wx.Frame):
         name = self._ask_conversation_name(_("Rename the conversation"), self._conversation_name)
         if name is not None:
             self._set_conversation_name(name)
-            self._feedback.say(Announce.CONVERSATION_RENAMED, name=name)
 
     def _on_new_branch(self, _event: wx.CommandEvent) -> None:
         # Until the Claude runner exists a branch keeps the text on screen under a new name.
@@ -412,14 +411,12 @@ class MainWindow(wx.Frame):
             return
         self._branch_count = 0  # the new branch starts its own numbering
         self._start_new_conversation(name)  # a branch is a session of its own
-        self._feedback.say(Announce.CONVERSATION_BRANCHED, name=name)
 
     def _on_choose_agent(self, _event: wx.CommandEvent) -> None:
         with AgentDialog(self, self._agent) as dialog:
             if self._feedback.modal(dialog) == wx.ID_OK:
                 self._agent = dialog.agent
                 self._remember_conversation()
-                self._feedback.say(Announce.AGENT_UPDATED)
 
     def _on_preferences(self, _event: wx.CommandEvent) -> None:
         with PreferencesDialog(self, self._settings) as dialog:
@@ -463,14 +460,11 @@ class MainWindow(wx.Frame):
             if self._feedback.modal(dialog) != wx.ID_OK:
                 return
         try:
-            written = tool_settings.save()
+            tool_settings.save()
         except ClaudeSettingsError as error:
             self._feedback.show_error(
                 _("The settings could not be saved.\n{error}").format(error=error)
             )
-            return
-        if written:
-            self._feedback.say(Announce.WORKSPACE_SETTINGS_SAVED)
 
     def _on_interrupt(self, _event: wx.CommandEvent) -> None:
         self._run.interrupt()

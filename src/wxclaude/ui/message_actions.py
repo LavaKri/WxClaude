@@ -7,7 +7,6 @@ from datetime import datetime
 
 import wx
 
-from wxclaude.core.announcements import Announce
 from wxclaude.core.details import DetailAction, Link, message_details
 from wxclaude.core.errors import PlanReadError, TaskReadError
 from wxclaude.core.messages import Message
@@ -26,25 +25,26 @@ class MessageActions:
     """Opens the dialogs about the messages and does what they ask (copy, open a link).
 
     ``parent`` is the window of the dialogs, ``show_modal`` shows one and returns its result,
-    ``say`` announces, ``show_error`` reports a failure; ``conversation_id`` gives the current
-    conversation and ``usage`` what is known of the usage of Claude.
+    ``show_error`` reports a failure; ``conversation_id`` gives the current
+    conversation, ``usage`` what is known of the usage of Claude and ``exchange_of`` the text of
+    the exchange (prompt and answers) a message belongs to.
     """
 
     def __init__(
         self,
         parent: wx.Window,
         show_modal: Callable[[wx.Dialog], int],
-        say: Callable[..., None],
         show_error: Callable[[str], None],
         conversation_id: Callable[[], str],
         usage: UsageTracker,
+        exchange_of: Callable[[Message], str],
     ) -> None:
         self._parent = parent
         self._show_modal = show_modal
-        self._say = say
         self._show_error = show_error
         self._conversation_id = conversation_id
         self._usage = usage
+        self._exchange_of = exchange_of
 
     def show_tasks(self) -> None:
         """The tasks Claude wrote for this conversation (read from its task folder)."""
@@ -73,10 +73,17 @@ class MessageActions:
 
     def act(self, action: DetailAction, message: Message, line: int) -> None:
         """An item of the context menu of the conversation view."""
-        details = message_details(message)
         if action is DetailAction.COPY_MESSAGE:
-            self._copy(message.text, Announce.MESSAGE_COPIED)
-        elif action is DetailAction.TOOLS:
+            self._copy(message.text)
+        elif action is DetailAction.COPY_EXCHANGE:
+            self._copy(self._exchange_of(message))
+        else:
+            self._show_details(action, message, line)
+
+    def _show_details(self, action: DetailAction, message: Message, line: int) -> None:
+        """The dialog of the tools, the table or the links of ``message``."""
+        details = message_details(message)
+        if action is DetailAction.TOOLS:
             with ToolsDialog(self._parent, details.tools) as tools_dialog:
                 self._show_modal(tools_dialog)
         elif action is DetailAction.TABLE:
@@ -85,7 +92,7 @@ class MessageActions:
                 return
             with TableDialog(self._parent, table) as table_dialog:
                 if self._show_modal(table_dialog) == wx.ID_COPY:
-                    self._copy(table.source, Announce.TEXT_COPIED)
+                    self._copy(table.source)
         elif action is DetailAction.LINKS and details.links:
             selected = details.link_index_at(line)
             with LinksDialog(self._parent, details.links, selected) as links_dialog:
@@ -96,7 +103,7 @@ class MessageActions:
             if answer == wx.ID_OPEN:
                 self._open_link(details.links[index])
             elif answer == wx.ID_COPY:
-                self._copy(details.links[index].url, Announce.TEXT_COPIED)
+                self._copy(details.links[index].url)
 
     def _open_link(self, link: Link) -> None:
         """Open a web or mail address in the default application; any other kind is refused."""
@@ -107,8 +114,6 @@ class MessageActions:
         elif not desktop.launch_url(link.url):
             self._show_error(_("The address {url} cannot be opened.").format(url=link.url))
 
-    def _copy(self, text: str, announce: Announce) -> None:
-        if desktop.set_clipboard(text):
-            self._say(announce)
-        else:
+    def _copy(self, text: str) -> None:
+        if not desktop.set_clipboard(text):
             self._show_error(_("The clipboard cannot be used."))

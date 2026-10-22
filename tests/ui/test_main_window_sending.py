@@ -15,7 +15,15 @@ from main_window_support import (
 )
 
 from wxclaude.core.agents import Agent
-from wxclaude.core.announcements import RecordingMessageSink
+from wxclaude.core.announcements import (
+    END_OF_ANSWER,
+    PROGRESS,
+    Destination,
+    RecordingMessageSink,
+    RecordingSoundPlayer,
+)
+from wxclaude.core.claude_projects import claude_config_dir
+from wxclaude.core.events import ToolUsed, TurnEnded, TurnResult
 from wxclaude.core.runner import ClaudeRunner
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.message_sinks import create_sink
@@ -48,6 +56,7 @@ def test_sending_runs_claude_and_shows_the_answer(
     log = _use_log(monkeypatch, tmp_path)
     sink = RecordingMessageSink()
     conversation._feedback.announcements.message_sink = sink
+    conversation._settings.set_destination(END_OF_ANSWER, Destination.MESSAGE)
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     assert conversation._run.busy
@@ -95,19 +104,23 @@ def test_the_alternative_agent_is_used_by_the_alternative_send(
     assert conversation._agent == OPUS  # the agent of the conversation is not changed
 
 
-def test_progress_is_only_in_the_status_bar_when_it_is_not_announced(
+def test_the_end_of_an_answer_is_a_sound_by_default_and_progress_follows_its_category(
     conversation: MainWindow,
 ) -> None:
-    conversation._settings.announce_progress = False
-    sink = RecordingMessageSink()
+    conversation._settings.set_destination(PROGRESS, Destination.NONE)
+    sink, player = RecordingMessageSink(), RecordingSoundPlayer()
     conversation._feedback.announcements.message_sink = sink
+    conversation._feedback.announcements.sound_player = player
+    before = conversation.GetStatusBar().GetStatusText(2)
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     _wait_until_idle(conversation)
-    assert sink.messages == ["Claude has answered."]  # the end is always said
+    assert sink.messages == []  # no progress, and the end is a sound
+    assert player.played == [Destination.SOUND_1]
+    assert conversation.GetStatusBar().GetStatusText(2) == before  # nothing was written either
 
 
-def test_a_failure_is_announced_and_shown_in_a_dialog(
+def test_a_failure_is_shown_in_a_dialog_and_in_the_status_bar(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("FAKE_CLAUDE", "crash")
@@ -119,7 +132,9 @@ def test_a_failure_is_announced_and_shown_in_a_dialog(
     _wait_until_idle(conversation)
     assert len(errors.messages) == 1
     assert "not logged in" in errors.messages[0]
-    assert sink.messages[-1].startswith("Claude could not answer: fake claude: not logged in")
+    status = conversation.GetStatusBar().GetStatusText(2)
+    assert status.startswith("Claude could not answer: fake claude: not logged in")
+    assert not any("could not answer" in message for message in sink.messages)  # the dialog speaks
     assert conversation.can_send
 
 
@@ -144,6 +159,7 @@ def test_interrupting_stops_claude(
     errors = _Errors(conversation)
     sink = RecordingMessageSink()
     conversation._feedback.announcements.message_sink = sink
+    conversation._settings.set_destination(END_OF_ANSWER, Destination.MESSAGE)
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     assert conversation._menu.interrupt_item.IsEnabled()
@@ -172,7 +188,44 @@ def test_the_first_status_field_gives_the_position_among_the_prompts(
     view.SetInsertionPoint(0)
     view.report_position()
     assert conversation.GetStatusBar().GetStatusText(0) == "Message 1 of 2"
-    assert conversation.GetStatusBar().GetStatusText(1) != ""  # the messages: second field
+    assert conversation.GetStatusBar().GetStatusText(2) != ""  # the messages: last field
+
+
+def _make_tasks(conversation: MainWindow) -> None:
+    folder = claude_config_dir() / "tasks" / conversation.conversation_id
+    folder.mkdir(parents=True)
+    for number, subject in ((1, "Alpha"), (2, "Beta")):
+        task = {"id": str(number), "subject": subject, "status": "pending"}
+        (folder / f"{number}.json").write_text(json.dumps(task), encoding="utf-8")
+
+
+def test_a_step_put_in_progress_is_said_and_kept_in_the_second_status_field(
+    conversation: MainWindow,
+) -> None:
+    _make_tasks(conversation)
+    sink = RecordingMessageSink()
+    conversation._feedback.announcements.message_sink = sink
+    status = conversation.GetStatusBar()
+    assert status.GetStatusText(1) == ""
+    run = conversation._run
+    run._on_run_event(ToolUsed("t1", "TaskUpdate", {"taskId": "2", "status": "in_progress"}))
+    assert status.GetStatusText(1) == "Step 2 of 2: Beta"
+    assert sink.messages == ["Step 2 of 2: Beta"]
+    run._on_run_event(ToolUsed("t2", "TaskUpdate", {"taskId": "2", "status": "completed"}))
+    assert sink.messages[-1] == "Claude uses the tool TaskUpdate."  # not a step start
+    assert status.GetStatusText(1) == "Step 2 of 2: Beta"
+    run._on_run_event(TurnResult(False, "success", "", None, None, None, None))
+    run._on_run_event(TurnEnded(0, False, "", []))
+    assert status.GetStatusText(1) == ""  # waiting for the next prompt
+
+
+def test_a_step_that_is_not_in_the_list_is_normal_progress(conversation: MainWindow) -> None:
+    sink = RecordingMessageSink()
+    conversation._feedback.announcements.message_sink = sink
+    tool = ToolUsed("t1", "TaskUpdate", {"taskId": "9", "status": "in_progress"})
+    conversation._run._on_run_event(tool)
+    assert sink.messages == ["Claude uses the tool TaskUpdate."]
+    assert conversation.GetStatusBar().GetStatusText(1) == ""
 
 
 def test_the_runner_uses_the_claude_file_chosen_in_the_preferences(window: MainWindow) -> None:

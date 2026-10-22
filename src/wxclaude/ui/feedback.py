@@ -9,14 +9,28 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.announcements import Announce, AnnouncementCenter, NullMessageSink
+from wxclaude.core.announcements import (
+    Announce,
+    AnnouncementCenter,
+    Category,
+    Destination,
+    NullMessageSink,
+    SoundPlayer,
+)
 from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
 from wxclaude.core.session_reader import Session, read_session
+from wxclaude.core.sounds import WinsoundPlayer
 from wxclaude.i18n import _
 from wxclaude.ui.message_sinks import create_sink
 
 _POSITION_FIELD = 0
-_MESSAGE_FIELD = 1
+_STEP_FIELD = 1
+_MESSAGE_FIELD = 2
+
+
+def create_sound_player() -> SoundPlayer:
+    """The player of the announcement sounds (the tests replace it by a silent one)."""
+    return WinsoundPlayer()
 
 
 class Feedback:
@@ -25,21 +39,37 @@ class Feedback:
     ``is_closing`` tells whether the window is closing (the focus is then left alone).
     """
 
-    def __init__(self, frame: wx.Frame, is_closing: Callable[[], bool]) -> None:
+    def __init__(
+        self,
+        frame: wx.Frame,
+        is_closing: Callable[[], bool],
+        destination_of: Callable[[Category], Destination],
+    ) -> None:
         self._frame = frame
         self._is_closing = is_closing
         self._output_id: str | None = None  # the screen reader output in use
-        self.announcements = AnnouncementCenter(on_error=self._on_screen_reader_error)
+        self.announcements = AnnouncementCenter(
+            destination_of=destination_of,
+            on_error=self._on_screen_reader_error,
+            sound_player=create_sound_player(),
+        )
 
     # Status bar and announcements --------------------------------------------------------------
 
     def say(self, announce: Announce, **values: object) -> None:
-        """Show an announcement in the status bar and send it to the screen reader output."""
-        self.set_status(self.announcements.notify(announce, **values))
+        """Say an announcement where its category says; a text is also shown in the status bar
+        (a sound or "no announcement" leaves the status bar alone, a screen reader may read it)."""
+        text = self.announcements.notify(announce, **values)
+        if text is not None:
+            self.set_status(text)
 
     def set_status(self, text: str) -> None:
-        """The message field of the status bar (the first field is the position)."""
+        """The message field of the status bar (the last one)."""
         self._frame.SetStatusText(text, _MESSAGE_FIELD)
+
+    def show_step(self, text: str) -> None:
+        """Second field of the status bar: the step Claude works on, empty when there is none."""
+        self._frame.SetStatusText(text, _STEP_FIELD)
 
     def show_position(self, number: int, total: int) -> None:
         """First field of the status bar: the prompt the caret is in, 'Message 3 of 8'."""

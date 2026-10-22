@@ -98,7 +98,7 @@ Les paramètres de l'espace de travail permettent de donner à chaque outil une 
 
 ### Détails d'un message
 
-Ouvrez le menu contextuel de la conversation sur un message pour voir les outils utilisés par Claude, ses tableaux et ses liens, ou pour copier le message. Seules les adresses web et de messagerie sont transmises au système.
+Ouvrez le menu contextuel de la conversation sur un message pour voir les outils utilisés par Claude, ses tableaux et ses liens, ou pour copier le message ou tout l'échange (votre message et toutes les réponses de Claude). Seules les adresses web et de messagerie sont transmises au système.
 
 Les Préférences, page Espace de travail, permettent de masquer les messages système écrits par Claude Code.
 
@@ -112,4 +112,4 @@ Les Préférences, page Espace de travail, permettent de masquer les messages sy
 
 Les erreurs de Claude vont dans la barre d'état et dans une boîte de dialogue, jamais dans le texte de la conversation. Si Claude ne peut pas être démarré, votre message est conservé.
 
-Les annonces vont dans la barre d'état et, par UI Automation, à votre lecteur d'écran. Les Préférences, page Lecteur d'écran, activent ou non les annonces de progression. La fin d'une réponse et les erreurs sont toujours annoncées.
+Les annonces vont dans la barre d'état et, par UI Automation, à votre lecteur d'écran. Dans les Préférences, page Lecteur d'écran, choisissez pour chaque catégorie d'annonces ce qui est fait : rien, un message ou un son. Les erreurs de Claude ouvrent toujours une boîte de dialogue.

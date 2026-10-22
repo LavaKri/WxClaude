@@ -79,7 +79,11 @@ UTF-16 units, so convert between Python indexes and field positions (an emoji ta
 
 The message model keeps what is not displayed (tools used, tool results, thinking, usage). The
 context menu of the view (Applications key, Shift+F10) works on the message that holds the caret and
-offers, in this order, only what applies, then always *Copy the message* (its Markdown text):
+offers, in this order, only what applies, then always *Copy the message* (its Markdown text) and
+*Copy the exchange* (the prompt of the exchange the message belongs to and every answer to it,
+as displayed, titles included; answers shown before any prompt make an exchange of their own;
+nothing is announced, the user asked for it), and last *Next heading* (`T`) and *Previous heading*
+(`Shift+T`), the same jumps as the keys, announced like them (the shortcut shown is the key itself):
 
 - **Show the tools used…** when the message has tools (an answer gets them from the session file once
   the turn is over). A dialog lists the tools, one per line (`Bash, git status, failed`: name, what
@@ -105,14 +109,14 @@ view (`focus.md`).
 ## Progress and usage
 
 - **Progress** goes to the status bar (not focusable) and is announced through UI Automation
-  (option Screen reader > "Announce the progress of Claude"); there is no shortcut of ours to read
-  it again, screen readers have their own for the status bar. Two status fields: the first gives the
+  (category "Progress of Claude" of Preferences > Screen reader); there is no shortcut of ours to read
+  it again, screen readers have their own for the status bar. Three status fields: the first gives the
   position of the caret in the conversation, `Message 3 of 8` (French: `Message 3 sur 8`); only the
   prompts of the user are counted, an answer belongs to the prompt it follows, and the field is empty
   while the conversation has no prompt (the number is 0 before the first prompt, for example when
   the system messages are shown and an answer opens the conversation). It follows the keyboard, the
-  mouse, the jumps by headings and the search, and is not announced. The second field holds the
-  last announcement.
+  mouse, the jumps by headings and the search, and is not announced. The second field gives the step
+  Claude works on (`interface.md`, "Step"), the third holds the last announcement.
 - **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
   field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
   used, resets at 16:00`, from the `rate_limit_event` lines; the time alone for today, else date and

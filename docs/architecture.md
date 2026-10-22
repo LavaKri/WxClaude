@@ -33,8 +33,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
    `stream.parse_stream_line` into events), stderr, and a supervisor that writes the prompt as a JSON
    line to stdin, waits for the end and sends `TurnEnded`, always the last event.
 3. Events reach the interface through `wx.CallAfter`. Text blocks are appended to the view;
-   `progress.progress_for` turns the others into progress (status bar, and announcement if the
-   option is on; the same text is not repeated).
+   `progress.progress_for` turns the others into progress (announced where the category "Progress
+   of Claude" says; the same text is not repeated).
 4. At `TurnEnded`, `progress.turn_outcome` decides done / interrupted / failed. A failure is said in
    the status bar and shown in a dialog. Then the session file is read and the view is rebuilt if
    the text it would hold differs from what is shown; if it is the same, the view only takes the
@@ -61,7 +61,8 @@ in `roadmap.md`. What is known about the CLI is in `claude-cli.md`.
 | `workspaces.py` | Recent workspaces (missing folders are dropped) and how a workspace is listed. |
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
-| `announcements.py` | `Announce` messages, `AnnouncementCenter` and the message sinks. |
+| `announcements.py` | `Announce` messages, their `Category` and the `Destination` chosen per category, `AnnouncementCenter`, the message sinks and the sound players. |
+| `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
 | `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
 | `hook_channel.py` | `HookChannel`: a server on `127.0.0.1` (one per message, a token in the URL) that receives the POST of the CLI's `PermissionRequest` hook, hands it to the interface as a `PermissionRequest` event and writes the response from its own thread; the interface thread only stores the decision. A question nobody answers gives `PermissionExpired`. |

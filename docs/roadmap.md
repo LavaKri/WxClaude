@@ -12,7 +12,7 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs. 391 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+shown in dialogs. 413 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question, the expiry of the hook), the allow / ask / deny rules of
@@ -23,7 +23,10 @@ the new list *Interface type* and spin control of Preferences > Claude, and the 
 Last work (permission channels), in order: the channel behind `PermissionChannel`, the HTTP hook
 (`core/hook_channel.py`), the choice in the Preferences, *Tools > Plan…*. What is left of it is in
 `open-questions.md`: the hook options not tested yet, the `&` of the Preferences labels. The help
-page (F1, Markdown in `src/wxclaude/help/`, rendered to HTML on opening) exists in French and English and grows with the features.
+page (F1, Markdown in `src/wxclaude/help/`, rendered to HTML on opening) exists in French and
+English and grows with the features. The announcements are grouped in categories with a
+destination each (Preferences > Screen reader; two sounds, for the end of an answer and for the
+question of permission).
 
 ## Decisions taken
 

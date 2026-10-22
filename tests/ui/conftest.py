@@ -4,6 +4,7 @@ import pytest
 import wx
 from main_window_support import _runner, _settings
 
+from wxclaude.core.announcements import NullSoundPlayer
 from wxclaude.ui.main_window import MainWindow
 
 
@@ -19,6 +20,12 @@ def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "claude-config"
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
     return folder
+
+
+@pytest.fixture(autouse=True)
+def silent_sounds(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The announcement sounds are never played by the tests."""
+    monkeypatch.setattr("wxclaude.ui.feedback.create_sound_player", NullSoundPlayer)
 
 
 @pytest.fixture

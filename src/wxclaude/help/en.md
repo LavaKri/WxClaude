@@ -98,7 +98,7 @@ Workspace settings lets you give each tool an allow, ask or deny rule. Deny prev
 
 ### Details of a message
 
-Open the context menu of the conversation on a message to see the tools Claude used, its tables and its links, or to copy the message. Only web and mail addresses are handed to the system.
+Open the context menu of the conversation on a message to see the tools Claude used, its tables and its links, or to copy the message or the whole exchange (your prompt and all the answers of Claude). Only web and mail addresses are handed to the system.
 
 Preferences, Workspace page, can hide the system messages written by Claude Code.
 
@@ -112,4 +112,4 @@ Preferences, Workspace page, can hide the system messages written by Claude Code
 
 Errors from Claude go to the status bar and to a dialog, never into the conversation text. If Claude cannot be started, your prompt is kept.
 
-Announcements go to the status bar and, through UI Automation, to your screen reader. Preferences, Screen reader page, turns the progress announcements on or off. The end of an answer and errors are always announced.
+Announcements go to the status bar and, through UI Automation, to your screen reader. In Preferences, Screen reader page, choose for each category of announcements what is done: nothing, a message or a sound. Errors from Claude always open a dialog.

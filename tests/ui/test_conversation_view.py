@@ -48,14 +48,23 @@ def _press(view: ConversationView, key: str, *, shift: bool = False) -> None:
 def test_t_goes_to_the_next_heading_and_announces_it(view: ConversationView, said: _Said) -> None:
     _press(view, "T")
     assert view.GetInsertionPoint() == len("# You say: Hello\nHello\n\n")
-    assert said.calls[-1] == (Announce.HEADING, {"title": "Answer from m", "level": 2})
+    assert said.calls[-1] == (
+        Announce.HEADING,
+        {"title": "Answer from m", "level": 2, "line": "Answer from m"},
+    )
 
 
 def test_digit_goes_to_the_next_heading_of_that_level(view: ConversationView, said: _Said) -> None:
     _press(view, "1")
-    assert said.calls[-1] == (Announce.HEADING, {"title": "You say: Again 😀", "level": 1})
+    assert said.calls[-1] == (
+        Announce.HEADING,
+        {"title": "You say: Again 😀", "level": 1, "line": "You say: Again 😀"},
+    )
     _press(view, "2", shift=True)
-    assert said.calls[-1] == (Announce.HEADING, {"title": "Part", "level": 2})
+    assert said.calls[-1] == (
+        Announce.HEADING,
+        {"title": "Part", "level": 2, "line": "Part"},
+    )
 
 
 def test_shift_goes_backwards_and_the_end_is_announced(view: ConversationView, said: _Said) -> None:

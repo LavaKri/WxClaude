@@ -118,7 +118,22 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
     conversation._feedback.announcements.message_sink = sink
     conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
     assert copied == [TABLE_AND_LINKS.text]
-    assert sink.messages[-1] == "Message copied to the clipboard."
+    assert sink.messages == []  # the user asked for it: nothing to confirm
+
+
+def test_copying_the_exchange_puts_the_prompt_and_its_answers_on_the_clipboard(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _send(conversation, "first")
+    _send(conversation, "second")
+    copied: list[str] = []
+    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
+    answer = conversation._conversation.document.spans[-1].message  # the answer to "second"
+    conversation._actions.act(DetailAction.COPY_EXCHANGE, answer, -1)
+    (text,) = copied
+    assert text.startswith("# You say: second\nsecond\n\n## Answer from")
+    assert text.endswith("Echo: second")
+    assert "first" not in text
 
 
 def test_a_clipboard_that_cannot_be_used_is_reported(

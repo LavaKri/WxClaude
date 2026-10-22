@@ -227,9 +227,6 @@ def _workspace_settings_edit(
 def test_workspace_settings_deny_a_tool_in_the_shared_file(
     conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    sink = RecordingMessageSink()
-    conversation._feedback.announcements.message_sink = sink
-
     def edit(dialog: WorkspaceSettingsDialog) -> None:
         assert dialog.target is Source.SETTINGS  # the versioned file is the default
         dialog.select_tool("PowerShell")
@@ -241,7 +238,6 @@ def test_workspace_settings_deny_a_tool_in_the_shared_file(
         "permissions": {"deny": ["PowerShell"]}
     }
     assert not _local_file(tmp_path).exists()
-    assert sink.messages[-1] == "Workspace settings saved."
 
 
 def test_workspace_settings_cancelled_write_nothing(

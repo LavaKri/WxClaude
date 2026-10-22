@@ -119,3 +119,34 @@ def test_prompt_position_ignores_hidden_prompts_and_empty_documents() -> None:
     document.append(Message("u", Role.USER, "Q"))
     assert document.prompt_position(0) == (0, 1)  # before the first prompt
     assert document.prompt_position(len(document.text)) == (1, 1)
+
+
+def _exchanges() -> ConversationDocument:
+    document = ConversationDocument()
+    document.append(Message("a0", Role.ASSISTANT, "Welcome", model="m"))
+    for number in (1, 2):
+        document.append(Message(f"u{number}", Role.USER, f"Q{number}"))
+        document.append(Message(f"a{number}", Role.ASSISTANT, f"R{number}", model="m"))
+        document.append(Message(f"b{number}", Role.ASSISTANT, f"S{number}", model="m"))
+    return document
+
+
+def test_an_exchange_is_a_prompt_and_all_the_answers_to_it() -> None:
+    document = _exchanges()
+    expected = "# You say: Q2\nQ2\n\n## Answer from m\nR2\n\n## Answer from m\nS2"
+    for message_id in ("u2", "a2", "b2"):
+        assert document.exchange_of(message_id) == expected
+    assert document.exchange_of("b1").startswith("# You say: Q1\nQ1\n\n")
+    assert document.exchange_of("b1").endswith("S1")
+    assert "Q2" not in document.exchange_of("a1")
+
+
+def test_answers_before_any_prompt_make_an_exchange_of_their_own() -> None:
+    assert _exchanges().exchange_of("a0") == "## Answer from m\nWelcome"
+
+
+def test_the_exchange_of_a_message_that_is_not_shown_is_empty() -> None:
+    document = _exchanges()
+    document.append(Message("h", Role.USER, "noise", hidden=True))
+    assert document.exchange_of("h") == ""
+    assert document.exchange_of("unknown") == ""

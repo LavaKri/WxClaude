@@ -9,6 +9,7 @@ from pathlib import Path
 
 import wx
 
+from wxclaude.core.announcements import CATEGORIES, Category, Destination
 from wxclaude.core.labels import accessible_name
 from wxclaude.core.permission_channel import CHANNEL_KINDS, HOOK, STDIO
 from wxclaude.core.screen_reader import available_outputs, default_output, output_named
@@ -241,11 +242,13 @@ class AgentPage(PreferencesPage):
 
 
 class ScreenReaderPage(PreferencesPage):
-    """How the announcements are made."""
+    """How the announcements are made, and where each category of announcements goes."""
 
     def __init__(self, parent: wx.Window, settings: Settings) -> None:
         super().__init__(parent)
         self._outputs = available_outputs()
+        # The destinations being edited; the settings only change with OK.
+        self._destinations = {c.id: settings.destination_for(c) for c in CATEGORIES}
         announce_text = _("&Announcements")
         label = wx.StaticText(self, label=announce_text)
         self.output_choice = wx.Choice(
@@ -255,14 +258,73 @@ class ScreenReaderPage(PreferencesPage):
         )
         current = output_named(settings.screen_reader_output) or default_output()
         self.output_choice.SetSelection(self._outputs.index(current))
-        self.announce_progress = wx.CheckBox(self, label=_("Announce the &progress of Claude"))
-        self.announce_progress.SetValue(settings.announce_progress)
+
+        list_text = _("Announcement &categories")
+        list_label = wx.StaticText(self, label=list_text)
+        self.category_list = wx.ListCtrl(
+            self, style=wx.LC_REPORT | wx.LC_SINGLE_SEL, name=accessible_name(list_text)
+        )
+        self.category_list.AppendColumn(_("Category"), width=260)
+        self.category_list.AppendColumn(_("Destination"), width=200)
+        for category in CATEGORIES:
+            self.category_list.Append((_(category.label), ""))
+        destination_text = _("&Destination of the selected category")
+        destination_label = wx.StaticText(self, label=destination_text)
+        self.destination_choice = wx.Choice(self, name=accessible_name(destination_text))
+        self.default_button = wx.Button(self, label=_("De&fault value"))
+        self.category_list.Bind(wx.EVT_LIST_ITEM_SELECTED, lambda _event: self._show_destination())
+        self.destination_choice.Bind(wx.EVT_CHOICE, lambda _event: self._on_destination_chosen())
+        self.default_button.Bind(wx.EVT_BUTTON, lambda _event: self._on_default())
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(self.output_choice, 0, wx.EXPAND | wx.ALL, 8)
-        sizer.Add(self.announce_progress, 0, wx.ALL, 8)
+        sizer.Add(list_label, 0, wx.LEFT | wx.RIGHT, 8)
+        sizer.Add(self.category_list, 1, wx.EXPAND | wx.ALL, 8)
+        sizer.Add(destination_label, 0, wx.LEFT | wx.RIGHT, 8)
+        sizer.Add(self.destination_choice, 0, wx.EXPAND | wx.ALL, 8)
+        sizer.Add(self.default_button, 0, wx.ALL, 8)
         self.SetSizer(sizer)
+        self._refresh_list()
+        self.category_list.Select(0)
+
+    def selected_category(self) -> Category | None:
+        """The category selected in the list."""
+        index = self.category_list.GetFirstSelected()
+        return CATEGORIES[index] if index >= 0 else None
+
+    def set_destination(self, category: Category, destination: Destination) -> None:
+        """Send the announcements of ``category`` to ``destination`` (kept until OK)."""
+        self._destinations[category.id] = destination
+        self._refresh_list()
+        self._show_destination()
+
+    def _refresh_list(self) -> None:
+        for index, category in enumerate(CATEGORIES):
+            self.category_list.SetItem(index, 1, _(self._destinations[category.id].label))
+
+    def _show_destination(self) -> None:
+        """List the destinations the selected category accepts and select the current one."""
+        category = self.selected_category()
+        if category is None:
+            return
+        self.destination_choice.Set([_(d.label) for d in category.choices])
+        self.destination_choice.SetSelection(
+            category.choices.index(self._destinations[category.id])
+        )
+
+    def _on_destination_chosen(self) -> None:
+        category = self.selected_category()
+        index = self.destination_choice.GetSelection()
+        if category is not None and index >= 0:
+            self.set_destination(category, category.choices[index])
+
+    def _on_default(self) -> None:
+        category = self.selected_category()
+        if category is not None:
+            self.set_destination(category, category.default)
 
     def apply(self, settings: Settings) -> None:
-        settings.announce_progress = self.announce_progress.GetValue()
+        for category in CATEGORIES:
+            settings.set_destination(category, self._destinations[category.id])
         settings.screen_reader_output = self._outputs[self.output_choice.GetSelection()].id

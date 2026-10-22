@@ -6,6 +6,7 @@ from pathlib import Path
 from platformdirs import user_config_dir
 
 from wxclaude.core.agents import DEFAULT_AGENT, Agent
+from wxclaude.core.announcements import CATEGORIES, Category, Destination
 from wxclaude.core.errors import JsonStoreError, SettingsError
 from wxclaude.core.jsonstore import read_json, write_json
 from wxclaude.core.permission_channel import CHANNEL_KINDS, STDIO
@@ -21,7 +22,6 @@ SETTINGS_FILE_NAME = "settings.json"
 _FLAG_KEYS = (
     "reopen_last",
     "hide_system_messages",
-    "announce_progress",
     "local_tools_only",
     "claude_auto_search",
 )
@@ -29,6 +29,29 @@ _TEXT_KEYS = ("claude_path", "last_workspace")
 SUPPORTED_LANGUAGES = ("fr", "en")
 HOOK_TIMEOUT_MINUTES = range(1, 11)  # how long the CLI waits for an answer, with the hook channel
 DEFAULT_HOOK_TIMEOUT_MINUTES = 10  # the 600 seconds of the CLI for its hooks
+
+
+def _destination_named(name: str) -> Destination | None:
+    return next((d for d in Destination if d.value == name), None)
+
+
+def _load_announcements(raw: object) -> dict[str, str]:
+    """The destinations of the file that are known, accepted by their category, not the default."""
+    if not isinstance(raw, dict):
+        return {}
+    known = {category.id: category for category in CATEGORIES}
+    chosen: dict[str, str] = {}
+    for category_id, name in raw.items():
+        category = known.get(category_id)
+        destination = _destination_named(name) if isinstance(name, str) else None
+        if (
+            category is not None
+            and destination is not None
+            and category.accepts(destination)
+            and destination is not category.default
+        ):
+            chosen[category_id] = destination.value
+    return chosen
 
 
 def workspace_key(folder: Path) -> str:
@@ -53,7 +76,7 @@ class Settings:
     screen_reader_output: str = field(default_factory=lambda: default_output().id)
     reopen_last: bool = True  # open the last workspace and conversation at startup
     hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
-    announce_progress: bool = True  # say what Claude is doing while it answers
+    announcements: dict[str, str] = field(default_factory=dict)  # category id -> destination
     local_tools_only: bool = False  # never modify the versioned settings of a project
     claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
     claude_path: str = ""  # the claude executable chosen by hand (used without the auto search)
@@ -80,6 +103,18 @@ class Settings:
         else:
             self.shortcuts[command.id] = shortcut
 
+    def destination_for(self, category: Category) -> Destination:
+        """Where the announcements of ``category`` go."""
+        chosen = _destination_named(self.announcements.get(category.id, ""))
+        return chosen if chosen is not None and category.accepts(chosen) else category.default
+
+    def set_destination(self, category: Category, destination: Destination) -> None:
+        """Send the announcements of ``category`` to ``destination``; the default is not stored."""
+        if destination is category.default:
+            self.announcements.pop(category.id, None)
+        else:
+            self.announcements[category.id] = destination.value
+
     def all_shortcuts(self) -> dict[str, str]:
         """The shortcut of every configurable command, by command id."""
         return {command.id: self.shortcut_for(command) for command in CONFIGURABLE_COMMANDS}
@@ -97,6 +132,7 @@ class Settings:
             settings._apply_permission_channel(result.data)
             settings._apply_agents(result.data)
             settings._apply_shortcuts(result.data)
+            settings.announcements = _load_announcements(result.data.get("announcements"))
         return settings
 
     def _apply_values(self, data: dict[str, object]) -> None:
@@ -167,7 +203,7 @@ class Settings:
             "screen_reader_output": self.screen_reader_output,
             "reopen_last": self.reopen_last,
             "hide_system_messages": self.hide_system_messages,
-            "announce_progress": self.announce_progress,
+            "announcements": self.announcements,
             "local_tools_only": self.local_tools_only,
             "claude_auto_search": self.claude_auto_search,
             "claude_path": self.claude_path,

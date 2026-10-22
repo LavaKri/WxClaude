@@ -102,23 +102,11 @@ msgstr "&Aide"
 msgid "{name}, from {parent}"
 msgstr "{name}, depuis {parent}"
 
-msgid "Workspace: {folder}"
-msgstr "Espace de travail : {folder}"
-
 msgid "Choose the working folder"
 msgstr "Choisir le dossier de travail"
 
 msgid "The folder {folder} no longer exists. It was removed from the recent list."
 msgstr "Le dossier {folder} n'existe plus. Il a été retiré de la liste des récents."
-
-msgid "New conversation: {name}"
-msgstr "Nouvelle conversation : {name}"
-
-msgid "Conversation renamed: {name}"
-msgstr "Conversation renommée : {name}"
-
-msgid "New conversation branch: {name}"
-msgstr "Nouvelle branche de conversation : {name}"
 
 msgid "Conversation {number}"
 msgstr "Conversation {number}"
@@ -150,12 +138,6 @@ msgstr "Fichiers texte (*.txt)|*.txt|Fichiers Markdown (*.md)|*.md"
 msgid "Cannot export the conversation.\n{error}"
 msgstr "Impossible d'exporter la conversation.\n{error}"
 
-msgid "Conversation exported to {path}."
-msgstr "Conversation exportée vers {path}."
-
-msgid "Agent updated."
-msgstr "Agent modifié."
-
 msgid "You say: {preview}"
 msgstr "Vous dites : {preview}"
 
@@ -182,9 +164,6 @@ msgstr "très élevé"
 
 msgid "maximum"
 msgstr "maximum"
-
-msgid "Conversation resumed: {name}"
-msgstr "Conversation reprise : {name}"
 
 msgid "This workspace has no conversation yet."
 msgstr "Cet espace de travail n'a pas encore de conversation."
@@ -501,8 +480,59 @@ msgstr "Impossible d'enregistrer les données de l'espace de travail.\n{error}"
 msgid "&Hide the system messages"
 msgstr "&Masquer les messages système"
 
-msgid "Announce the &progress of Claude"
-msgstr "Annoncer la &progression de Claude"
+msgid "Announcement &categories"
+msgstr "&Catégories d'annonces"
+
+msgid "Category"
+msgstr "Catégorie"
+
+msgid "Destination"
+msgstr "Destination"
+
+msgid "&Destination of the selected category"
+msgstr "&Destination de la catégorie sélectionnée"
+
+msgid "De&fault value"
+msgstr "Valeur par dé&faut"
+
+msgid "No announcement"
+msgstr "Aucune annonce"
+
+msgid "Message"
+msgstr "Message"
+
+msgid "Read the line"
+msgstr "Lire la ligne"
+
+msgid "Progress of Claude"
+msgstr "Progression de Claude"
+
+msgid "Step in progress"
+msgstr "Étape en cours"
+
+msgid "Step {number} of {total}: {subject}"
+msgstr "Étape {number} sur {total} : {subject}"
+
+msgid "End of an answer"
+msgstr "Fin d'une réponse"
+
+msgid "Question of permission"
+msgstr "Question de permission"
+
+msgid "Answer to a permission"
+msgstr "Réponse à une permission"
+
+msgid "Movement to a heading"
+msgstr "Déplacement vers un titre"
+
+msgid "Movement, no more heading"
+msgstr "Déplacement, plus de titre"
+
+msgid "Search reached"
+msgstr "Recherche atteinte"
+
+msgid "Refresh"
+msgstr "Actualisation"
 
 msgid "WxClaude is already running."
 msgstr "WxClaude est déjà en cours d'exécution."
@@ -726,9 +756,6 @@ msgstr "Ce fichier ne peut pas être modifié : {error}"
 msgid "The general file {path} is only read."
 msgstr "Le fichier général {path} est seulement lu."
 
-msgid "Workspace settings saved."
-msgstr "Paramètres de l'espace de travail enregistrés."
-
 msgid "The rule could not be saved.\n{error}"
 msgstr "La règle n'a pas pu être enregistrée.\n{error}"
 
@@ -802,11 +829,15 @@ msgstr "Afficher les &liens…"
 msgid "&Copy the message"
 msgstr "&Copier le message"
 
-msgid "Message copied to the clipboard."
-msgstr "Message copié dans le presse-papiers."
+msgid "Copy the &exchange"
+msgstr "Copier l'&échange"
 
-msgid "Copied to the clipboard."
-msgstr "Copié dans le presse-papiers."
+msgid "&Next heading\tT"
+msgstr "Titre &suivant\tT"
+
+msgid "&Previous heading\tShift+T"
+msgstr "Titre &précédent\tShift+T"
+
 
 msgid "The clipboard cannot be used."
 msgstr "Le presse-papiers ne peut pas être utilisé."

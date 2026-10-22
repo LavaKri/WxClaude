@@ -19,6 +19,8 @@ _STATUS_NAMES = {
     "completed": N_("completed"),
 }
 _COMPLETED = "completed"
+_IN_PROGRESS = "in_progress"
+_UPDATE_TOOL = "TaskUpdate"  # {"taskId": "2", "status": "in_progress"}, seen with the real CLI
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +52,31 @@ class TaskList:
         if waiting:
             parts.append(_("blocked by {tasks}").format(tasks=" ".join(waiting)))
         return ", ".join(part for part in parts if part)
+
+
+@dataclass(frozen=True, slots=True)
+class Step:
+    """The task Claude works on: its place in the list (``number`` of ``total``) and its subject."""
+
+    number: int
+    total: int
+    subject: str
+
+
+def started_task_id(tool_name: str, tool_input: dict[str, object]) -> str | None:
+    """The task a tool call puts in progress (``TaskUpdate`` with that status), else None."""
+    if tool_name != _UPDATE_TOOL or tool_input.get("status") != _IN_PROGRESS:
+        return None
+    identifier = tool_input.get("taskId")
+    return str(identifier) if isinstance(identifier, str | int) else None
+
+
+def step_of(task_id: str, tasks: TaskList) -> Step | None:
+    """The step the task ``task_id`` is in the list; None if the list does not hold it."""
+    for index, task in enumerate(tasks.tasks):
+        if task.id == task_id:
+            return Step(index + 1, len(tasks.tasks), task.subject)
+    return None
 
 
 def status_name(status: str) -> str:

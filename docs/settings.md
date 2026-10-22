@@ -18,7 +18,7 @@ invalid values fall back to their default; unknown keys are ignored.
 | `hook_timeout_minutes` | With the `hook` channel, how long the CLI waits for the answer (1 to 10) | `10` |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |
-| `announce_progress` | Announce the progress of Claude while it answers | `true` |
+| `announcements` | Only the destinations that differ from the default, by category id (`progress`, `step`, `end_of_answer`, `permission_question`, `permission_answer`, `headings`, `no_more_heading`, `search`, `refresh`): `none`, `message`, `read_line`, `sound_1`, `sound_2`. A destination the category does not accept, or an unknown one, is ignored | empty |
 | `local_tools_only` | The workspace settings only modify the personal file `.claude/settings.local.json`, never the versioned `settings.json` | `false` |
 | `conversation_counter` | Number proposed in `Conversation x` | `1` |
 

@@ -11,7 +11,6 @@ from pathlib import Path
 
 import wx
 
-from wxclaude.core.announcements import Announce
 from wxclaude.core.claude_projects import list_projects
 from wxclaude.core.settings import Settings
 from wxclaude.core.workspace_state import WorkspaceState
@@ -63,7 +62,6 @@ class WorkspaceOpener:
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
         self._links.changed()
-        self._feedback.say(Announce.WORKSPACE_OPENED, folder=folder)
         self._links.save_settings()
 
     def choose_folder(self) -> None:

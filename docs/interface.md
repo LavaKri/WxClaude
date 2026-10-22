@@ -12,12 +12,19 @@
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
   *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
   started). While Claude answers, Send is greyed; the prompt field stays usable.
-- Status bar, two fields: the position of the caret among your prompts (`Message 3 of 8`), then the
-  last announcement. Progress ("Claude is thinking", "Claude uses the tool Read",
-  "Claude is answering", "Permission denied for the tool Bash") is announced if the option is on,
-  the end of a turn ("Claude has answered", "Claude was interrupted", "Claude could not answer:
-  ...") always is. A failure also opens a dialog with the details; the prompt is kept when Claude
-  cannot be started.
+- Status bar, three fields: the position of the caret among your prompts (`Message 3 of 8`), the
+  step Claude works on (`Step 2 of 5: Build the module`; empty when there is none and while the
+  window waits for a prompt), then the last announcement. Progress ("Claude is thinking", "Claude
+  uses the tool Read", "Claude is answering", "Permission denied for the tool Bash"), the steps, the
+  end of a turn ("Claude has answered", "Claude was interrupted") and the other announcements go
+  where the Screen reader page of the Preferences says, per category. A failure ("Claude could not
+  answer: ...") is written in the status bar and opens a dialog with the details; the prompt is
+  kept when Claude cannot be started.
+- **Step**: when Claude puts a task of its list in progress (`TaskUpdate` with the status
+  `in_progress`, seen with the real CLI), the step is the place of that task in the task files of the
+  conversation (`core/tasks.py`). It is announced (category "Step in progress", instead of "Claude
+  uses the tool TaskUpdate") and kept in the second status field until the end of the turn. A task
+  that is not in the files gives the normal progress.
 - Window title: `<conversation> - <workspace> - WxClaude`, the parts that exist.
 
 ## Menus
@@ -178,6 +185,8 @@ effort or the permission mode does not.
   cache notice.
 - **Shortcuts**: list of commands, field to press the new shortcut, restore the default, no
   shortcut. A shortcut is refused if it is invalid, reserved, standard or already used.
-- **Screen reader**: how announcements are sent (none, UI Automation on Windows); announce the
-  progress of Claude (checked by default; the end of a turn, errors and permission answers are
-  always announced).
+- **Screen reader**: how announcements are sent (none, UI Automation on Windows); the list of the
+  announcement categories with their destination, a list to change the destination of the selected
+  category and a button to restore its default (changes apply with OK). Destinations: *No
+  announcement*, *Message*, *Read the line* (headings), *Message.wav*, *Permission.wav*. Defaults: Message, except
+  the end of an answer (Message.wav) and the question of permission (Permission.wav). See `accessibility.md`.

@@ -2,6 +2,7 @@ import pytest
 import wx
 
 from wxclaude.core.agents import DEFAULT_AGENT, Agent
+from wxclaude.core.announcements import CATEGORIES, END_OF_ANSWER, Destination
 from wxclaude.core.settings import Settings
 from wxclaude.core.shortcuts import INTERRUPT_COMMAND, ShortcutProblem
 from wxclaude.ui.preferences_dialog import PreferencesDialog
@@ -39,14 +40,39 @@ def test_the_new_options_are_checked_by_default_and_can_be_changed(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
     assert dialog.workspace.hide_system_messages.GetValue()
-    assert dialog.screen_reader.announce_progress.GetValue()
     assert not dialog.workspace.local_tools_only.GetValue()
     dialog.workspace.hide_system_messages.SetValue(False)
-    dialog.screen_reader.announce_progress.SetValue(False)
     dialog.workspace.local_tools_only.SetValue(True)
     dialog.apply(settings)
-    assert (settings.hide_system_messages, settings.announce_progress) == (False, False)
+    assert not settings.hide_system_messages
     assert settings.local_tools_only
+
+
+def test_the_screen_reader_page_lists_the_categories_with_their_default_destination(
+    dialog: PreferencesDialog,
+) -> None:
+    page = dialog.screen_reader
+    assert page.category_list.GetItemCount() == len(CATEGORIES)
+    assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message.wav"
+    assert page.category_list.GetFirstSelected() == 0
+    assert page.selected_category() is CATEGORIES[0]
+    assert page.destination_choice.GetCount() == len(CATEGORIES[0].choices)
+
+
+def test_a_destination_is_applied_only_with_ok_and_the_default_can_be_restored(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
+    page = dialog.screen_reader
+    page.category_list.Select(CATEGORIES.index(END_OF_ANSWER))
+    page.destination_choice.SetSelection(END_OF_ANSWER.choices.index(Destination.MESSAGE))
+    page._on_destination_chosen()
+    assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message"
+    assert settings.destination_for(END_OF_ANSWER) is Destination.SOUND_1  # not yet
+    dialog.apply(settings)
+    assert settings.destination_for(END_OF_ANSWER) is Destination.MESSAGE
+    page._on_default()
+    dialog.apply(settings)
+    assert settings.announcements == {}
 
 
 def test_agent_edits_survive_switching_between_the_two_agents(

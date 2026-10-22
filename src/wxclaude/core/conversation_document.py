@@ -119,6 +119,21 @@ class ConversationDocument:
         starts = [span.start for span in self._spans if span.message.role is Role.USER]
         return bisect_right(starts, position), len(starts)
 
+    def exchange_of(self, message_id: str) -> str:
+        """The text of the exchange that holds the message: the prompt of the user and every
+        answer that follows it, as displayed (titles included). Answers shown before any prompt
+        make an exchange without one. '' if the message is not shown."""
+        index = next((i for i, s in enumerate(self._spans) if s.message.id == message_id), None)
+        if index is None:
+            return ""
+        first = index
+        while first > 0 and self._spans[first].message.role is not Role.USER:
+            first -= 1
+        last = index + 1
+        while last < len(self._spans) and self._spans[last].message.role is not Role.USER:
+            last += 1
+        return self._text[self._spans[first].start : self._spans[last - 1].end].rstrip("\n")
+
     def body_line(self, span: MessageSpan, position: int) -> int:
         """The line of the text of the message that holds ``position``; -1 on its title."""
         body_start = span.start + len(message_header(span.message))
