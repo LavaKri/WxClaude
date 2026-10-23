@@ -10,6 +10,8 @@ from wxclaude.core.claude.events import (
     AssistantText,
     PermissionExpired,
     PermissionRequest,
+    RateLimit,
+    RateWindow,
     RunEvent,
     Thinking,
     ToolUsed,
@@ -119,13 +121,55 @@ def test_progress_is_said_once_and_the_answer_is_shown(tmp_path: Path) -> None:
     ]
     assert [message.text for message in view.messages] == ["Hi"]
     assert view.steps == [""]  # the step field is emptied at the end of the turn
+    assert view.status == ["Ready"]  # no gauge known yet
+
+
+def _gauges(five_hour: float, week: float = 0.1) -> RateLimit:
+    windows = (RateWindow("five_hour", five_hour, 1), RateWindow("seven_day", week, 2))
+    return RateLimit("allowed", "five_hour", windows)
+
+
+def test_the_status_bar_says_ready_with_the_gauge_of_the_five_hours(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+    presenter.on_event(_gauges(0.5))
+    presenter.on_event(SUCCESS)
+    presenter.on_event(TurnEnded(0, False, "", []))
+    assert view.status == ["Ready, gauge at 50 %"]
+
+
+def test_an_alert_is_said_once_per_crossing_even_when_the_window_stays_open(
+    tmp_path: Path,
+) -> None:
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+
+    def alerts() -> list[tuple[Announce, dict[str, object]]]:
+        return [
+            item
+            for item in view.said
+            if item[0] in (Announce.GAUGE_FIVE_HOUR, Announce.GAUGE_WEEKLY)
+        ]
+
+    presenter.on_event(_gauges(0.5))
+    assert alerts() == []
+    presenter.on_event(_gauges(0.92))
+    presenter.on_event(_gauges(0.95))  # still over: not said again
+    assert alerts() == [(Announce.GAUGE_FIVE_HOUR, {"percent": 92})]
+    presenter.on_event(_gauges(0.05))  # a new window of 5 hours, back near 0
+    presenter.on_event(_gauges(0.93, week=0.8))
+    assert alerts() == [
+        (Announce.GAUGE_FIVE_HOUR, {"percent": 92}),
+        (Announce.GAUGE_FIVE_HOUR, {"percent": 93}),
+        (Announce.GAUGE_WEEKLY, {"percent": 80}),
+    ]
 
 
 def test_a_failed_turn_goes_to_the_status_bar_and_a_dialog(tmp_path: Path) -> None:
     view = FakeView()
     presenter, _runner = _presenter(view, tmp_path)
     presenter.on_event(TurnEnded(2, False, "not logged in", []))
-    assert view.status == ["Claude could not answer: not logged in"]
+    assert view.status == ["Claude could not answer: not logged in"]  # not "Ready"
     assert view.errors == ["Claude could not answer.\nnot logged in"]
     assert Announce.CLAUDE_DONE not in view.announces()
 

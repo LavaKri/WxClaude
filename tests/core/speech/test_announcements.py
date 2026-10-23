@@ -4,9 +4,11 @@ from wxclaude.core.errors import ScreenReaderOutputError
 from wxclaude.core.speech.announcements import (
     CATEGORIES,
     END_OF_ANSWER,
+    GAUGE,
     HEADINGS,
     PERMISSION_QUESTION,
     PROGRESS,
+    SEARCH_FAILED,
     Announce,
     AnnouncementCenter,
     Category,
@@ -82,6 +84,57 @@ def test_read_line_sends_the_line() -> None:
     center, sink, _player = _center({HEADINGS: Destination.READ_LINE})
     center.notify(Announce.HEADING, title="Part", level=2, line="Part")
     assert sink.messages == ["Part"]
+
+
+def test_the_dialog_destination_shows_the_text_in_a_dialog_and_nowhere_else() -> None:
+    shown: list[str] = []
+    sink = RecordingMessageSink()
+    center = AnnouncementCenter(
+        sink,
+        lambda category: Destination.DIALOG if category is SEARCH_FAILED else category.default,
+        show_dialog=shown.append,
+    )
+    assert center.notify(Announce.SEARCH_NO_NEXT, term="x") is None
+    assert shown == ['No next occurrence of "x".']
+    assert sink.messages == []
+
+
+def test_an_unsuccessful_search_is_said_but_not_written_in_the_status_bar() -> None:
+    center, sink, _player = _center()
+    assert center.notify(Announce.SEARCH_NO_NEXT, term="x") is None  # nothing for the status bar
+    assert sink.messages == ['No next occurrence of "x".']  # but said
+    assert (
+        center.notify(Announce.CLAUDE_THINKING) == "Claude is thinking."
+    )  # the others are written
+
+
+def test_the_navigation_and_dialog_categories_are_kept_out_of_the_status_bar() -> None:
+    out = {c.id for c in CATEGORIES if not c.in_status_bar}
+    assert out == {
+        "end_of_answer",
+        "step",
+        "permission_question",
+        "headings",
+        "no_more_heading",
+        "search",
+        "search_failed",
+    }
+
+
+def test_the_gauge_alerts_are_messages_by_default_and_can_be_silenced() -> None:
+    assert GAUGE.default is Destination.MESSAGE
+    assert GAUGE.choices == (Destination.NONE, Destination.MESSAGE)
+    center, sink, _player = _center({GAUGE: Destination.NONE})
+    center.notify(Announce.GAUGE_FIVE_HOUR, percent=85)
+    assert sink.messages == []
+    center, sink, _player = _center()
+    center.notify(Announce.GAUGE_WEEKLY, percent=81)
+    assert sink.messages == ["Alert: the weekly gauge is at 81 %."]
+
+
+def test_an_unsuccessful_search_is_a_message_by_default_and_never_a_sound() -> None:
+    assert SEARCH_FAILED.default is Destination.MESSAGE
+    assert SEARCH_FAILED.choices == (Destination.NONE, Destination.MESSAGE, Destination.DIALOG)
 
 
 def test_a_destination_the_category_does_not_accept_gives_the_default() -> None:

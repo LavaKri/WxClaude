@@ -111,13 +111,13 @@ def test_the_end_of_an_answer_is_a_sound_by_default_and_progress_follows_its_cat
     sink, player = RecordingMessageSink(), RecordingSoundPlayer()
     conversation._feedback.announcements.message_sink = sink
     conversation._feedback.announcements.sound_player = player
-    before = conversation.GetStatusBar().GetStatusText(2)
     conversation._prompt.SetValue("hello")
     conversation.send_prompt(alternative=False)
     _wait_until_idle(conversation)
     assert sink.messages == []  # no progress, and the end is a sound
     assert player.played == [Destination.SOUND_1]
-    assert conversation.GetStatusBar().GetStatusText(2) == before  # nothing was written either
+    # Nothing else was written: the status bar went back to "Ready" with the gauge of the fake CLI.
+    assert conversation.GetStatusBar().GetStatusText(2) == "Ready, gauge at 50 %"
 
 
 def test_a_failure_is_shown_in_a_dialog_and_in_the_status_bar(

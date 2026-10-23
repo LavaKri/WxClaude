@@ -25,6 +25,7 @@ from wxclaude.core.claude.permissions import Choice, Decision
 from wxclaude.core.claude.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import started_task_id, step_of
+from wxclaude.core.claude.usage import GaugeAlerts
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.errors import (
@@ -37,6 +38,9 @@ from wxclaude.core.errors import (
 from wxclaude.core.speech.announcements import Announce, AnnouncementCenter
 from wxclaude.i18n import _
 from wxclaude.presenters.shared import Shared
+
+#: The announcement of each gauge that has an alert.
+_GAUGE_ALERTS = {"five_hour": Announce.GAUGE_FIVE_HOUR, "seven_day": Announce.GAUGE_WEEKLY}
 
 
 class RunView(Protocol):
@@ -112,6 +116,7 @@ class RunPresenter:
         self._last_progress = ""  # the last progress shown, not repeated
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._expired: set[str] = set()  # questions the CLI stopped waiting for (hook channel)
+        self._alerts = GaugeAlerts()  # which gauges were announced, for as long as the window lives
         self._local_messages = 0  # messages added by this run, for their identifiers
 
     @property
@@ -189,6 +194,7 @@ class RunPresenter:
             return
         elif isinstance(event, RateLimit):
             self._usage.record_rate_limit(event, datetime.now())
+            self._alert_gauges(event)
         elif isinstance(event, TurnResult):
             self._turn_result = event
             self._usage.record_result(event)
@@ -198,6 +204,13 @@ class RunPresenter:
         progress = progress_for(event)
         if progress is not None:
             self._show_progress(progress)
+
+    def _alert_gauges(self, event: RateLimit) -> None:
+        """Announce the gauges that just reached their alert threshold (once per crossing)."""
+        for window in self._alerts.update(event.windows):
+            announce = _GAUGE_ALERTS.get(window.name)
+            if announce is not None and window.utilization is not None:
+                self._view.say(announce, percent=round(window.utilization * 100))
 
     def _show_step(self, tool: ToolUsed) -> bool:
         """Claude puts a task of its list in progress: say which step, and keep it in the status
@@ -278,6 +291,8 @@ class RunPresenter:
             self._view.say(Announce.CLAUDE_DONE)
         elif outcome.outcome is Outcome.INTERRUPTED:
             self._view.say(Announce.CLAUDE_INTERRUPTED)
+        if outcome.outcome is not Outcome.FAILED:
+            self._view.set_status(self._usage.ready_line())  # waiting for the next prompt
         else:
             first_line = outcome.details.splitlines()[0] if outcome.details else ""
             # The dialog below tells it to the screen reader: the status bar is enough here.

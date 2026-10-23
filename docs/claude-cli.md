@@ -134,8 +134,15 @@ One JSON object per line:
 - `rate_limit_event` (verified, one per message): `rate_limit_info` with `status` (`allowed`),
   `rateLimitType` (the window just used, `five_hour`), `resetsAt` (seconds since the epoch),
   `overageStatus`, `isUsingOverage` and `unifiedWindows`: an object with one entry per gauge,
-  `{"five_hour": {"utilization": 0.74, "resetsAt": ...}, "seven_day": {...}}`. WxClaude reads
-  `utilization` as a fraction (0.74 = 74 %), see `open-questions.md`.
+  `{"five_hour": {"utilization": 0.74, "resetsAt": ...}, "seven_day": {...}}`. `utilization` is a
+  fraction (0.74 = 74 %): verified on 2026-10-23, the stream said 0.37 and 0.62 and `/usage`, a few
+  minutes later, 39 % and 63 %.
+- Early warnings of Claude Code itself (read in the code of the CLI 2.1.286, not documented): the
+  5-hour gauge warns from 90 %; the weekly gauge from 75 %, 50 % and 25 %; a warning (status
+  `allowed_warning`) is only given when the share of the window already elapsed is at most 72 %
+  (5 hours), 60 %, 35 % and 15 % (week) respectively, that is when the usage goes faster than time.
+  WxClaude announces each of these thresholds (`core/claude/usage.py`, `ALERT_THRESHOLDS`), without
+  the time condition.
 - `result`: `result` (final text), `subtype`, `usage` (`input_tokens`, `output_tokens`,
   `cache_creation_input_tokens`, `cache_read_input_tokens`, plus details), `duration_ms`,
   `total_cost_usd` (a cost at list price, whatever the subscription), `num_turns`,

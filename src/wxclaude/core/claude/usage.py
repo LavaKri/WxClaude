@@ -19,6 +19,48 @@ _WINDOW_NAMES = {
 }
 
 
+#: A gauge is announced when it reaches or passes one of these fractions (0.9 is 90 %). They are
+#: the early-warning thresholds of Claude Code itself (see ``docs/claude-cli.md``).
+ALERT_THRESHOLDS: dict[str, tuple[float, ...]] = {
+    "five_hour": (0.9,),
+    "seven_day": (0.25, 0.5, 0.75),
+}
+
+
+class GaugeAlerts:
+    """Tells when a gauge reaches or passes one of its alert thresholds for the first time.
+
+    Each threshold is announced once, and not again until the gauge has gone back under it, so a
+    window that starts again at 0 % (every 5 hours, every week) is announced again, even if the
+    application stayed open. When several thresholds are passed at once (a gauge seen at 63 % for
+    the first time), the window is reported once. ``update`` takes the windows of each
+    ``rate_limit_event``.
+    """
+
+    def __init__(self, thresholds: dict[str, tuple[float, ...]] | None = None) -> None:
+        self._thresholds = ALERT_THRESHOLDS if thresholds is None else thresholds
+        self._announced: set[tuple[str, float]] = set()
+
+    def update(self, windows: tuple[RateWindow, ...]) -> list[RateWindow]:
+        """The windows that just reached or passed a threshold (the others are not mentioned)."""
+        crossed: list[RateWindow] = []
+        for window in windows:
+            levels = self._thresholds.get(window.name, ())
+            if not levels or window.utilization is None:
+                continue
+            new = []
+            for level in levels:
+                key = (window.name, level)
+                if window.utilization < level:
+                    self._announced.discard(key)  # under it again: the next crossing counts
+                elif key not in self._announced:
+                    self._announced.add(key)
+                    new.append(level)
+            if new:
+                crossed.append(window)
+        return crossed
+
+
 @dataclass(slots=True)
 class UsageTracker:
     """The gauges (account wide) and the spending of the current conversation."""
@@ -37,6 +79,13 @@ class UsageTracker:
         for window in event.windows:
             self.windows[window.name] = window
         self.gauges_at = now
+
+    def ready_line(self) -> str:
+        """ "Ready", with the 5-hour gauge when it is known: ``Ready, gauge at 50 %``."""
+        window = self.windows.get("five_hour")
+        if window is None or window.utilization is None:
+            return _("Ready")
+        return _("Ready, gauge at {percent} %").format(percent=round(window.utilization * 100))
 
     def record_result(self, result: TurnResult) -> None:
         """Add the tokens and the cost of a finished message to the conversation."""

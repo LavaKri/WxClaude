@@ -215,11 +215,11 @@ def test_the_help_page_is_opened_in_the_browser(
     window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     opened: list[Path] = []
-    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+    page = tmp_path / "fr.html"
+    monkeypatch.setattr("wxclaude.presenters.file_presenter.help_page", lambda language: page)
     monkeypatch.setattr(desktop, "launch_file", lambda path: opened.append(path) or True)
     window._files.show_help("fr")
-    assert [path.name for path in opened] == ["fr.html"]
-    assert opened[0].is_file()
+    assert opened == [page]
 
 
 def test_the_workspace_folder_is_opened_in_the_file_explorer(

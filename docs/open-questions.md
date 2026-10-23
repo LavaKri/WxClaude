@@ -32,8 +32,6 @@ the file it belongs to and delete it from this one.
 - **UI Automation notifications and JAWS.** They reach NVDA and Narrator; test JAWS, with a focusable
   progress field as a fallback if they do not.
 - **Reading the usage gauge without sending a message** (no way found yet).
-- **Unit of the gauges.** `utilization` of `rate_limit_event` is read as a fraction (0.74 shown as
-  74 %); compare with `/usage` in the CLI.
 - **Cost of a resumed message.** The usage dialog adds the `total_cost_usd` of each `result` to get
   the cost of the conversation; check on a resumed message that it only covers that message and not
   the whole session.

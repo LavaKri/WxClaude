@@ -120,7 +120,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
 | `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
-| `help.py` | The help page: the Markdown of a language (English as fallback) turned into an HTML file for the browser. |
+| `help.py` | `help_page`: the HTML help page of a language in `wxclaude/help` (English as fallback), opened as it is by the browser. |
 
 ## Modules of `presenters/`
 

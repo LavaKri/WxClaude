@@ -26,6 +26,7 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 ## Layout
 Model-View-Presenter, adopted one screen at a time (see `docs/architecture.md`):
 - `src/wxclaude/core/`: the model: logic, files, CLI runner. **Never imports `wx`.** Grouped by subject: `claude/` (the CLI and its files), `conversation/`, `config/` (WxClaude's settings), `speech/` (announcements, sounds); `errors.py`, `labels.py`, `list_spec.py`, `help.py` at the root.
+- `MakeHelp/`: the help text (`Aide.md`) and `make_help.py`, which turns it into `src/wxclaude/help/<language>.html` (see `docs/interface.md`, Help).
 - `src/wxclaude/presenters/`: the logic of a screen. **Never imports `wx`.** Talks to its view through a `Protocol`; tested with a fake view.
 - `src/wxclaude/ui/`: wx windows, dialogs and the views of the presenters; thin, no business logic.
 - `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/presenters/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.

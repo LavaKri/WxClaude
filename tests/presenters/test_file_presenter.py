@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from wxclaude.core.errors import HelpError
 from wxclaude.presenters.file_presenter import FilePresenter
 
 pytestmark = pytest.mark.unit
@@ -62,14 +63,25 @@ def test_a_folder_that_is_gone_or_refused_is_reported(tmp_path: Path) -> None:
     assert "cannot be opened" in view.errors[1]
 
 
-def test_the_help_page_is_written_then_opened(
+def test_the_help_page_of_the_language_is_opened(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("tempfile.gettempdir", lambda: str(tmp_path))
+    page = tmp_path / "fr.html"
+    monkeypatch.setattr("wxclaude.presenters.file_presenter.help_page", lambda language: page)
     view = FakeView()
     FilePresenter(view).show_help("fr")
-    assert [path.name for path in view.opened] == ["fr.html"]
-    assert view.opened[0].is_file()
+    assert view.opened == [page]
+
+
+def test_a_missing_help_page_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(language: str) -> Path:
+        raise HelpError("The help page is missing.")
+
+    monkeypatch.setattr("wxclaude.presenters.file_presenter.help_page", missing)
+    view = FakeView()
+    FilePresenter(view).show_help("fr")
+    assert view.opened == []
+    assert view.errors == ["The help page cannot be opened.\nThe help page is missing."]
 
 
 def test_about_gives_the_version() -> None:

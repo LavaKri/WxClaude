@@ -23,6 +23,7 @@ class Destination(enum.Enum):
     NONE = "none"
     MESSAGE = "message"  # the text of the announcement
     READ_LINE = "read_line"  # the text of the line concerned, given as ``line``
+    DIALOG = "dialog"  # the text in a message box the user closes
     SOUND_1 = "sound_1"  # the end of an answer
     SOUND_2 = "sound_2"  # a question of permission
 
@@ -41,6 +42,7 @@ _DESTINATION_LABELS = {
     Destination.NONE: N_("No announcement"),
     Destination.MESSAGE: N_("Message"),
     Destination.READ_LINE: N_("Read the line"),
+    Destination.DIALOG: N_("Dialog box"),
     # The names of the files, as they are (not translated).
     Destination.SOUND_1: "Message.wav",
     Destination.SOUND_2: "Permission.wav",
@@ -52,13 +54,15 @@ class Category:
     """A group of announcements that share one destination; ``label`` is a message id.
 
     ``choices`` are the destinations the user may pick (the first one is "nothing" by convention);
-    ``default`` is one of them.
+    ``default`` is one of them. A message of a category with ``in_status_bar`` False is only said,
+    not written in the status bar.
     """
 
     id: str
     label: str
     default: Destination
     choices: tuple[Destination, ...]
+    in_status_bar: bool = True
 
     def accepts(self, destination: Destination) -> bool:
         """Can the announcements of this category go to ``destination``?"""
@@ -70,13 +74,16 @@ _NONE_OR_MESSAGE = (Destination.NONE, Destination.MESSAGE)
 #: What Claude is doing while it answers.
 PROGRESS = Category("progress", N_("Progress of Claude"), Destination.MESSAGE, _NONE_OR_MESSAGE)
 #: Claude starts a step of its task list.
-STEP = Category("step", N_("Step in progress"), Destination.MESSAGE, _NONE_OR_MESSAGE)
+STEP = Category(
+    "step", N_("Step in progress"), Destination.MESSAGE, _NONE_OR_MESSAGE, in_status_bar=False
+)
 #: An answer is over (or was interrupted).
 END_OF_ANSWER = Category(
     "end_of_answer",
     N_("End of an answer"),
     Destination.SOUND_1,
     (Destination.NONE, Destination.MESSAGE, Destination.SOUND_1),
+    in_status_bar=False,  # "Ready" takes its place there
 )
 #: Claude asks a question of permission (the dialog opens).
 PERMISSION_QUESTION = Category(
@@ -84,6 +91,7 @@ PERMISSION_QUESTION = Category(
     N_("Question of permission"),
     Destination.SOUND_2,
     (Destination.NONE, Destination.MESSAGE, Destination.SOUND_2),
+    in_status_bar=False,
 )
 #: The way a question of permission ended.
 PERMISSION_ANSWER = Category(
@@ -95,13 +103,30 @@ HEADINGS = Category(
     N_("Movement to a heading"),
     Destination.MESSAGE,
     (Destination.NONE, Destination.MESSAGE, Destination.READ_LINE),
+    in_status_bar=False,
 )
 #: A movement that reached nothing (no more heading in that direction).
 NO_MORE_HEADING = Category(
-    "no_more_heading", N_("Movement, no more heading"), Destination.MESSAGE, _NONE_OR_MESSAGE
+    "no_more_heading",
+    N_("Movement, no more heading"),
+    Destination.MESSAGE,
+    _NONE_OR_MESSAGE,
+    in_status_bar=False,
 )
 #: A search that selected an occurrence.
-SEARCH = Category("search", N_("Search reached"), Destination.MESSAGE, _NONE_OR_MESSAGE)
+SEARCH = Category(
+    "search", N_("Search reached"), Destination.MESSAGE, _NONE_OR_MESSAGE, in_status_bar=False
+)
+#: A search that found no more occurrence in the direction asked.
+SEARCH_FAILED = Category(
+    "search_failed",
+    N_("Unsuccessful search"),
+    Destination.MESSAGE,
+    (Destination.NONE, Destination.MESSAGE, Destination.DIALOG),
+    in_status_bar=False,
+)
+#: A gauge of the subscription (the 5 hours, the week) reached its alert threshold.
+GAUGE = Category("gauge", N_("Gauge alerts"), Destination.MESSAGE, _NONE_OR_MESSAGE)
 #: The conversation read again.
 REFRESH = Category("refresh", N_("Refresh"), Destination.MESSAGE, _NONE_OR_MESSAGE)
 
@@ -115,7 +140,9 @@ CATEGORIES = (
     HEADINGS,
     NO_MORE_HEADING,
     SEARCH,
+    SEARCH_FAILED,
     REFRESH,
+    GAUGE,
 )
 
 
@@ -128,11 +155,15 @@ class Announce(enum.Enum):
     CONVERSATION_REFRESHED = (REFRESH, N_("Conversation refreshed. New messages: {count}."))
     CONVERSATION_NOT_SAVED = (REFRESH, N_("This conversation has no history yet."))
     SEARCH_FOUND = (SEARCH, N_("{line}"))
+    SEARCH_NO_NEXT = (SEARCH_FAILED, N_('No next occurrence of "{term}".'))
+    SEARCH_NO_PREVIOUS = (SEARCH_FAILED, N_('No previous occurrence of "{term}".'))
     CLAUDE_THINKING = (PROGRESS, N_("Claude is thinking."))
     CLAUDE_USING_TOOL = (PROGRESS, N_("Claude uses the tool {tool}."))
     CLAUDE_ANSWERING = (PROGRESS, N_("Claude is answering."))
     CLAUDE_INTERRUPTING = (PROGRESS, N_("Interrupting Claude."))
     PERMISSION_DENIED = (PROGRESS, N_("Permission denied for the tool {tool}."))
+    GAUGE_FIVE_HOUR = (GAUGE, N_("Alert: the 5-hour gauge is at {percent} %."))
+    GAUGE_WEEKLY = (GAUGE, N_("Alert: the weekly gauge is at {percent} %."))
     STEP_STARTED = (STEP, N_("Step {number} of {total}: {subject}"))
     CLAUDE_DONE = (END_OF_ANSWER, N_("Claude has answered."))
     CLAUDE_INTERRUPTED = (END_OF_ANSWER, N_("Claude was interrupted."))
@@ -219,6 +250,7 @@ class RecordingSoundPlayer:
 class AnnouncementCenter:
     """The single entry point for announcements.
 
+    ``show_dialog`` shows a text in a message box (the ``DIALOG`` destination).
     If the sink or the sound player fails, ``on_error`` is told (the user must know) and the center
     falls back to the null one so that the failure is reported once rather than at every
     announcement.
@@ -230,11 +262,13 @@ class AnnouncementCenter:
         destination_of: Callable[[Category], Destination] | None = None,
         on_error: Callable[[ScreenReaderOutputError], None] | None = None,
         sound_player: SoundPlayer | None = None,
+        show_dialog: Callable[[str], None] | None = None,
     ) -> None:
         self.message_sink: MessageSink = message_sink or NullMessageSink()
         self.sound_player: SoundPlayer = sound_player or NullSoundPlayer()
         self._destination_of = destination_of or (lambda category: category.default)
         self._on_error = on_error
+        self._show_dialog = show_dialog
 
     @staticmethod
     def text(announce: Announce, **values: object) -> str:
@@ -253,7 +287,8 @@ class AnnouncementCenter:
         """Say ``announce`` (its text filled with ``values``) where its destination says.
 
         ``values`` may carry ``line``, the text of the line concerned (what ``READ_LINE`` sends).
-        Returns the text that was sent, None if the announcement is a sound or nothing.
+        Returns the text to write in the status bar: the text that was sent, None if the
+        announcement is a sound, a dialog, nothing, or of a category kept out of the status bar.
         """
         destination = self.destination(announce)
         if destination is Destination.NONE:
@@ -262,6 +297,10 @@ class AnnouncementCenter:
             self._play(destination)
             return None
         text = self.text(announce, **values)
+        if destination is Destination.DIALOG:
+            if self._show_dialog is not None:
+                self._show_dialog(text)
+            return None
         if destination is Destination.READ_LINE:
             text = str(values.get("line", text))
         try:
@@ -269,7 +308,8 @@ class AnnouncementCenter:
         except ScreenReaderOutputError as error:
             self.message_sink = NullMessageSink()
             self._report(error)
-        return text
+        category = announce.category
+        return text if category is None or category.in_status_bar else None
 
     def _play(self, destination: Destination) -> None:
         try:

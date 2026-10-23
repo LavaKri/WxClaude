@@ -13,12 +13,16 @@ explanation field of the permission question, the shortcut list, the unnamed rea
 - Where the focus and the caret go in every case (a dialog closes, the conversation is loaded,
   refreshed or searched, an answer ends...) is in `focus.md`.
 - Announcements are grouped in categories (progress of Claude, step in progress, end of an answer, question of
-  permission, answer to a permission, movement to a heading, no more heading, search, refresh) and
+  permission, answer to a permission, movement to a heading, no more heading, search, unsuccessful search, refresh, gauge alerts) and
   the user chooses a destination per category in Preferences > Screen reader: none, a message
-  (a UI Automation notification raised by a hidden one-pixel window, written in the status bar too),
-  the line concerned, or a sound (Message.wav for the end of an answer, Permission.wav for a question of
-  permission; two WAV files in `wxclaude/sounds`). The status bar is only written for a message:
-  some screen readers read its changes by themselves, which would say what the user turned off.
+  (a UI Automation notification raised by a hidden one-pixel window),
+  the line concerned, a message dialog (the unsuccessful search only), or a sound (Message.wav for the end of an answer, Permission.wav for a question of
+  permission; two WAV files in `wxclaude/sounds`). The status bar is only written for a message of the categories that need it (progress of Claude,
+  answer to a permission, refresh, gauge alerts, and the fixed announcements); the others are
+  only said: step in progress (the step has its own field), question of permission (the dialog
+  reads itself), movement to a heading, no more heading, search reached and unsuccessful search (the
+  caret and the selection show them). Some screen readers read the changes of the status bar by
+  themselves, which would say twice what is already said or what the user turned off.
   The list of the announcements and their categories is `Announce` in `core/speech/announcements.py`.
   Fixed announcements (no conversation in the workspace) are always a message. What the user asked
   for by an action (open a workspace, new conversation, resume, rename, copy, export, settings

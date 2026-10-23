@@ -4,7 +4,6 @@ from typing import Protocol
 
 from wxclaude.core.conversation.search import SearchOptions, find_next, find_previous, line_at
 from wxclaude.core.speech.announcements import Announce
-from wxclaude.i18n import _
 
 
 class SearchView(Protocol):
@@ -28,10 +27,6 @@ class SearchView(Protocol):
 
     def say(self, announce: Announce, **values: object) -> None:
         """Announce, where the category of ``announce`` says."""
-        ...
-
-    def show_info(self, message: str) -> None:
-        """Tell the user that there is no more occurrence."""
         ...
 
 
@@ -69,7 +64,7 @@ class SearchPresenter:
 
         The search starts after the selection (before it when going backwards), so repeating it
         walks through the occurrences. The occurrence is selected, gets the focus and its whole
-        line is announced; at the end the user is told there is no more.
+        line is announced; at the end the category "Unsuccessful search" says there is no more.
         """
         options = self.options
         if options is None:
@@ -78,12 +73,8 @@ class SearchPresenter:
         start, end = self._view.selection()
         match = find_previous(text, options, start) if backwards else find_next(text, options, end)
         if match is None:
-            message = (
-                _('No previous occurrence of "{term}".')
-                if backwards
-                else _('No next occurrence of "{term}".')
-            )
-            self._view.show_info(message.format(term=options.term))
+            missing = Announce.SEARCH_NO_PREVIOUS if backwards else Announce.SEARCH_NO_NEXT
+            self._view.say(missing, term=options.term)
             return
         self._view.select(match.start, match.end)
         self._view.say(Announce.SEARCH_FOUND, line=line_at(text, match.start))

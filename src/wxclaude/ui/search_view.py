@@ -34,6 +34,3 @@ class WxSearchView:
 
     def say(self, announce: Announce, **values: object) -> None:
         self._feedback.say(announce, **values)
-
-    def show_info(self, message: str) -> None:
-        self._feedback.show_info(message)

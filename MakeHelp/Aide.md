@@ -1,40 +1,33 @@
 # Aide de WxClaude
 
-## Description générale
+WxClaude est une interface de bureau pour la ligne de commande Claude Code, utilisée en mode non interactif (`claude -p`).
+ Elle est conçue pour un usage avec lecteur d'écran et au clavier seul.
+Elle utilise les contrôles natifs de Windows. 
+Ce n'est pas un terminal.
 
-WxClaude est une interface de bureau pour la ligne de commande Claude Code, utilisée en mode non interactif (`claude -p`). Elle est conçue pour un usage avec lecteur d'écran et au clavier seul.
-
-Elle utilise les contrôles natifs de Windows. Ce n'est pas un terminal.
-
-Chaque message envoyé démarre un processus `claude -p`. Le fichier de session écrit par Claude Code sert d'historique. WxClaude ne l'écrit jamais.
-
-La conversation est affichée comme un document Markdown en lecture seule. Vos messages sont des titres de niveau 1 et les réponses de Claude des titres de niveau 2 : la navigation par titres de votre lecteur d'écran permet de s'y déplacer.
-
-## Installation
+## Installation et configuration
 
 ### Claude Code (claude -p)
 
-WxClaude a besoin de la ligne de commande Claude Code. Installez-la en suivant la [documentation de Claude Code](https://code.claude.com/docs/en/overview).
+WxClaude a besoin du programme Claude Code. 
+Installez-le en suivant la [documentation de Claude Code](https://code.claude.com/docs/en/overview).
 
 Vérifiez l'installation dans un terminal avec `claude --version`.
 
-WxClaude cherche `claude` dans le PATH. Pour utiliser un autre fichier, ouvrez Outils > Préférences, page Claude, décochez la recherche automatique et sélectionnez le fichier.
+Pour utiliser Claude Code il est obligatoire de s'autentifier :
+- dans un terminal, lancez `claude auth login` et suivez les instructions.
+- Vérification avec `claude auth status`.
 
-### Authentification
+### Claude dans WxClaude
+Dans l'onglet "Claude" des préférences il sera possible de définire l'utilisation du programme Claude Code
 
-Claude Code utilise la connexion de l'utilisateur Windows qui le lance. Lancez WxClaude dans votre propre session.
+Notament, le type d'interface est la façon dont les questions de permission de Claude parviennent à WxClaude. 
+Il s'applique au message suivant et peut être changé à tout moment.
 
-1. Dans un terminal, lancez `claude auth login` et suivez les instructions.
-2. Vérifiez avec `claude auth status`.
-
-Sans connexion valide, WxClaude affiche l'erreur de Claude Code dans la barre d'état et dans une boîte de dialogue.
-
-### Choix du type d'interface
-
-Le type d'interface est la façon dont les questions de permission de Claude parviennent à WxClaude. Choisissez-le dans Outils > Préférences, page Claude. Il s'applique au message suivant et peut être changé à tout moment.
-
-- **Protocole stdio** (par défaut) : toutes les questions de permission, les questions structurées de Claude et l'approbation de ses plans.
-- **Hook HTTP** : les questions de permission sur les outils. WxClaude démarre pour cela un serveur HTTP local sur 127.0.0.1.
+- **Protocole stdio** (par défaut) : 
+toutes les questions de permission, les questions structurées de Claude et l'approbation de ses plans.
+- **Hook HTTP** : 
+les questions de permission sur les outils. WxClaude démarre pour cela un serveur HTTP local sur 127.0.0.1.
 
 Avec le hook HTTP, une question sans réponse dans le délai d'attente est refusée par Claude Code. Réglez ce délai (1 à 10 minutes) sur la même page.
 

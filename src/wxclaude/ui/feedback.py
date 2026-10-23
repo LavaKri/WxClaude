@@ -52,6 +52,7 @@ class Feedback:
             destination_of=destination_of,
             on_error=self._on_screen_reader_error,
             sound_player=create_sound_player(),
+            show_dialog=lambda text: self.show_info(text),
         )
 
     # Status bar and announcements --------------------------------------------------------------
@@ -120,7 +121,7 @@ class Feedback:
         self.message_box(message, _("Error"), wx.ICON_ERROR)
 
     def show_info(self, message: str) -> None:
-        self.message_box(message, _("Find in the conversation"), wx.ICON_INFORMATION)
+        self.message_box(message, _("Information"), wx.ICON_INFORMATION)
 
     def choose(self, title: str, prompt: str, labels: list[str]) -> int | None:
         """Ask the user to pick one of ``labels``; its index, None if cancelled."""

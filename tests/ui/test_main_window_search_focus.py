@@ -12,7 +12,7 @@ from main_window_support import (
 
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.conversation.search import SearchOptions
-from wxclaude.core.speech.announcements import RecordingMessageSink
+from wxclaude.core.speech.announcements import SEARCH_FAILED, Destination, RecordingMessageSink
 from wxclaude.ui.main_window import MainWindow
 
 pytestmark = pytest.mark.ui
@@ -50,10 +50,11 @@ def test_searching_walks_through_the_occurrences_and_announces_the_line(
     assert sink.messages[-1] == "blue Fish"  # the case is ignored by default
     assert infos == []
     window._search.search(backwards=False)
-    assert infos == ['No next occurrence of "fish".']
+    assert sink.messages[-1] == 'No next occurrence of "fish".'  # a message by default
+    assert "No next occurrence" not in window.GetStatusBar().GetStatusText(2)  # not in the bar
     window._search.search(backwards=True)
     assert sink.messages[-1] == "red fish"
-    assert len(infos) == 1
+    assert infos == []
 
 
 def test_searching_backwards_stops_at_the_first_occurrence(conversation: MainWindow) -> None:
@@ -67,14 +68,28 @@ def test_searching_backwards_stops_at_the_first_occurrence(conversation: MainWin
     window._search.search(backwards=True)
     assert sink.messages[-1] == "one fish"
     window._search.search(backwards=True)
-    assert infos == ['No previous occurrence of "fish".']
+    assert sink.messages[-1] == 'No previous occurrence of "fish".'
+    assert infos == []
 
 
 def test_a_term_that_is_not_there_is_reported(conversation: MainWindow) -> None:
     window, sink, infos = _search_window(conversation)
     window._search.options = SearchOptions("zebra")
     window._search.search(backwards=False)
+    assert sink.messages == ['No next occurrence of "zebra".']
+    assert infos == []
+
+
+def test_an_unsuccessful_search_can_open_a_dialog_or_say_nothing(conversation: MainWindow) -> None:
+    window, sink, infos = _search_window(conversation)
+    window._search.options = SearchOptions("zebra")
+    window._settings.set_destination(SEARCH_FAILED, Destination.DIALOG)
+    window._search.search(backwards=False)
     assert infos == ['No next occurrence of "zebra".']
+    assert sink.messages == []
+    window._settings.set_destination(SEARCH_FAILED, Destination.NONE)
+    window._search.search(backwards=False)
+    assert infos == ['No next occurrence of "zebra".']  # nothing more
     assert sink.messages == []
 
 

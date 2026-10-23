@@ -7,7 +7,7 @@ from typing import Protocol
 from wxclaude import __version__
 from wxclaude.core.conversation.export import export_text
 from wxclaude.core.errors import ExportError, HelpError
-from wxclaude.core.help import write_help_page
+from wxclaude.core.help import help_page
 from wxclaude.i18n import _
 
 
@@ -67,11 +67,9 @@ class FilePresenter:
     def show_help(self, language: str) -> None:
         """Open the help page of ``language`` in the browser."""
         try:
-            page = write_help_page(language)
+            page = help_page(language)
         except HelpError as error:
-            self._view.show_error(
-                _("The help page cannot be prepared.\n{error}").format(error=error)
-            )
+            self._view.show_error(_("The help page cannot be opened.\n{error}").format(error=error))
             return
         if not self._view.open_file(page):
             self._view.show_error(

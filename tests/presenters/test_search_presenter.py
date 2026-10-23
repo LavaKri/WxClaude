@@ -19,7 +19,6 @@ class FakeView:
         self.asked: list[SearchOptions | None] = []
         self.selected = (0, 0)
         self.said: list[tuple[Announce, dict[str, object]]] = []
-        self.infos: list[str] = []
 
     def ask_search(self, last: SearchOptions | None) -> SearchOptions | None:
         self.asked.append(last)
@@ -36,9 +35,6 @@ class FakeView:
 
     def say(self, announce: Announce, **values: object) -> None:
         self.said.append((announce, values))
-
-    def show_info(self, message: str) -> None:
-        self.infos.append(message)
 
 
 def test_find_asks_then_selects_and_announces_the_line() -> None:
@@ -60,7 +56,7 @@ def test_repeating_walks_through_the_occurrences_and_stops_at_the_end() -> None:
         starts.append(view.selected[0])
     assert starts == [TEXT.index("fish"), TEXT.index("fish\n\n"), TEXT.index("Fish")]
     presenter.find_next()
-    assert view.infos == ['No next occurrence of "fish".']
+    assert view.said[-1] == (Announce.SEARCH_NO_NEXT, {"term": "fish"})
     presenter.find_previous()
     assert view.selected[0] == TEXT.index("fish\n\n")
 
@@ -76,4 +72,4 @@ def test_without_a_last_search_next_and_previous_ask_and_the_last_one_is_propose
     presenter.find()
     presenter.options = SearchOptions("zebra")
     presenter.find_next()
-    assert view.infos == ['No next occurrence of "zebra".']
+    assert view.said[-1] == (Announce.SEARCH_NO_NEXT, {"term": "zebra"})

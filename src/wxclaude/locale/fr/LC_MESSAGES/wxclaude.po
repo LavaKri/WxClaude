@@ -78,8 +78,8 @@ msgstr "&Modifier l'agent…"
 msgid "WxClaude &help\tF1"
 msgstr "A&ide de WxClaude\tF1"
 
-msgid "The help page cannot be prepared.\n{error}"
-msgstr "La page d'aide ne peut pas être préparée.\n{error}"
+msgid "The help page cannot be opened.\n{error}"
+msgstr "La page d'aide ne peut pas être ouverte.\n{error}"
 
 msgid "The help page {page} cannot be opened in the browser."
 msgstr "La page d'aide {page} ne peut pas être ouverte dans le navigateur."
@@ -530,6 +530,27 @@ msgstr "Déplacement, plus de titre"
 
 msgid "Search reached"
 msgstr "Recherche atteinte"
+
+msgid "Gauge alerts"
+msgstr "Alertes de jauge"
+
+msgid "Alert: the 5-hour gauge is at {percent} %."
+msgstr "Alerte : la jauge des 5 heures est à {percent} %."
+
+msgid "Alert: the weekly gauge is at {percent} %."
+msgstr "Alerte : la jauge hebdomadaire est à {percent} %."
+
+msgid "Ready, gauge at {percent} %"
+msgstr "Prêt, jauge à {percent} %"
+
+msgid "Unsuccessful search"
+msgstr "Recherche non aboutie"
+
+msgid "Dialog box"
+msgstr "Boîte de dialogue"
+
+msgid "Information"
+msgstr "Information"
 
 msgid "Refresh"
 msgstr "Actualisation"

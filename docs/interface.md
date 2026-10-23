@@ -67,11 +67,14 @@ to the plans folder, so it is the same with the stdio protocol and with the HTTP
 (`claude-cli.md`, "Permission channels"); the text is read from the file, which Claude may have
 edited since. The dialog shows what exists when it opens.
 
-**Help**: WxClaude help (F1), About. The help page is one Markdown file per language
-(`src/wxclaude/help/fr.md`, `en.md`, package data; no table, no table of contents). F1 turns it into
-a plain HTML file (no CSS) in `<temp>/wxclaude-help/` and opens it in the default browser; a language
-without a page falls back on English. It only describes what exists and was tested, names no
-shortcut, and is updated with the features.
+**Help**: WxClaude help (F1), About. The help page is one plain HTML file per language
+(`src/wxclaude/help/fr.html`, `en.html`, package data; no CSS, no script) that F1 opens as it is in
+the default browser; a language without a page falls back on English, and a missing page is
+reported. The text is written in Markdown in `MakeHelp/` (`Aide.md`, French) and
+`MakeHelp/make_help.py` turns it into the HTML page: `.venv\Scripts\python.exe MakeHelp\make_help.py
+[source.md] [language]` (defaults: `Aide.md`, `fr`), to run again after every edit and once per
+language. The text only describes what exists and was tested, names no shortcut, and is updated with
+the features.
 
 ## Permissions
 
@@ -137,8 +140,20 @@ is displayed, titles included).
   previous term they open the dialog. The search starts after the selection (before it when going
   backwards), so repeating it walks through the occurrences. It does not wrap around.
 - An occurrence is selected and the view gets the focus (`focus.md`); the whole line that holds it is announced
-  (status bar and UI Automation). When there is no more occurrence in the direction asked, a
-  message dialog says so ("No next occurrence of ...", "No previous occurrence of ...").
+  (status bar and UI Automation). When there is no more occurrence in the direction asked,
+  "No next occurrence of ..." or "No previous occurrence of ..." goes where the category
+  "Unsuccessful search" says: nothing, a message (default; said to the screen reader, not written
+  in the status bar) or a message dialog. The status bar keeps the messages of the progress of
+  Claude, the answers to a permission, the refresh and the gauge alerts (`accessibility.md`).
+- **Gauge alerts**: the 5-hour gauge and the weekly gauge (`unifiedWindows` of the `rate_limit_event`)
+  are announced the first time they reach or pass an alert threshold (90 % for the 5 hours; 25 %,
+  50 % and 75 % for the week: the early-warning thresholds of Claude Code itself, see
+  `claude-cli.md`; `ALERT_THRESHOLDS` in `core/claude/usage.py`), by the category "Gauge alerts" (nothing or a message, default message):
+  "Alert: the 5-hour gauge is at 91 %." and "Alert: the weekly gauge is at 76 %.". A gauge is
+  announced again only after it went back under that threshold, so the windows that start again
+  at 0 % (every 5 hours, every week) are announced again in an application left open.
+- When Claude has answered (or was interrupted) the status bar goes back to "Ready", followed by
+  the 5-hour gauge when it is known: "Ready, gauge at 50 %". After a failure it keeps the error.
 
 Resume lists the conversations of the workspace, the one with the most recent message first.
 
@@ -188,5 +203,6 @@ effort or the permission mode does not.
 - **Screen reader**: how announcements are sent (none, UI Automation on Windows); the list of the
   announcement categories with their destination, a list to change the destination of the selected
   category and a button to restore its default (changes apply with OK). Destinations: *No
-  announcement*, *Message*, *Read the line* (headings), *Message.wav*, *Permission.wav*. Defaults: Message, except
+  announcement*, *Message*, *Read the line* (headings), *Dialog box* (unsuccessful search), *Message.wav*,
+  *Permission.wav*. Defaults: Message, except
   the end of an answer (Message.wav) and the question of permission (Permission.wav). See `accessibility.md`.

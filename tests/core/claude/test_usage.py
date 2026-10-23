@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 
 from wxclaude.core.claude.events import RateLimit, RateWindow, TurnResult
-from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.claude.usage import GaugeAlerts, UsageTracker
 from wxclaude.core.conversation.messages import Usage
 
 pytestmark = pytest.mark.unit
@@ -95,3 +95,60 @@ def test_a_new_conversation_starts_the_spending_again_but_keeps_the_gauges() -> 
     assert lines[0] == "5-hour window, 50 % used."
     assert lines[-1] == "No message sent yet in this conversation since it was opened here."
     assert tracker.conversation_turns == 0
+
+
+def test_a_gauge_is_announced_once_when_it_reaches_its_threshold() -> None:
+    alerts = GaugeAlerts()
+    assert alerts.update((RateWindow("five_hour", 0.5, 1),)) == []
+    reached = RateWindow("five_hour", 0.9, 1)  # equal to the threshold counts
+    assert alerts.update((reached,)) == [reached]
+    assert alerts.update((RateWindow("five_hour", 0.95, 1),)) == []  # still over: not again
+    assert alerts.update((RateWindow("five_hour", 0.99, 1),)) == []
+
+
+def test_a_gauge_that_starts_again_is_announced_again() -> None:
+    alerts = GaugeAlerts()
+    assert len(alerts.update((RateWindow("five_hour", 0.92, 1),))) == 1
+    assert alerts.update((RateWindow("five_hour", 0.0, 2),)) == []  # a new window of 5 hours
+    assert len(alerts.update((RateWindow("five_hour", 0.91, 2),))) == 1
+    assert len(alerts.update((RateWindow("five_hour", 0.1, 3),))) == 0
+    assert len(alerts.update((RateWindow("five_hour", 0.95, 3),))) == 1
+
+
+def test_the_week_has_three_thresholds_each_announced_once() -> None:
+    alerts = GaugeAlerts()
+    assert alerts.update((RateWindow("seven_day", 0.2, 1),)) == []
+    assert len(alerts.update((RateWindow("seven_day", 0.26, 1),))) == 1  # 25 %
+    assert alerts.update((RateWindow("seven_day", 0.4, 1),)) == []
+    assert len(alerts.update((RateWindow("seven_day", 0.5, 1),))) == 1  # 50 %
+    assert len(alerts.update((RateWindow("seven_day", 0.8, 1),))) == 1  # 75 %
+    assert alerts.update((RateWindow("seven_day", 0.9, 1),)) == []  # nothing above 75 %
+    assert alerts.update((RateWindow("seven_day", 0.1, 2),)) == []  # a new week
+    assert len(alerts.update((RateWindow("seven_day", 0.3, 2),))) == 1  # 25 % again
+
+
+def test_several_thresholds_passed_at_once_make_one_alert() -> None:
+    alerts = GaugeAlerts()
+    seen = RateWindow("seven_day", 0.63, 1)  # first reading of the application
+    assert alerts.update((seen,)) == [seen]
+    assert alerts.update((RateWindow("seven_day", 0.7, 1),)) == []
+
+
+def test_each_gauge_has_its_own_state_and_unknown_ones_are_ignored() -> None:
+    alerts = GaugeAlerts()
+    week = RateWindow("seven_day", 0.75, 1)
+    both = (RateWindow("five_hour", 0.3, 1), week, RateWindow("seven_day_opus", 0.99, 1))
+    assert alerts.update(both) == [week]  # the 5 hours are low, Opus has no alert
+    assert alerts.update((RateWindow("five_hour", 0.93, 1), week)) == [
+        RateWindow("five_hour", 0.93, 1)
+    ]
+    assert alerts.update((RateWindow("five_hour", None, 1),)) == []  # unknown level
+
+
+def test_ready_says_the_gauge_of_the_five_hours_when_it_is_known() -> None:
+    tracker = UsageTracker()
+    assert tracker.ready_line() == "Ready"
+    tracker.record_rate_limit(_rate(RateWindow("seven_day", 0.2, 1)), NOW)
+    assert tracker.ready_line() == "Ready"  # only the 5 hours count
+    tracker.record_rate_limit(_rate(RateWindow("five_hour", 0.504, 1)), NOW)
+    assert tracker.ready_line() == "Ready, gauge at 50 %"
