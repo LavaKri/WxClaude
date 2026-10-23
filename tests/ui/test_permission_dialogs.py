@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pytest
 import wx
 
@@ -13,7 +15,7 @@ REQUEST = PermissionRequest(
 
 
 @pytest.fixture
-def dialog(wx_app: wx.App):
+def dialog(wx_app: wx.App) -> Iterator[PermissionDialog]:
     dialog = PermissionDialog(None, REQUEST)
     yield dialog
     dialog.Destroy()

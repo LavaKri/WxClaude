@@ -21,7 +21,7 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 - Run: `wxclaude.bat` (or `.venv\Scripts\python.exe -m wxclaude`)
 - Translations: message ids are English, catalog in `src/wxclaude/locale/fr/LC_MESSAGES/wxclaude.po`; after editing, recompile: `.venv\Scripts\python.exe -m babel.messages.frontend compile -D wxclaude -d src/wxclaude/locale -l fr`
 - Tests (targeted first): `.venv\Scripts\python.exe -m pytest tests/core/claude/test_x.py`, `-k name`, `-m unit`, `--lf`
-- Full check, as four separate commands (never chained): `.venv\Scripts\python.exe -m pytest`, then `.venv\Scripts\python.exe -m ruff check`, `.venv\Scripts\python.exe -m ruff format --check`, `.venv\Scripts\python.exe -m mypy src`
+- Full check, as four separate commands (never chained): `.venv\Scripts\python.exe -m pytest`, then `.venv\Scripts\python.exe -m ruff check`, `.venv\Scripts\python.exe -m ruff format --check`, `.venv\Scripts\python.exe -m mypy src tests`
 
 ## Layout
 Model-View-Presenter, adopted one screen at a time (see `docs/architecture.md`):

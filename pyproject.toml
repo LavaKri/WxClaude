@@ -57,6 +57,10 @@ select = [
 python_version = "3.14"
 mypy_path = "src"
 warn_unused_ignores = true
+# The tests are not packages (pytest imports them by folder), so the two conftest.py files are
+# both the module "conftest" for mypy: the short root one, which only redirects the Claude
+# configuration, is left out.
+exclude = ['^tests/conftest\.py$']
 
 [[tool.mypy.overrides]]
 module = ["wxclaude.core.*", "wxclaude.presenters.*"]
@@ -67,7 +71,7 @@ module = "wxclaude.ui.*"
 disallow_subclassing_any = false
 
 [[tool.mypy.overrides]]
-module = ["wx", "wx.*"]
+module = ["wx", "wx.*", "setuptools.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

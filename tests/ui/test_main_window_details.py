@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import wx
 from main_window_support import (
+    _accepting,
     _send,
     _session,
 )
@@ -112,7 +113,7 @@ def test_copying_a_message_puts_its_text_on_the_clipboard(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     copied: list[str] = []
-    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", _accepting(copied))
     sink = RecordingMessageSink()
     conversation._feedback.announcements.message_sink = sink
     conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
@@ -126,7 +127,7 @@ def test_copying_the_exchange_puts_the_prompt_and_its_answers_on_the_clipboard(
     _send(conversation, "first")
     _send(conversation, "second")
     copied: list[str] = []
-    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", _accepting(copied))
     answer = conversation._conversation.document.spans[-1].message  # the answer to "second"
     conversation._actions.act(DetailAction.COPY_EXCHANGE, answer, -1)
     (text,) = copied
@@ -140,7 +141,7 @@ def test_the_table_can_be_copied_as_markdown(
 ) -> None:
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
-    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", _accepting(copied))
     conversation._actions.act(DetailAction.TABLE, TABLE_AND_LINKS, 2)
     assert states[0]["lines"] == ["Name: a.txt, Size: 3"]
     assert copied == ["| Name | Size |\n|---|---|\n| a.txt | 3 |"]
@@ -151,7 +152,7 @@ def test_a_link_is_opened_in_the_browser(
 ) -> None:
     states = _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
     opened: list[str] = []
-    monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
+    monkeypatch.setattr(desktop, "launch_url", _accepting(opened))
     conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert states[0]["lines"] == ["one, https://1.test", "two, ftp://x.test/f"]
     assert opened == ["https://1.test"]
@@ -162,7 +163,7 @@ def test_a_link_address_can_be_copied(
 ) -> None:
     _capture_dialogs(conversation, monkeypatch, result=wx.ID_COPY)
     copied: list[str] = []
-    monkeypatch.setattr(desktop, "set_clipboard", lambda text: copied.append(text) or True)
+    monkeypatch.setattr(desktop, "set_clipboard", _accepting(copied))
     conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert copied == ["https://1.test"]
 
@@ -200,9 +201,9 @@ def test_the_plan_dialog_lists_the_plans_of_the_conversation_and_selects_the_las
     plan_file.write_text("# The plan", encoding="utf-8")
     other = claude_config / "plans" / "later.md"
     other.write_text("# Later", encoding="utf-8")
-    _session(
-        claude_config, conversation._workspaces.workspace, identifier=conversation.conversation_id
-    )
+    workspace = conversation._workspaces.workspace
+    assert workspace is not None
+    _session(claude_config, workspace, identifier=conversation.conversation_id)
     session_file = next((claude_config / "projects" / "folder").glob("*.jsonl"))
     entries = [json.loads(line) for line in session_file.read_text(encoding="utf-8").splitlines()]
     for index, path in enumerate((plan_file, other)):

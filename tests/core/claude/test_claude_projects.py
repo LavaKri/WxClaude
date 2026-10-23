@@ -58,7 +58,9 @@ def test_a_missing_projects_folder_gives_an_empty_list(tmp_path: Path) -> None:
     assert list_projects(tmp_path / "nothing") == []
 
 
-def _conversation_file(folder: Path, session_id: str, cwd: Path, *titles: dict[str, str]) -> Path:
+def _conversation_file(
+    folder: Path, session_id: str, cwd: Path, *titles: dict[str, object]
+) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     file = folder / f"{session_id}.jsonl"
     lines = [json.dumps({"type": "user", "cwd": str(cwd)})]

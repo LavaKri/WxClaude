@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 import pytest
 import wx
@@ -24,7 +24,7 @@ def said() -> _Said:
 
 
 @pytest.fixture
-def view(wx_app: wx.App, said: _Said):
+def view(wx_app: wx.App, said: _Said) -> Iterator[ConversationView]:
     frame = wx.Frame(None)
     view = ConversationView(frame, said)
     view.set_messages(

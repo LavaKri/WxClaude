@@ -1,4 +1,5 @@
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -26,11 +27,11 @@ def _dialog(workspace: Path, *, local_only: bool = False) -> WorkspaceSettingsDi
 
 
 @pytest.fixture
-def dialog(wx_app: wx.App, workspace: Path):
+def dialog(wx_app: wx.App, workspace: Path) -> Iterator[WorkspaceSettingsDialog]:
     dialog = _dialog(workspace)
     errors: list[str] = []
-    dialog._show_error = errors.append  # type: ignore[method-assign]
-    dialog.errors = errors  # type: ignore[attr-defined]
+    dialog._show_error = errors.append  # type: ignore[assignment]
+    dialog.errors = errors
     yield dialog
     dialog.Destroy()
     wx.SafeYield()

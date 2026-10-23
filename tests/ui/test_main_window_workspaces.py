@@ -9,6 +9,7 @@ import pytest
 import wx
 from main_window_support import (
     OPUS,
+    _accepting,
     _enabled,
     _Errors,
     _session,
@@ -192,7 +193,7 @@ def test_the_help_page_is_opened_in_the_browser(
     opened: list[Path] = []
     page = tmp_path / "fr.html"
     monkeypatch.setattr("wxclaude.presenters.file_presenter.help_page", lambda language: page)
-    monkeypatch.setattr(desktop, "launch_file", lambda path: opened.append(path) or True)
+    monkeypatch.setattr(desktop, "launch_file", _accepting(opened))
     window._files.show_help("fr")
     assert opened == [page]
 
@@ -201,7 +202,7 @@ def test_the_workspace_folder_is_opened_in_the_file_explorer(
     window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     opened: list[Path] = []
-    monkeypatch.setattr(desktop, "launch_folder", lambda folder: opened.append(folder) or True)
+    monkeypatch.setattr(desktop, "launch_folder", _accepting(opened))
     errors = _Errors(window)
     window.open_workspace(tmp_path)
     window._files.open_folder(window._workspaces.workspace)

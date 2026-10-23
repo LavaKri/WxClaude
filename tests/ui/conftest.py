@@ -13,7 +13,7 @@ _Window = TypeVar("_Window", bound=wx.Window)
 
 
 @pytest.fixture(scope="session")
-def wx_app():
+def wx_app() -> wx.App:
     """One wx application for the whole session: wx cannot cleanly recreate it per test."""
     return wx.App()
 
@@ -25,7 +25,7 @@ def silent_sounds(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def window(wx_app: wx.App):
+def window(wx_app: wx.App) -> Iterator[MainWindow]:
     window = MainWindow(_settings(), _runner())
     yield window
     window.Destroy()

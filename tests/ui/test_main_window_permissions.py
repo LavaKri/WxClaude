@@ -1,6 +1,7 @@
 """Tests of the main window: permission questions of Claude and the Workspace settings."""
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -42,7 +43,8 @@ def _permission_setup(
 def _response(log: Path) -> dict[str, object]:
     text = Path(str(log) + ".responses").read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if line.strip()]  # Windows adds line breaks
-    return json.loads(lines[-1])["response"]["response"]
+    response: dict[str, object] = json.loads(lines[-1])["response"]["response"]
+    return response
 
 
 def test_allowing_a_permission_question_lets_the_tool_run(
@@ -147,7 +149,7 @@ def test_a_question_that_expired_closes_its_dialog_and_is_not_answered(
     run = conversation._run
     request = PermissionRequest("r", "Write", "", {}, "", "", "")
     dialog = _OpenQuestion()
-    conversation._run_view._open_question = (request, dialog)  # type: ignore[assignment]
+    conversation._run_view._open_question = (request, dialog)
     run.on_event(PermissionExpired("r", "Write"))
     assert dialog.ended == [wx.ID_NO]
     assert "The question about the tool Write expired: Claude denied the tool." in sink.messages
@@ -167,13 +169,17 @@ def test_another_question_expiring_leaves_the_open_dialog_alone(
     run = conversation._run
     dialog = _OpenQuestion()
     question = (PermissionRequest("r", "Write", "", {}, "", "", ""), dialog)
-    conversation._run_view._open_question = question  # type: ignore[assignment]
+    conversation._run_view._open_question = question
     run.on_event(PermissionExpired("other", "Bash"))
     assert dialog.ended == []
 
 
 def _workspace_settings_edit(
-    window: MainWindow, monkeypatch: pytest.MonkeyPatch, edit, *, result: int = wx.ID_OK
+    window: MainWindow,
+    monkeypatch: pytest.MonkeyPatch,
+    edit: Callable[[WorkspaceSettingsDialog], None],
+    *,
+    result: int = wx.ID_OK,
 ) -> list[WorkspaceSettingsDialog]:
     """Open the workspace settings; ``edit(dialog)`` plays what the user does, then OK/Cancel."""
     seen: list[WorkspaceSettingsDialog] = []

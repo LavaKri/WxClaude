@@ -6,6 +6,7 @@ The fixtures ``window`` and ``conversation`` are in ``conftest.py``.
 import json
 import sys
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -93,7 +94,17 @@ def _wait_until_idle(window: MainWindow, timeout: float = 30) -> None:
 class _Errors:
     def __init__(self, window: MainWindow) -> None:
         self.messages: list[str] = []
-        window._feedback.show_error = self.messages.append  # type: ignore[method-assign]
+        window._feedback.show_error = self.messages.append  # type: ignore[assignment]
+
+
+def _accepting[T](calls: list[T]) -> Callable[[T], bool]:
+    """A desktop call (clipboard, browser, explorer) that records its argument and succeeds."""
+
+    def accept(argument: T) -> bool:
+        calls.append(argument)
+        return True
+
+    return accept
 
 
 def _use_log(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:

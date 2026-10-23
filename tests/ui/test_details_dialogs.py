@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pytest
 import wx
 
@@ -15,7 +17,7 @@ TABLE_ANSWER = "Result:\n\n| Name | Size |\n|---|---|\n| a.txt | 3 |\n\nSee [doc
 
 
 @pytest.fixture
-def frame(wx_app: wx.App):
+def frame(wx_app: wx.App) -> Iterator[wx.Frame]:
     frame = wx.Frame(None)
     yield frame
     frame.Destroy()
@@ -64,7 +66,7 @@ def test_the_links_dialog_selects_the_requested_link(frame: wx.Frame) -> None:
 def test_an_action_button_ends_the_dialog_with_its_identifier(frame: wx.Frame) -> None:
     dialog = LinksDialog(frame, [Link("one", "https://1.test", 0)])
     ended: list[int] = []
-    dialog.EndModal = ended.append  # type: ignore[method-assign]
+    dialog.EndModal = ended.append
     wx.PostEvent(dialog, wx.CommandEvent(wx.wxEVT_BUTTON, wx.ID_COPY))
     wx.SafeYield()
     assert ended == [wx.ID_COPY]
@@ -224,7 +226,7 @@ def test_without_a_message_at_the_caret_no_menu_opens_not_even_the_native_one(
     monkeypatch.setattr(empty, "PopupMenu", lambda *args: popups.append(args))
     skipped: list[bool] = []
     event = wx.ContextMenuEvent(wx.wxEVT_CONTEXT_MENU, empty.GetId(), wx.DefaultPosition)
-    event.Skip = lambda *_a: skipped.append(True)  # type: ignore[method-assign]
+    event.Skip = lambda *_a: skipped.append(True)
     empty._on_context_menu(event)
     assert skipped == []  # skipping would let the field show its own menu
     assert popups == []
@@ -237,7 +239,7 @@ def _key(view: ConversationView, kind: int, code: int, *, shift: bool = False) -
     event.SetKeyCode(code)
     event.SetShiftDown(shift)
     skipped: list[bool] = []
-    event.Skip = lambda *_a: skipped.append(True)  # type: ignore[method-assign]
+    event.Skip = lambda *_a: skipped.append(True)
     view.GetEventHandler().ProcessEvent(event)
     return skipped
 
@@ -247,9 +249,12 @@ def test_shift_f10_opens_our_menu_and_the_native_field_never_sees_the_key(
 ) -> None:
     _caret_on(view, "Result:")
     labels: list[list[str]] = []
-    monkeypatch.setattr(
-        view, "PopupMenu", lambda menu, _pos: labels.append(_menu_labels(menu)) or True
-    )
+
+    def popup(menu: wx.Menu, _position: wx.Point) -> bool:
+        labels.append(_menu_labels(menu))
+        return True
+
+    monkeypatch.setattr(view, "PopupMenu", popup)
     assert _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_F10, shift=True) == []
     assert labels[0][-4:-2] == ["&Copy the message", "Copy the &exchange"]
     assert _key(view, wx.wxEVT_KEY_UP, wx.WXK_F10, shift=True) == []  # no native menu on key up

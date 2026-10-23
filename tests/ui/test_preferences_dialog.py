@@ -1,3 +1,6 @@
+from collections.abc import Iterator
+from pathlib import Path
+
 import pytest
 import wx
 
@@ -17,7 +20,7 @@ def settings() -> Settings:
 
 
 @pytest.fixture
-def dialog(wx_app: wx.App, settings: Settings):
+def dialog(wx_app: wx.App, settings: Settings) -> Iterator[PreferencesDialog]:
     dialog = PreferencesDialog(None, settings)
     yield dialog
     dialog.Destroy()
@@ -174,29 +177,30 @@ def test_the_permission_channel_and_the_waiting_time_are_applied_to_the_settings
 
 
 def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
-    dialog: PreferencesDialog, tmp_path, monkeypatch: pytest.MonkeyPatch
+    dialog: PreferencesDialog, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     shown: list[str] = []
 
     class Warning:
-        def __init__(self, _parent, message, *_args) -> None:
+        def __init__(self, _parent: wx.Window, message: str, *_args: object) -> None:
             shown.append(message)
 
-        def __enter__(self):
+        def __enter__(self) -> Warning:
             return self
 
-        def __exit__(self, *_args) -> None:
+        def __exit__(self, *_args: object) -> None:
             return None
 
         def ShowModal(self) -> int:  # noqa: N802
-            return wx.ID_OK
+            ok: int = wx.ID_OK
+            return ok
 
     monkeypatch.setattr(wx, "MessageDialog", Warning)
     dialog.claude.auto_search.SetValue(False)
     dialog.claude.path.SetValue("")
     event = wx.CommandEvent(wx.wxEVT_BUTTON, wx.ID_OK)
     skipped: list[bool] = []
-    event.Skip = lambda *_a: skipped.append(True)  # type: ignore[method-assign]
+    event.Skip = lambda *_a: skipped.append(True)
     dialog._on_ok(event)
     assert skipped == []
     assert dialog._notebook.GetSelection() == 1

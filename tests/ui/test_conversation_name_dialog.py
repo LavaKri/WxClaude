@@ -1,3 +1,5 @@
+from collections.abc import Iterator
+
 import pytest
 import wx
 
@@ -7,7 +9,7 @@ pytestmark = pytest.mark.ui
 
 
 @pytest.fixture
-def dialog(wx_app: wx.App):
+def dialog(wx_app: wx.App) -> Iterator[ConversationNameDialog]:
     dialog = ConversationNameDialog(None, "New conversation", "Conversation 3")
     yield dialog
     dialog.Destroy()

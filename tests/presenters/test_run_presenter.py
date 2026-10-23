@@ -223,7 +223,7 @@ def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
         presenter.on_event(PermissionExpired(asked.request_id, asked.tool_name))  # while open
         return Decision(Choice.ALLOW)
 
-    view.ask_permission = ask  # type: ignore[method-assign]
+    view.ask_permission = ask  # type: ignore[assignment]
     presenter.on_event(request)
     assert view.closed == ["r1"]
     assert runner.answers == []

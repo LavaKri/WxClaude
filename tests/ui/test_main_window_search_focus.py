@@ -28,7 +28,7 @@ def _search_window(conversation: MainWindow) -> tuple[MainWindow, RecordingMessa
     sink = RecordingMessageSink()
     conversation._feedback.announcements.message_sink = sink
     infos: list[str] = []
-    conversation._feedback.show_info = infos.append  # type: ignore[method-assign]
+    conversation._feedback.show_info = infos.append  # type: ignore[assignment]
     return conversation, sink, infos
 
 

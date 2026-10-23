@@ -74,7 +74,12 @@ def test_synthetic_answers_are_kept_without_model(tmp_path: Path) -> None:
 
 
 def test_tools_results_and_thinking_are_kept_as_details(tmp_path: Path) -> None:
-    tool = {"type": "tool_use", "id": "t1", "name": "Read", "input": {"file_path": "x"}}
+    tool: dict[str, object] = {
+        "type": "tool_use",
+        "id": "t1",
+        "name": "Read",
+        "input": {"file_path": "x"},
+    }
     result = {"type": "tool_result", "tool_use_id": "t1", "content": "data", "is_error": False}
     session = read_session(
         _write(
@@ -95,7 +100,7 @@ def test_tools_results_and_thinking_are_kept_as_details(tmp_path: Path) -> None:
 
 
 def test_trailing_tools_belong_to_the_last_answer(tmp_path: Path) -> None:
-    tool = {"type": "tool_use", "id": "t1", "name": "Bash", "input": {}}
+    tool: dict[str, object] = {"type": "tool_use", "id": "t1", "name": "Bash", "input": {}}
     session = read_session(
         _write(tmp_path / "s.jsonl", [_user("Go"), _assistant([_text("Ok")]), _assistant([tool])])
     )
