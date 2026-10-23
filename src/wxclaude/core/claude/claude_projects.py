@@ -120,6 +120,22 @@ def find_session_file(session_id: str, projects_dir: Path | None = None) -> Path
     return None
 
 
+def session_paths(session_id: str, config_dir: Path | None = None) -> list[Path]:
+    """What Claude Code keeps of the session ``session_id`` and that exists: its transcript, the
+    folder beside it (subagents, large tool results), its file history and its task list.
+
+    Anything that is not a session identifier gives nothing, so that no other folder is named.
+    """
+    if not is_conversation_id(session_id):
+        return []
+    config = config_dir or claude_config_dir()
+    candidates = [config / "file-history" / session_id, config / "tasks" / session_id]
+    transcript = find_session_file(session_id, config / "projects")
+    if transcript is not None:
+        candidates[:0] = [transcript, transcript.with_suffix("")]
+    return [path for path in candidates if path.exists()]
+
+
 def list_sessions(workspace: Path, projects_dir: Path | None = None) -> list[SessionInfo]:
     """The conversations Claude Code holds for ``workspace``, the last message most recent first."""
     root = projects_dir or claude_projects_dir()

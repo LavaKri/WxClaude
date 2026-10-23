@@ -69,7 +69,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 
 | Module | Role |
 |---|---|
-| `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
+| `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`; the files of a session (what deleting it removes). |
 | `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage. |
 | `claude_files.py` | `ClaudeFiles` (Protocol): what the presenters read and write of the files of Claude Code; `DiskClaudeFiles`, the real one, built on the modules above. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads; also the rename of a session and the reading of the gauges (`read_usage`, `/usage`, stopped after 15 seconds), which share its single process. |
@@ -143,10 +143,10 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `main_window.py` | The conversation view, the prompt and the buttons, the menus, and the wiring of the presenters and their views. |
-| `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs). |
+| `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs, the confirmation and the Recycle Bin of a deletion). |
 | `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
 | `gauge_watch.py` | `GaugeWatch`: the one-minute timer that asks whether the gauges are to be read (started by the application, not by the window). |
-| `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list) and `read_session` (the error is shown). |
+| `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list), `confirm` (Yes / No, No by default) and `read_session` (the error is shown). |
 | `workspace_view.py` | `WxWorkspaceView`: the view of `WorkspacePresenter` (folder dialog, messages). |
 | `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |
 | `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
@@ -157,7 +157,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `main_menu.py` | `MainMenu`: the menu bar of the main window (tables, recent workspaces, shortcuts, greying), told what each item does by `MenuHandlers`. |
 | `message_view.py` | `WxMessageView`: the view of `MessagePresenter` (dialogs of the details, tasks, plans and usage; clipboard, browser). |
 | `search_view.py` | `WxSearchView`: the view of `SearchPresenter` (Find dialog, selection in the conversation view). |
-| `desktop.py` | The clipboard, the browser and the file explorer; each function says whether the desktop refused. |
+| `desktop.py` | The clipboard, the browser, the file explorer and the Recycle Bin (`SHFileOperationW`); each function says whether the desktop refused. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
 | `permission_dialog.py` | The permission question of Claude. |

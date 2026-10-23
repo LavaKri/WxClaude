@@ -555,6 +555,24 @@ msgstr "Actualisation des jauges"
 msgid "Wait for Claude to finish before renaming the conversation."
 msgstr "Attendez que Claude ait fini avant de renommer la conversation."
 
+msgid "Wait for Claude to finish before deleting the conversation."
+msgstr "Attendez que Claude ait fini avant de supprimer la conversation."
+
+msgid "Delete the conversation"
+msgstr "Supprimer la conversation"
+
+msgid "Move the conversation \"{name}\" to the Recycle Bin?"
+msgstr "Mettre la conversation « {name} » à la Corbeille ?"
+
+msgid "The conversation could not be moved to the Recycle Bin."
+msgstr "La conversation n'a pas pu être mise à la Corbeille."
+
+msgid "Conversation \"{name}\" moved to the Recycle Bin."
+msgstr "Conversation « {name} » mise à la Corbeille."
+
+msgid "This conversation has no message yet: there is nothing to branch."
+msgstr "Cette conversation n'a encore aucun message : il n'y a rien à copier dans une branche."
+
 msgid "The conversation could not be renamed.\n{error}"
 msgstr "La conversation n'a pas pu être renommée.\n{error}"
 

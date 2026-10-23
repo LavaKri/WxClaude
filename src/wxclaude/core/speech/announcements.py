@@ -156,6 +156,7 @@ class Announce(enum.Enum):
     CLAUDE_FAILED = (None, N_("Claude could not answer: {details}"))
     CONVERSATION_REFRESHED = (REFRESH, N_("Conversation refreshed. New messages: {count}."))
     CONVERSATION_NOT_SAVED = (REFRESH, N_("This conversation has no history yet."))
+    CONVERSATION_DELETED = (None, N_('Conversation "{name}" moved to the Recycle Bin.'))
     SEARCH_FOUND = (SEARCH, N_("{line}"))
     SEARCH_NO_NEXT = (SEARCH_FAILED, N_('No next occurrence of "{term}".'))
     SEARCH_NO_PREVIOUS = (SEARCH_FAILED, N_('No previous occurrence of "{term}".'))

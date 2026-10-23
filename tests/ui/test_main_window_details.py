@@ -70,6 +70,23 @@ def test_an_answer_feeds_the_usage_report(
     assert any(line.startswith(conversation_line) for line in report)
 
 
+def test_a_resumed_conversation_counts_only_its_new_message(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _send(conversation, "hello")
+    screen = conversation._conversations._view
+    monkeypatch.setattr(screen, "choose", lambda *_args: 0)
+    conversation._conversations.resume()  # opens the session file again, with its total
+    _send(conversation, "again")
+    states = _capture_dialogs(conversation, monkeypatch)
+    conversation._actions.show_usage()
+    report = str(states[0]["report"])
+    assert "Last message: cost 0.0010 dollars" in report  # the total reported is 0.0020
+    # The same conversation stays open: two messages of 0.0010 (the totals, 0.0010 and 0.0020,
+    # added up as before would give 0.0030).
+    assert "cost 0.0020 dollars at list price, messages: 2" in report
+
+
 def test_another_conversation_starts_the_spending_again(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:

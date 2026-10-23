@@ -37,12 +37,17 @@ class FakeClaudeFiles:
     plans_error: str = ""  # when set, reading the plans fails with this message
 
     def add_session(
-        self, workspace: Path, identifier: str, *prompts: str, title: str = ""
+        self,
+        workspace: Path,
+        identifier: str,
+        *prompts: str,
+        title: str = "",
+        total_cost: float | None = None,
     ) -> SessionInfo:
         """A conversation of ``workspace`` holding ``prompts``, the most recent one."""
         path = Path(f"{identifier}.jsonl")
         info = SessionInfo(identifier, path, title, float(len(self.contents)))
-        session = Session(title=title)
+        session = Session(title=title, total_cost_usd=total_cost)
         session.messages = [
             Message(f"{identifier}-{i}", Role.USER, p) for i, p in enumerate(prompts)
         ]
@@ -61,6 +66,10 @@ class FakeClaudeFiles:
         if path not in self.contents:
             raise SessionReadError(f"Cannot read {path}")
         return self.contents[path]
+
+    def session_paths(self, conversation_id: str) -> list[Path]:
+        path = Path(f"{conversation_id}.jsonl")
+        return [path, Path(conversation_id)] if path in self.contents else []
 
     def load_tasks(self, conversation_id: str) -> TaskList:
         if self.tasks_error:

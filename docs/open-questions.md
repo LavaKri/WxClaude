@@ -41,9 +41,6 @@ the file it belongs to and delete it from this one.
   differently, the status bar message with NVDA and JAWS (JAWS may read it by itself), and that a
   reading never takes the focus away from a send button (rule of `focus.md`). The status bar error
   of a failed answer is replaced by "Ready" at the next reading.
-- **Cost of a resumed message.** The usage dialog adds the `total_cost_usd` of each `result` to get
-  the cost of the conversation; check on a resumed message that it only covers that message and not
-  the whole session.
 - **Title entry of a generated title**: the reader expects an `ai-title` entry with an `aiTitle`
   field; only `custom-title` / `customTitle` was seen in real files.
 - **Effort in the session files**: only `low` and `medium` were seen. Are `xhigh` and `max` written
@@ -89,7 +86,6 @@ the file it belongs to and delete it from this one.
   is in the `result` line).
 - Task list: it is a snapshot when the dialog opens (no refresh while it is open), and the current
   task is not shown in the status bar yet.
-- Delete a conversation (the menu item is greyed).
 - After a turn the view is rebuilt from the session file; the answer titles then show the effort
   written in the file, and none for a model that ignores it (haiku).
 - *Always allow* in the permission question writes the exact rule the CLI proposes
@@ -105,8 +101,6 @@ the file it belongs to and delete it from this one.
   `wx.CallAfter` instead of being raised on the spot. The hook channel does no input or output in
   the window thread: the window thread only hands the decision to the thread of the HTTP handler.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
-- A branch is provisional (it starts a new identifier with the same text on screen): see
-  milestone 6 of `roadmap.md`. To try: `--fork-session` with `--name` for the name of a branch.
 - The managed settings of an organization (`managed-settings.json`, MDM, server) are not read; they
   have the highest priority and could be shown read only like the general file (Windows path to
   find in the official documentation).

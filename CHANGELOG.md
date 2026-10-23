@@ -22,5 +22,8 @@ First version: the application works from end to end.
   "Ready" line of the status bar gives the 5-hour gauge, and the week from 75 %.
 - The gauges are read with `/usage` at startup and when they are out of date, without sending a
   message; meanwhile the send buttons and the usage item are greyed.
+- Branch of a conversation: its first message copies the history into a new Claude Code
+  session, the original is left as it is. Delete a conversation: what Claude Code keeps of it
+  goes to the Recycle Bin, after a confirmation.
 - French and English interface, configurable shortcuts, help page opened in the browser.
 - Not yet checked by hand with NVDA and JAWS.

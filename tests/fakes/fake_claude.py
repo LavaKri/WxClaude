@@ -19,6 +19,10 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
   error, ``usage_garbage`` with a text without gauges, ``usage_slow`` waits 60 seconds.
 
 ``--name <name>`` and ``/rename <name>`` append a ``custom-title`` entry to the session file.
+``--resume <a> --fork-session --session-id <b>`` first copies the history of ``a`` into the
+session ``b`` (without its title), like the CLI.
+Every message costs 0.001 and the ``result`` reports the total of the session, which is also
+written to the session file as a ``cost-state`` entry, like the CLI.
 
 After the result the fake waits for the end of stdin, as the real CLI does, so a runner that does
 not close stdin hangs the test. ``FAKE_CLAUDE_LOG`` (a file) receives the arguments and the prompt
@@ -45,14 +49,30 @@ def option(name: str) -> str:
     return sys.argv[sys.argv.index(name) + 1] if name in sys.argv else ""
 
 
-def write_session(session_id: str, prompt: str, answer: str, model: str, effort: str) -> None:
+def session_total(session_id: str) -> float:
+    """What the session already cost: the last ``cost-state`` entry of its file (0 if none)."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    found = next(Path(config, "projects").glob(f"*/{session_id}.jsonl"), None) if config else None
+    if found is None:
+        return 0.0
+    total = 0.0
+    for line in found.read_text(encoding="utf-8").splitlines():
+        entry = json.loads(line) if line.strip() else {}
+        if entry.get("type") == "cost-state":
+            total = entry["totalCostUSD"]
+    return float(total)
+
+
+def write_session(
+    session_id: str, prompt: str, answer: str, model: str, effort: str, total: float
+) -> None:
     config = os.environ.get("CLAUDE_CONFIG_DIR")
     if not config:
         return
     folder = Path(config) / "projects" / "fake"
     folder.mkdir(parents=True, exist_ok=True)
     now = datetime.now(UTC).isoformat()
-    entries = [
+    entries: list[dict[str, object]] = [
         {
             "type": "user",
             "uuid": f"u-{time.time_ns()}",
@@ -100,9 +120,40 @@ def write_session(session_id: str, prompt: str, answer: str, model: str, effort:
             },
         },
     ]
+    entries.append({"type": "cost-state", "sessionId": session_id, "totalCostUSD": total})
     with (folder / f"{session_id}.jsonl").open("a", encoding="utf-8") as file:
         for entry in entries:
             file.write(json.dumps(entry) + "\n")
+
+
+def fork(source_id: str, session_id: str) -> None:
+    """Copy the history of ``source_id`` into the new session ``session_id`` (not its title)."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    if not config:
+        return
+    found = next(Path(config, "projects").glob(f"*/{source_id}.jsonl"), None)
+    if found is None:
+        return
+    lines = [
+        line
+        for line in found.read_text(encoding="utf-8").splitlines()
+        if line.strip() and json.loads(line).get("type") != "custom-title"
+    ]
+    folder = Path(config) / "projects" / "fake"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / f"{session_id}.jsonl").write_text(
+        "".join(f"{line}\n" for line in lines), encoding="utf-8"
+    )
+
+
+def prepare_session() -> str:
+    """The session of the message: a branch first copies its history, a name is written."""
+    session_id = option("--session-id") or option("--resume")
+    if "--fork-session" in sys.argv:
+        fork(option("--resume"), session_id)
+    if option("--name"):
+        write_title(session_id, option("--name"))
+    return session_id
 
 
 def rule_allowed() -> bool:
@@ -277,9 +328,7 @@ def main() -> int:
             json.dumps({"arguments": sys.argv[1:], "prompt": prompt, "cwd": str(Path.cwd())}),
             encoding="utf-8",
         )
-    session_id = option("--session-id") or option("--resume")
-    if option("--name"):
-        write_title(session_id, option("--name"))
+    session_id = prepare_session()
     model = "claude-" + option("--model") + "-fake"
     if scenario == "crash":
         print("fake claude: not logged in", file=sys.stderr, flush=True)
@@ -344,6 +393,7 @@ def main() -> int:
         }
     )
     answer = f"Echo: {prompt}"
+    total = round(session_total(session_id) + 0.001, 6)
     emit(
         {
             "type": "assistant",
@@ -369,13 +419,13 @@ def main() -> int:
             "is_error": failed,
             "result": "Too many turns" if failed else answer,
             "duration_ms": 10,
-            "total_cost_usd": 0.001,
+            "total_cost_usd": total,
             "num_turns": 1,
             "usage": {"input_tokens": 3, "output_tokens": 4},
         }
     )
     if not failed:
-        write_session(session_id, prompt, answer, model, option("--effort"))
+        write_session(session_id, prompt, answer, model, option("--effort"), total)
     sys.stdin.buffer.read()  # like the real CLI: ends when its input is closed
     return 1 if failed else 0
 

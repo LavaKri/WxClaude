@@ -51,6 +51,8 @@ A conversation always belongs to a workspace. Opening a workspace loads its reme
 
 - Conversation > Resume a conversation lists those of the workspace, the most recent first.
 - Conversation > Refresh the conversation reads the session file again.
+- Conversation > New conversation branch copies the conversation under another name. The text stays on screen. Claude Code makes the copy with the first message of the branch; the original conversation does not change.
+- Conversation > Delete the conversation moves what Claude Code keeps of the conversation to the Windows Recycle Bin, after a confirmation. You can get it back from the Recycle Bin.
 
 Conversation > Modify the agent changes the agent of the current conversation.
 Changing the model loses the prompt cache of the conversation. Changing the effort or the permission mode does not.

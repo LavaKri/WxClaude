@@ -29,6 +29,9 @@ class FakeScreen:
         self.said: list[Announce] = []
         self.errors: list[str] = []
         self.calls: list[str] = []
+        self.confirmed = True  # the answer to a Yes / No question
+        self.recycle_works = True
+        self.recycled: list[Path] = []
 
     def ask_name(self, title: str, proposal: str) -> str | None:
         self.calls.append(f"ask {proposal}")
@@ -67,6 +70,15 @@ class FakeScreen:
 
     def show_error(self, message: str) -> None:
         self.errors.append(message)
+
+    def confirm(self, title: str, message: str) -> bool:
+        self.calls.append(f"confirm {message}")
+        return self.confirmed
+
+    def move_to_recycle_bin(self, paths: list[Path]) -> bool:
+        if self.recycle_works:
+            self.recycled.extend(paths)
+        return self.recycle_works
 
 
 class FakeWorkspaceView:
@@ -174,16 +186,140 @@ def test_a_session_that_cannot_be_read_is_reported(tmp_path: Path) -> None:
     assert screen.errors == ["Cannot read the conversation.\nCannot read broken.jsonl"]
 
 
-def test_a_branch_proposes_a_numbered_name_and_starts_a_new_identifier(tmp_path: Path) -> None:
+def test_a_branch_keeps_the_text_and_copies_the_history_with_its_first_message(
+    tmp_path: Path,
+) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "parent", "Hello", title="Notes")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    screen.name = "Notes, other way"
+    conversations.new_branch()
+    assert screen.calls[-2:] == ["ask Notes branch 1", "focus view"]
+    assert conversations.conversation_id not in ("", "parent")
+    assert (conversations.name, conversations.fork_from) == ("Notes, other way", "parent")
+    assert [message.text for message in screen.messages] == ["Hello"]  # the text stays
+    assert screen.title == f"Notes, other way - {tmp_path.name} - WxClaude"
+
+
+def test_what_the_cli_already_counted_is_known_to_the_usage_of_each_conversation(
+    tmp_path: Path,
+) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "parent", "Hello", title="Notes", total_cost=0.40)
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    usage = conversations._usage
+    assert usage.session_total is None  # nothing is open
+    workspaces.open(tmp_path)
+    assert usage.session_total == 0.40  # the total of the session file
+    screen.name = "Branch"
+    conversations.new_branch()
+    assert usage.session_total == 0.40  # the branch goes on from the one it copies
+    assert usage.conversation_turns == 0
+    screen.name = "Fresh"
+    conversations.new()
+    assert usage.session_total == 0.0  # a session that does not exist yet
+    conversations.close()
+    assert usage.session_total is None
+
+
+def test_refreshing_takes_the_total_the_cli_reached_elsewhere(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    info = files.add_session(tmp_path, "one", "Hello", title="One", total_cost=0.40)
+    conversations, _screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    files.contents[info.path].total_cost_usd = 0.90  # a terminal went on with the session
+    conversations.refresh()
+    assert conversations._usage.session_total == 0.90
+
+
+def test_a_cancelled_branch_changes_nothing(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "parent", "Hello", title="Notes")
+    conversations, _screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    conversations.new_branch()  # the name dialog is cancelled
+    assert (conversations.conversation_id, conversations.fork_from) == ("parent", "")
+
+
+def test_a_conversation_without_any_message_has_nothing_to_branch(tmp_path: Path) -> None:
     conversations, screen, workspaces, _settings = _presenters(tmp_path)
     workspaces.open(tmp_path)
     conversations.start_new("Notes")
     first = conversations.conversation_id
-    screen.name = "Notes, branch"
     conversations.new_branch()
-    assert screen.calls[-1] == "ask Notes branch 1"
-    assert conversations.conversation_id != first
-    assert conversations.name == "Notes, branch"
+    assert screen.errors == ["This conversation has no message yet: there is nothing to branch."]
+    assert not any(call.startswith("ask") for call in screen.calls)
+    assert conversations.conversation_id == first
+
+
+def test_another_conversation_is_no_longer_a_branch(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "parent", "Hello", title="Notes")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    screen.name = "Branch"
+    conversations.new_branch()
+    screen.name = "Fresh"
+    conversations.new()
+    assert conversations.fork_from == ""
+
+
+def test_deleting_moves_the_files_to_the_recycle_bin_and_selects_the_most_recent(
+    tmp_path: Path,
+) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "older", "Before", title="Older")
+    files.add_session(tmp_path, "newer", "Hello", title="Newer")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    assert conversations.conversation_id == "newer"
+    files.sessions[tmp_path].pop(0)  # what the Recycle Bin takes away, as seen by the next listing
+    conversations.delete()
+    assert 'confirm Move the conversation "Newer" to the Recycle Bin?' in screen.calls
+    assert screen.recycled == [Path("newer.jsonl"), Path("newer")]
+    assert Announce.CONVERSATION_DELETED in screen.said
+    assert conversations.conversation_id == "older"
+    assert screen.calls[-1] == "focus view"
+
+
+def test_deleting_the_last_conversation_leaves_the_workspace_without_any(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "only", "Hello", title="Only")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    files.sessions[tmp_path].clear()
+    conversations.delete()
+    assert conversations.conversation_id == ""
+    assert screen.said[-2:] == [Announce.CONVERSATION_DELETED, Announce.NO_CONVERSATION]
+    assert workspaces.state is not None
+    assert "only" not in workspaces.state.conversations
+
+
+def test_a_deletion_that_is_refused_or_fails_keeps_the_conversation(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="One")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    screen.confirmed = False
+    conversations.delete()
+    assert (screen.recycled, screen.errors) == ([], [])
+    screen.confirmed, screen.recycle_works = True, False
+    conversations.delete()
+    assert screen.errors == ["The conversation could not be moved to the Recycle Bin."]
+    assert conversations.conversation_id == "one"
+    assert Announce.CONVERSATION_DELETED not in screen.said
+
+
+def test_a_conversation_is_not_deleted_while_claude_answers(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="One")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files, busy=[True])
+    workspaces.open(tmp_path)
+    conversations.delete()
+    assert screen.errors == ["Wait for Claude to finish before deleting the conversation."]
+    assert not any(call.startswith("confirm") for call in screen.calls)
+    assert conversations.conversation_id == "one"
 
 
 def test_the_agent_is_remembered_and_the_alternative_one_goes_over_it(tmp_path: Path) -> None:

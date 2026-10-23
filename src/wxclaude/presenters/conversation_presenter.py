@@ -1,6 +1,6 @@
 """The current conversation: which one it is, its name and its agent, and the ways to change it
-(new, resume, refresh, rename, branch, the agent). A conversation always belongs to a workspace
-(``WorkspacePresenter``); see ``docs/interface.md``."""
+(new, resume, refresh, rename, branch, delete, the agent). A conversation always belongs to a
+workspace (``WorkspacePresenter``); see ``docs/interface.md``."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -77,6 +77,14 @@ class ConversationView(Protocol):
         """Tell the user that something failed."""
         ...
 
+    def confirm(self, title: str, message: str) -> bool:
+        """Ask a Yes / No question (No by default); True for Yes."""
+        ...
+
+    def move_to_recycle_bin(self, paths: list[Path]) -> bool:
+        """Move ``paths`` to the Recycle Bin; False if one of them could not be moved."""
+        ...
+
 
 def session_label(session: SessionInfo) -> str:
     """How a conversation is listed: its title (or the start of its id), then its last use."""
@@ -99,7 +107,8 @@ class ConversationPresenter:
 
     Its name is the one of its session, kept by the CLI (``--name`` with the first message,
     ``/rename`` afterwards): until the first message there is no session and the name only lives
-    here.
+    here. A branch is the same: until its first message it is only ``fork_from``, the conversation
+    whose history that message copies.
     """
 
     def __init__(
@@ -118,6 +127,7 @@ class ConversationPresenter:
         self.conversation_id = ""
         self.name = ""
         self.agent = shared.settings.default_agent  # the main agent of the conversation
+        self.fork_from = ""  # the conversation a branch comes from, until its first message
         self._branch_count = 0  # branches made from the current conversation
 
     def agent_for(self, *, alternative: bool) -> Agent:
@@ -128,9 +138,13 @@ class ConversationPresenter:
 
     # Which conversation ----------------------------------------------------------------------
 
-    def start_new(self, name: str) -> None:
-        """A new conversation identifier under ``name`` becomes the current one."""
-        self._set_conversation(new_conversation_id(), name)
+    def start_new(self, name: str, session_total: float | None = 0.0) -> None:
+        """A new conversation identifier under ``name`` becomes the current one.
+
+        ``session_total`` is what the CLI has already counted for its session (see
+        ``UsageTracker.start_conversation``): nothing for a conversation that is really new.
+        """
+        self._set_conversation(new_conversation_id(), name, session_total)
 
     def close(self) -> None:
         """No conversation is current any more (a conversation belongs to its workspace)."""
@@ -138,6 +152,7 @@ class ConversationPresenter:
         self._view.clear_prompt()
         self.conversation_id = ""
         self.name = ""
+        self.fork_from = ""
         self._branch_count = 0
         self._usage.start_conversation()
         self.update_title()
@@ -213,6 +228,8 @@ class ConversationPresenter:
             return
         if session.title and session.title != self.name:
             self._set_name(session.title)  # renamed elsewhere (the CLI, another window)
+        if session.total_cost_usd is not None:
+            self._usage.session_total = session.total_cost_usd  # it may have grown elsewhere
         before = self._view.shown_count()
         self._view.show_messages(session.messages)
         self._view.focus_last_prompt()
@@ -241,13 +258,48 @@ class ConversationPresenter:
         self._set_name(name)
 
     def new_branch(self) -> None:
-        # Until --fork-session is used a branch keeps the text on screen under a new name.
+        """Ask for a name and make a branch of the conversation the current one.
+
+        The text on screen stays: the first message of the branch copies the history of the
+        conversation into a session of its own (``--fork-session``), the original is left as it is.
+        """
+        parent = self.conversation_id
+        if not parent:
+            return
+        if self._files.find_session(parent) is None:
+            self._view.show_error(
+                _("This conversation has no message yet: there is nothing to branch.")
+            )
+            return
         proposal = branch_name(self.name, self._branch_count + 1)
         name = self._view.ask_name(_("New conversation branch"), proposal)
         if name is None:
             return
         self._branch_count = 0  # the new branch starts its own numbering
-        self.start_new(name)  # a branch is a session of its own
+        # A branch is a session of its own, whose total starts from the one of its parent.
+        self.start_new(name, self._usage.session_total)
+        self.fork_from = parent
+        self._view.focus_last_prompt()
+
+    def delete(self) -> None:
+        """After a confirmation, move the conversation to the Recycle Bin (what Claude Code keeps
+        of it), then select the most recent conversation left in the workspace."""
+        workspace = self._workspaces.workspace
+        if workspace is None or not self.conversation_id:
+            return
+        if self._links.is_busy():
+            self._view.show_error(_("Wait for Claude to finish before deleting the conversation."))
+            return
+        question = _('Move the conversation "{name}" to the Recycle Bin?').format(name=self.name)
+        if not self._view.confirm(_("Delete the conversation"), question):
+            return
+        if not self._view.move_to_recycle_bin(self._files.session_paths(self.conversation_id)):
+            self._view.show_error(_("The conversation could not be moved to the Recycle Bin."))
+            return
+        name = self.name
+        self.close()
+        self._view.say(Announce.CONVERSATION_DELETED, name=name)
+        self.select_in_workspace(workspace)  # the deleted one is forgotten there
 
     def choose_agent(self) -> None:
         agent = self._view.ask_agent(self.agent)
@@ -257,12 +309,17 @@ class ConversationPresenter:
 
     # What is kept ----------------------------------------------------------------------------
 
-    def _set_conversation(self, conversation_id: str, name: str) -> None:
+    def _set_conversation(
+        self, conversation_id: str, name: str, session_total: float | None = None
+    ) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
         if conversation_id != self.conversation_id:
-            self._usage.start_conversation()
+            self._usage.start_conversation(session_total)
+        elif session_total is not None:
+            self._usage.session_total = session_total
         self.conversation_id = conversation_id
         self.name = name
+        self.fork_from = ""
         self._remember()
         self.update_title()
         self._links.state_changed()
@@ -298,7 +355,7 @@ class ConversationPresenter:
         self._view.show_messages(session.messages)
         self._view.clear_prompt()
         self._branch_count = 0
-        self._set_conversation(chosen.id, session.title or chosen.id[:8])
+        self._set_conversation(chosen.id, session.title or chosen.id[:8], session.total_cost_usd)
         self._view.focus_last_prompt()
         return True
 

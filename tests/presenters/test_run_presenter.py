@@ -19,7 +19,7 @@ from wxclaude.core.claude.events import (
     TurnResult,
 )
 from wxclaude.core.claude.permissions import Choice, Decision
-from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import Task
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.settings import Settings
@@ -81,11 +81,15 @@ class FakeView:
 
 
 class FakeRunner(ClaudeRunner):
-    """Records the answers instead of writing to a process."""
+    """Records the messages started and the answers instead of running a process."""
 
     def __init__(self) -> None:
         super().__init__()
         self.answers: list[tuple[str, str]] = []
+        self.requests: list[RunRequest] = []
+
+    def start(self, request: RunRequest, on_event: Callable[[RunEvent], None]) -> None:
+        self.requests.append(request)
 
     def allow(self, request: PermissionRequest) -> None:
         self.answers.append(("allow", request.request_id))
@@ -95,7 +99,7 @@ class FakeRunner(ClaudeRunner):
 
 
 def _presenter(
-    view: FakeView, workspace: Path, files: FakeClaudeFiles | None = None
+    view: FakeView, workspace: Path, files: FakeClaudeFiles | None = None, fork_from: str = ""
 ) -> tuple[RunPresenter, FakeRunner]:
     runner = FakeRunner()
     shared = Shared(Settings.load(None), UsageTracker(), files or FakeClaudeFiles())
@@ -103,6 +107,7 @@ def _presenter(
         workspace=lambda: workspace,
         conversation_id=lambda: CONVERSATION,
         conversation_name=lambda: "Notes",
+        fork_from=lambda: fork_from,
         is_closing=lambda: False,
         state_changed=lambda: None,
     )
@@ -244,9 +249,30 @@ def test_a_step_put_in_progress_replaces_the_tool_progress(tmp_path: Path) -> No
 def test_nothing_is_started_without_a_workspace() -> None:
     view = FakeView()
     runner = FakeRunner()
-    links = RunLinks(lambda: None, lambda: CONVERSATION, lambda: "", lambda: False, lambda: None)
+    links = RunLinks(
+        workspace=lambda: None,
+        conversation_id=lambda: CONVERSATION,
+        conversation_name=lambda: "",
+        fork_from=lambda: "",
+        is_closing=lambda: False,
+        state_changed=lambda: None,
+    )
     shared = Shared(Settings.load(None), UsageTracker(), FakeClaudeFiles())
     presenter = RunPresenter(view, runner, shared, links)
     assert not presenter.start("hello", Settings.load(None).default_agent)
     assert not presenter.busy
     assert view.messages == []
+
+
+def test_the_first_message_of_a_branch_names_the_conversation_it_comes_from(
+    tmp_path: Path,
+) -> None:
+    presenter, runner = _presenter(FakeView(), tmp_path, fork_from="parent-id")
+    assert presenter.start("hello", Settings.load(None).default_agent)
+    (request,) = runner.requests
+    assert (request.session_id, request.resume, request.fork_from) == (
+        CONVERSATION,
+        False,
+        "parent-id",
+    )
+    assert request.name == "Notes"

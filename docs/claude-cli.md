@@ -12,7 +12,7 @@ changes a lot. Only what was tested or read in the documentation is stated here.
   closed: the process ends (verified with both channels).
 - One process per message; the conversation continues with `--resume <id>`.
 - The application chooses the conversation id: `--session-id <uuid>` for the first message
-  (verified: the session gets that id), `--resume <uuid>` afterwards. `--fork-session` with `--resume` creates a new id.
+  (verified: the session gets that id), `--resume <uuid>` afterwards. A branch: `--resume <a> --fork-session --session-id <b>` (see "Branch of a session").
 - Per message: `--model` (aliases `haiku`, `sonnet`, `opus`, `fable`, or a full name), `--effort`
   (`low`, `medium`, `high`, `xhigh`, `max`), `--permission-mode` (`manual`, `acceptEdits`,
   `plan`, `auto`, `dontAsk`, `bypassPermissions`), `--allowedTools` (rules the CLI may use without
@@ -147,6 +147,15 @@ One JSON object per line:
   `cache_creation_input_tokens`, `cache_read_input_tokens`, plus details), `duration_ms`,
   `total_cost_usd` (a cost at list price, whatever the subscription), `num_turns`,
   `modelUsage` (per model, with `contextWindow`), `permission_denials`.
+- **`total_cost_usd` and `modelUsage` are the total of the session since its creation, not the
+  cost of the message** (verified 2026-10-23, CLI 2.1.286, haiku, effort `low`: 0.0460, 0.0500 and
+  0.0530 for three messages of one session, which cost about 0.004 and 0.003 each). The first
+  message of a branch starts from the total of the conversation it copies (0.0530, then 0.0558).
+  The `usage` field is per message (its token counts differ from message to message). The session
+  file holds the same total in its last `cost-state` entry (`totalCostUSD`), so the cost of a
+  message is the total it reports minus the total before it: 0 for a session that does not exist
+  yet, the `cost-state` of the file for one that is opened, the total of the conversation it
+  copies for a branch (`core/claude/usage.py`, `UsageTracker`).
 - `prompt_suggestion`: a predicted next prompt, after `result`.
 - The effort is **not** reported by the stream: use the one that was requested.
 - Read stdout and stderr continuously (a full pipe blocks the CLI), lines can be very long, and
@@ -204,6 +213,31 @@ How WxClaude uses it (`ClaudeRunner.read_usage`, `core/claude/usage_text.py`,
 - It is read when the application starts, when a first workspace opens, and by a timer of one
   minute when a gauge is unknown or past its reset time (the value shown is then out of date). A
   reading is not asked for when a window is opened: the usage dialog shows what is known.
+
+### Branch of a session (verified 2026-10-23, CLI 2.1.286, haiku, effort `low`)
+
+`claude -p --resume <a> --fork-session --session-id <b> --name <name>` with a prompt:
+
+- The new session gets the identifier `b`, chosen by the application as with `--session-id`
+  alone, and the name given with `--name`.
+- The file of `b` holds the whole history of `a` (the same entries, with the same `uuid`, their
+  `sessionId` rewritten), then the new message. The title of `a` is not copied. No field names
+  the session it comes from.
+- `a` is left as it is. Claude keeps the context (it answered with a word given in `a`) and the
+  prompt cache is read.
+- The `result` of that first message reports in `total_cost_usd` and `modelUsage` the total of
+  `a` plus its own cost (0.0538 $ for a message that cost 0.0039 $): every `result` reports the
+  total of the session (see "The stream").
+- A branch only exists through a message: WxClaude makes it with the first message of the branch.
+
+### Deleting a session (documentation, CLI 2.1.286)
+
+No command deletes one session: not a command of a session, not the `/resume` picker; `claude
+purge` deletes a whole project, `claude rm` only a background session. The CLI removes a
+transcript after `cleanupPeriodDays` (30 by default), and the documentation lets the user delete
+its application data by hand. What it keeps of a session: `projects/<folder>/<id>.jsonl`, the
+folder `projects/<folder>/<id>/` (subagents, large tool results), `file-history/<id>/` and
+`tasks/<id>/`. WxClaude moves those to the Recycle Bin (`claude_projects.session_paths`).
 
 ### Name of a session (verified 2026-10-23, CLI 2.1.286, haiku, effort `low`)
 

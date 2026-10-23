@@ -123,6 +123,8 @@ view (`focus.md`).
   time), the limit status when it is not `allowed`, when the gauges were updated, then the tokens, the cost at
   list price, the duration and the turns of the last message, and the totals of the conversation
   since it was opened in WxClaude (sum of the `result` lines received; they start again when another
-  conversation becomes current, the gauges belong to the account and stay). Data arrives with the
+  conversation becomes current, the gauges belong to the account and stay). A `result` reports the
+  total cost of the session, so the cost of a message is that total minus the one before it (a
+  message whose previous total is not known is counted without a cost). Data arrives with the
   answers: before the first one the dialog says so. Facts that are unknown are not written.
 - **Errors** are not part of the conversation text: status bar and a dialog.

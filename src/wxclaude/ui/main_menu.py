@@ -43,6 +43,7 @@ class MenuHandlers:
     refresh_conversation: Handler
     rename_conversation: Handler
     new_branch: Handler
+    delete_conversation: Handler
     interrupt: Handler
     update_interrupt: Callable[[wx.UpdateUIEvent], None]
     choose_agent: Handler
@@ -137,8 +138,7 @@ class MainMenu:
             ),
             MenuEntry(_("Ren&ame the conversation"), h.rename_conversation, needs=conversation),
             MenuEntry(_("New conversation &branch"), h.new_branch, needs=conversation),
-            # Greyed until deleting is built (a later milestone).
-            MenuEntry(_("&Delete the conversation"), enabled=False),
+            MenuEntry(_("&Delete the conversation"), h.delete_conversation, needs=conversation),
             MenuEntry(_("&Interrupt Claude"), h.interrupt, INTERRUPT_COMMAND, key="interrupt"),
             MenuEntry(_("&Modify the agent…"), h.choose_agent, needs=conversation),
         ]

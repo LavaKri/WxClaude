@@ -11,6 +11,7 @@ from wxclaude.core.claude.claude_projects import (
     find_session_file,
     list_projects,
     list_sessions,
+    session_paths,
 )
 from wxclaude.core.conversation.conversations import new_conversation_id
 
@@ -140,3 +141,26 @@ def test_a_session_file_is_found_by_its_identifier(tmp_path: Path) -> None:
     assert find_session_file(identifier, projects) == file
     assert find_session_file(new_conversation_id(), projects) is None
     assert find_session_file(identifier, tmp_path / "nothing") is None
+
+
+def test_the_files_of_a_session_are_its_transcript_its_folder_its_history_and_its_tasks(
+    tmp_path: Path,
+) -> None:
+    identifier = new_conversation_id()
+    transcript = _conversation_file(tmp_path / "projects" / "C--work", identifier, tmp_path)
+    beside = transcript.with_suffix("")
+    (beside / "subagents").mkdir(parents=True)
+    history = tmp_path / "file-history" / identifier
+    history.mkdir(parents=True)
+    tasks = tmp_path / "tasks" / identifier
+    assert session_paths(identifier, tmp_path) == [transcript, beside, history]
+    tasks.mkdir(parents=True)
+    assert session_paths(identifier, tmp_path)[-1] == tasks
+    assert session_paths(new_conversation_id(), tmp_path) == []  # no history yet
+
+
+@pytest.mark.parametrize("identifier", ["", "..", "not-an-id"])
+def test_what_is_not_a_session_identifier_names_no_file(tmp_path: Path, identifier: str) -> None:
+    (tmp_path / "file-history").mkdir()
+    (tmp_path / "tasks").mkdir()
+    assert session_paths(identifier, tmp_path) == []

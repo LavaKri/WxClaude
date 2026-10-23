@@ -137,6 +137,17 @@ def test_last_permission_mode_and_broken_lines(tmp_path: Path) -> None:
     assert len(session.messages) == 1
 
 
+def test_the_total_cost_of_the_session_is_the_last_cost_state(tmp_path: Path) -> None:
+    states: list[object] = [
+        {"type": "cost-state", "totalCostUSD": 0.04},
+        _user("Hello"),
+        {"type": "cost-state", "totalCostUSD": 0.06},
+        {"type": "cost-state", "totalCostUSD": "free"},  # not a number: ignored
+    ]
+    assert read_session(_write(tmp_path / "s.jsonl", states)).total_cost_usd == 0.06
+    assert read_session(_write(tmp_path / "t.jsonl", [_user("Hello")])).total_cost_usd is None
+
+
 def test_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(SessionReadError):
         read_session(tmp_path / "missing.jsonl")

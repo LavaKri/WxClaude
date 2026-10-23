@@ -65,9 +65,11 @@ def test_an_unknown_window_is_named_as_it_comes() -> None:
 
 
 def test_the_last_message_and_the_conversation_are_reported() -> None:
+    """The CLI reports the total of the session: the cost of a message is the difference."""
     tracker = UsageTracker()
+    tracker.start_conversation(0.0)
     tracker.record_result(_result(0.25))
-    tracker.record_result(_result(0.5, Usage(1, 2, 3, 4)))
+    tracker.record_result(_result(0.75, Usage(1, 2, 3, 4)))
     lines = tracker.lines(NOW)
     assert lines[1:] == [
         "Last message, tokens: 1 in, 2 out, 4 read from the cache, 3 written to the cache.",
@@ -76,6 +78,51 @@ def test_the_last_message_and_the_conversation_are_reported() -> None:
         " 6768 written to the cache.",
         "Conversation since it was opened here: cost 0.7500 dollars at list price, messages: 2.",
     ]
+
+
+def _costs(tracker: UsageTracker) -> tuple[float, float]:
+    """The cost of the last message (-1 when it is not known) and of the conversation."""
+    return (-1.0 if tracker.last_cost is None else tracker.last_cost), tracker.conversation_cost
+
+
+def test_a_session_of_which_the_total_is_not_known_costs_nothing_to_the_first_message() -> None:
+    tracker = UsageTracker()
+    tracker.record_result(_result(0.40))  # 0.40 is the whole session, not this message
+    assert _costs(tracker) == (-1.0, 0.0)
+    assert "Last message: duration 1.7 seconds, turns: 1." in tracker.lines(NOW)
+    tracker.record_result(_result(0.55))
+    assert tracker.last_cost == pytest.approx(0.15)
+    assert tracker.conversation_cost == pytest.approx(0.15)
+
+
+def test_a_conversation_opened_with_its_total_counts_only_the_new_messages() -> None:
+    tracker = UsageTracker()
+    tracker.start_conversation(0.40)  # read from the session file
+    tracker.record_result(_result(0.55))
+    tracker.record_result(_result(0.60))
+    assert tracker.last_cost == pytest.approx(0.05)
+    assert tracker.conversation_cost == pytest.approx(0.20)
+    assert tracker.conversation_turns == 2
+
+
+def test_a_branch_goes_on_from_the_total_of_the_conversation_it_copies() -> None:
+    tracker = UsageTracker()
+    tracker.start_conversation(0.0)
+    tracker.record_result(_result(0.25))
+    tracker.start_conversation(tracker.session_total)  # the branch, before its first message
+    assert _costs(tracker) == (-1.0, 0.0)
+    tracker.record_result(_result(0.30))  # the CLI adds the 0.25 of the copied history
+    assert tracker.last_cost == pytest.approx(0.05)
+    assert tracker.conversation_cost == pytest.approx(0.05)
+
+
+def test_a_total_that_went_down_is_not_a_cost() -> None:
+    tracker = UsageTracker()
+    tracker.start_conversation(0.50)
+    tracker.record_result(_result(0.10))  # another session than the one expected
+    assert _costs(tracker) == (-1.0, 0.0)
+    tracker.record_result(_result(0.15))
+    assert tracker.last_cost == pytest.approx(0.05)
 
 
 def test_an_unknown_cost_is_not_written() -> None:
@@ -91,6 +138,7 @@ def test_a_new_conversation_starts_the_spending_again_but_keeps_the_gauges() -> 
     tracker.record_rate_limit(_rate(RateWindow("five_hour", 0.5, None)), NOW)
     tracker.record_result(_result())
     tracker.start_conversation()
+    assert tracker.session_total is None
     lines = tracker.lines(NOW)
     assert lines[0] == "5-hour window, 50 % used."
     assert lines[-1] == "No message sent yet in this conversation since it was opened here."

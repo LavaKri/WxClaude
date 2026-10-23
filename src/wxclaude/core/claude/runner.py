@@ -53,6 +53,8 @@ class RunRequest:
     ``resume`` is False for the first message of a conversation (the session is created with
     ``--session-id``) and True afterwards (``--resume``). ``name`` is the name of the session, given
     with ``--name`` to the first message (a later rename goes through ``rename_session``).
+    ``fork_from`` is the conversation a branch comes from: its first message copies that history
+    into the new session (``--resume <fork_from> --fork-session --session-id <session_id>``).
     """
 
     prompt: str
@@ -61,6 +63,7 @@ class RunRequest:
     resume: bool
     cwd: Path
     name: str = ""
+    fork_from: str = ""
 
 
 def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str]:
@@ -82,10 +85,19 @@ def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str
         agent.effort,
         "--permission-mode",
         agent.permission_mode,
-        "--resume" if request.resume else "--session-id",
-        request.session_id,
+        *_session_arguments(request),
         *(["--name", request.name] if request.name and not request.resume else []),
     ]
+
+
+def _session_arguments(request: RunRequest) -> list[str]:
+    """Which session the message goes to: a resumed one, a new branch of another one, or a new
+    one (the application chooses the identifier of a new session or branch)."""
+    if request.resume:
+        return ["--resume", request.session_id]
+    if request.fork_from:
+        return ["--resume", request.fork_from, "--fork-session", "--session-id", request.session_id]
+    return ["--session-id", request.session_id]
 
 
 def find_claude(path: str = "") -> list[str]:

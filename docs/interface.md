@@ -34,8 +34,8 @@
 
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again; the focus goes to the conversation, the caret to
-the last prompt), Rename (the CLI renames the session), New conversation branch (provisional: a new identifier, the text stays),
-Delete (greyed until it is built), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
+the last prompt), Rename (the CLI renames the session), New conversation branch (see "Branch and delete"),
+Delete the conversation (see "Branch and delete"), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
 **Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open
@@ -177,9 +177,25 @@ Resume lists the conversations of the workspace, the one with the most recent me
 |---|---|
 | No workspace (first start, option off, folder gone) | Open workspace, Open from Claude projects, Recent, Quit, Preferences, About. Everything else is greyed, including the prompt and the send buttons. |
 | Workspace, no conversation | The above and New conversation. |
-| Conversation | Everything, except Interrupt Claude which needs an answer in progress. Refresh, Rename, Branch, the Search items, Modify the agent and Task list need a conversation; Open the workspace folder and Workspace settings only need a workspace. |
+| Conversation | Everything, except Interrupt Claude which needs an answer in progress. Refresh, Rename, Branch, Delete, the Search items, Modify the agent and Task list need a conversation; Open the workspace folder and Workspace settings only need a workspace. |
 
 Opening another workspace closes the current conversation.
+
+## Branch and delete
+
+**New conversation branch** asks for a name (current name followed by `branch x`) and makes the
+branch the current conversation: the text on screen stays, the focus goes to the last prompt
+(`focus.md`, rule B). Its first message copies the history of the conversation into a Claude Code
+session of its own (`--fork-session`); the original is left as it is. A conversation without any
+message cannot be branched (an error says there is nothing to copy). Leaving a branch before its
+first message forgets it, as a new conversation never sent.
+
+**Delete the conversation** asks `Move the conversation "<name>" to the Recycle Bin?` (Yes, No; No
+by default), then moves to the Recycle Bin of Windows what Claude Code keeps of it (its transcript,
+the folder beside it, its file history, its tasks). The announcement `Conversation "<name>" moved
+to the Recycle Bin.` follows, and the most recent conversation of the workspace is selected, else
+the workspace is left without any. It is refused while Claude answers. If a file cannot be moved,
+an error says so and the conversation stays.
 
 ## Names of conversations
 

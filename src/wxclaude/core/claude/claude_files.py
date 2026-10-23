@@ -1,11 +1,11 @@
 """The files of Claude Code that the presenters read or write, behind one contract.
 
-``ClaudeFiles`` is what the presenters receive: the sessions, the tasks, the plans, the projects
-and the "always allow" rules. ``DiskClaudeFiles`` is the real one (the functions of
-``claude_projects``, ``session_reader``, ``tasks``, ``plans`` and ``claude_settings``, which know
-where Claude Code keeps its files and test them on disk); the tests of the presenters use a fake
-one in memory. WxClaude's own files (settings, workspace state) stay with ``Settings`` and
-``WorkspaceState``.
+``ClaudeFiles`` is what the presenters receive: the sessions (and the files that deleting one
+removes), the tasks, the plans, the projects and the "always allow" rules. ``DiskClaudeFiles`` is
+the real one (the functions of ``claude_projects``, ``session_reader``, ``tasks``, ``plans`` and
+``claude_settings``, which know where Claude Code keeps its files and test them on disk); the
+tests of the presenters use a fake one in memory. WxClaude's own files (settings, workspace state)
+stay with ``Settings`` and ``WorkspaceState``.
 """
 
 from pathlib import Path
@@ -32,6 +32,11 @@ class ClaudeFiles(Protocol):
 
     def read_session(self, path: Path) -> Session:
         """The session in ``path``; raises ``SessionReadError`` if it cannot be read."""
+        ...
+
+    def session_paths(self, conversation_id: str) -> list[Path]:
+        """The files and folders Claude Code keeps for a conversation (what deleting it removes);
+        empty if it has no history yet."""
         ...
 
     def load_tasks(self, conversation_id: str) -> TaskList:
@@ -74,6 +79,9 @@ class DiskClaudeFiles:
 
     def read_session(self, path: Path) -> Session:
         return session_reader.read_session(path)
+
+    def session_paths(self, conversation_id: str) -> list[Path]:
+        return claude_projects.session_paths(conversation_id)
 
     def load_tasks(self, conversation_id: str) -> TaskList:
         return tasks.load_tasks(conversation_id)

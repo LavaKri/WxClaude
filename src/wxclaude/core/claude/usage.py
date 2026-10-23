@@ -69,6 +69,10 @@ class UsageTracker:
     windows: dict[str, RateWindow] = field(default_factory=dict)
     gauges_at: datetime | None = None
     last_turn: TurnResult | None = None
+    last_cost: float | None = None  # what the last message alone cost, None if not known
+    #: What the CLI has counted so far for the whole current session (every ``result`` reports the
+    #: total of the session, not the cost of its message); None when it is not known.
+    session_total: float | None = None
     conversation_usage: Usage = field(default_factory=Usage)
     conversation_cost: float = 0.0
     conversation_turns: int = 0  # messages sent since the conversation was opened here
@@ -104,10 +108,20 @@ class UsageTracker:
         )
 
     def record_result(self, result: TurnResult) -> None:
-        """Add the tokens and the cost of a finished message to the conversation."""
+        """Add the tokens and the cost of a finished message to the conversation.
+
+        The cost of the message is the total the CLI reports for the session minus the total it
+        had before; when that is not known the message is counted without a cost.
+        """
         self.last_turn = result
         self.conversation_turns += 1
-        self.conversation_cost += result.cost_usd or 0.0
+        self.last_cost = None
+        reported = result.cost_usd
+        if reported is not None:
+            if self.session_total is not None and reported >= self.session_total:
+                self.last_cost = reported - self.session_total
+                self.conversation_cost += self.last_cost
+            self.session_total = reported
         if result.usage is not None:
             total = self.conversation_usage
             total.input_tokens += result.usage.input_tokens
@@ -115,9 +129,16 @@ class UsageTracker:
             total.cache_creation_input_tokens += result.usage.cache_creation_input_tokens
             total.cache_read_input_tokens += result.usage.cache_read_input_tokens
 
-    def start_conversation(self) -> None:
-        """Another conversation is current: its spending starts again (the gauges stay)."""
+    def start_conversation(self, session_total: float | None = None) -> None:
+        """Another conversation is current: its spending starts again (the gauges stay).
+
+        ``session_total`` is what the CLI had already counted for its session: 0 for a session that
+        does not exist yet, the total of the session file for one that is opened, the total of the
+        conversation it copies for a branch.
+        """
         self.last_turn = None
+        self.last_cost = None
+        self.session_total = session_total
         self.conversation_usage = Usage()
         self.conversation_cost = 0.0
         self.conversation_turns = 0
@@ -144,7 +165,7 @@ class UsageTracker:
         lines: list[str] = []
         if turn.usage is not None:
             lines.append(_("Last message, tokens: {tokens}.").format(tokens=_tokens(turn.usage)))
-        details = _details(turn.cost_usd, turn.duration_ms, turn.num_turns)
+        details = _details(self.last_cost, turn.duration_ms, turn.num_turns)
         if details:
             lines.append(_("Last message: {details}.").format(details=details))
         return lines

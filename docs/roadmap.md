@@ -12,7 +12,7 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs. 529 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and
+shown in dialogs; a conversation can be branched and deleted. 553 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and
 `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
@@ -73,7 +73,14 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 - **One instance** of WxClaude per user; a second launch brings the first window to the front.
 - **Names of conversations** are the names of the sessions, kept by the CLI: `--name` with the first
   message, `/rename` afterwards (`claude-cli.md`). WxClaude stores no name and never writes the
-  session files of the CLI.
+  session files of the CLI; it only moves them to the Recycle Bin when the user deletes a
+  conversation.
+- **Branch**: a branch keeps the text on screen under a new name; its first message copies the
+  history of the conversation into a session of its own (`--fork-session`), the original is left
+  as it is. A conversation without any message has nothing to branch.
+- **Delete** moves to the Recycle Bin of Windows what Claude Code keeps of the conversation (its
+  transcript, the folder beside it, its file history, its tasks), after a confirmation (No by
+  default); the CLI has no command for one session (`claude-cli.md`).
 - **Errors from Claude** (CLI not found or not logged in, process failure, API error such as an
   overload or a reached limit, result with an error) go to the status bar and to a dialog, never
   into the conversation text.
@@ -129,13 +136,12 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
    the announcement categories of the Preferences. `MainWindow` only builds and wires them (under
    300 lines). The files of Claude Code reach the presenters through `ClaudeFiles`, and `core/` is
    grouped by subject: `claude/`, `conversation/`, `config/`, `speech/`.
+9. **Branch and delete**: a branch made with `--fork-session` at its first message, and *Delete
+   the conversation*, which moves its files to the Recycle Bin. Export was already there.
 
 ## Next milestones
 
 
-6. **Branch (`--fork-session`), delete**, export. Rename is done (through the CLI). A branch is
-   provisional: it only starts a new conversation identifier with the text still on screen.
-   Delete is greyed.
 7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
    manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace

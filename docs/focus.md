@@ -46,9 +46,5 @@ messages" rebuilds the text and keeps the caret on its message.
 | Permission question of Claude (a dialog during an answer) | the description of the request inside the dialog; rule A when it closes | the user may be anywhere when it opens |
 | A conversation that cannot be read | unchanged (rule A, an error dialog) | nothing was loaded |
 | Second launch of the application | unchanged in the first window, which is brought to the front | |
-
-## Still to define with the features
-
-- Delete a conversation: the most recent one is selected (rule B); if there is none, the case
-  "workspace without any conversation".
-- New conversation branch: rule B once the branch is a real fork of the session.
+| New conversation branch | rule B: the conversation view, at the last prompt (the text stays) | the branch shows the conversation it copies |
+| Delete a conversation | rule B on the most recent conversation left; without any, the case "workspace without any conversation" | the deleted one cannot be shown any more |

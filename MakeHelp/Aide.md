@@ -51,6 +51,8 @@ Une conversation appartient toujours à un espace de travail. Ouvrir un espace d
 
 - Conversation > Reprendre une conversation liste celles de l'espace de travail, la plus récente d'abord.
 - Conversation > Actualiser la conversation relit le fichier de session.
+- Conversation > Nouvelle branche de conversation copie la conversation sous un autre nom. Le texte reste affiché. La copie est faite par Claude Code avec le premier message de la branche ; la conversation d'origine ne change pas.
+- Conversation > Supprimer la conversation met à la Corbeille de Windows ce que Claude Code garde de la conversation, après confirmation. Vous pouvez la récupérer depuis la Corbeille.
 
 Conversation > Modifier l'agent change l'agent de la conversation courante.
 Changer de modèle fait perdre le cache de l'invite de la conversation. Changer l'effort ou le mode de permission ne le fait pas.

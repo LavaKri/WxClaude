@@ -1,11 +1,14 @@
 """The wx side of the current conversation: the view of ``presenters/conversation_presenter.py``
 (the conversation view, the prompt field, the title of the window and the dialogs)."""
 
+from pathlib import Path
+
 import wx
 
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.conversation.messages import Message
 from wxclaude.core.speech.announcements import Announce
+from wxclaude.ui import desktop
 from wxclaude.ui.agent_dialog import AgentDialog
 from wxclaude.ui.conversation_name_dialog import ConversationNameDialog
 from wxclaude.ui.conversation_view import ConversationView
@@ -67,3 +70,9 @@ class WxConversationScreen:
 
     def show_error(self, message: str) -> None:
         self._feedback.show_error(message)
+
+    def confirm(self, title: str, message: str) -> bool:
+        return self._feedback.confirm(title, message)
+
+    def move_to_recycle_bin(self, paths: list[Path]) -> bool:
+        return desktop.move_to_recycle_bin(paths)

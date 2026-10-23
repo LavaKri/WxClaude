@@ -187,6 +187,24 @@ def test_the_name_is_given_to_the_cli_by_the_first_message_only(tmp_path: Path) 
     assert "--name" not in build_arguments(unnamed, StdioChannel())
 
 
+def test_the_first_message_of_a_branch_forks_the_conversation_it_comes_from(
+    tmp_path: Path,
+) -> None:
+    branch = RunRequest("Hello", AGENT, "s-2", False, tmp_path, "Notes branche 1", "s-1")
+    arguments = build_arguments(branch, StdioChannel())
+    assert arguments[-7:] == [
+        "--resume",
+        "s-1",
+        "--fork-session",
+        "--session-id",
+        "s-2",
+        "--name",
+        "Notes branche 1",
+    ]
+    later = RunRequest("Hello", AGENT, "s-2", True, tmp_path, "Notes branche 1", "s-1")
+    assert build_arguments(later, StdioChannel())[-2:] == ["--resume", "s-2"]  # no fork again
+
+
 def test_a_session_is_renamed_by_the_rename_command_of_the_cli(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

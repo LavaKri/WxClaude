@@ -78,6 +78,7 @@ class Setup:
             workspace=lambda: self.workspace,
             conversation_id=lambda: "c",
             conversation_name=lambda: "",
+            fork_from=lambda: "",
             is_closing=lambda: False,
             state_changed=self._changed,
         )

@@ -27,6 +27,7 @@ class Session:
     last_effort: str | None = None
     last_permission_mode: str | None = None
     usage: Usage = field(default_factory=Usage)
+    total_cost_usd: float | None = None  # what the CLI counted for the whole session
 
     @property
     def last_agent(self) -> Agent:
@@ -91,6 +92,10 @@ class _Builder:
             self._custom_title = str(entry["customTitle"])
         elif kind == "ai-title" and isinstance(entry.get("aiTitle"), str):
             self._ai_title = str(entry["aiTitle"])
+        elif kind == "cost-state":
+            total = entry.get("totalCostUSD")
+            if isinstance(total, int | float) and not isinstance(total, bool):
+                self.session.total_cost_usd = float(total)  # the last one is the current total
         elif kind in ("user", "assistant") and not entry.get("isSidechain"):
             message = entry.get("message")
             if isinstance(message, dict):
