@@ -118,6 +118,7 @@ def test_the_navigation_and_dialog_categories_are_kept_out_of_the_status_bar() -
         "no_more_heading",
         "search",
         "search_failed",
+        "gauge",
     }
 
 

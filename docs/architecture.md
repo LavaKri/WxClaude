@@ -9,7 +9,8 @@ The code follows Model-View-Presenter, moved to it one screen at a time:
   view only through a `Protocol` and is tested with a fake view, without a window.
 - `ui/`: the wx views: windows, dialogs, controls, and the classes that implement the `Protocol` of
   a presenter. The screens that have no presenter yet keep their logic here.
-- `tests/test_layers.py` checks that `core/` and `presenters/` never import `wx`.
+- `tests/test_layers.py` checks that `core/` and `presenters/` never import `wx`; `tests/test_version.py`
+  checks the version (`versions.md`).
 - The files of Claude Code (sessions, tasks, plans, projects, "always allow" rules) reach the
   presenters through one contract, `ClaudeFiles` (`core/claude/claude_files.py`): `DiskClaudeFiles` is
   the real one, tested on disk in `tests/core/`; the tests of the presenters use
@@ -71,7 +72,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`. |
 | `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage. |
 | `claude_files.py` | `ClaudeFiles` (Protocol): what the presenters read and write of the files of Claude Code; `DiskClaudeFiles`, the real one, built on the modules above. |
-| `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads. |
+| `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads; also the rename of a session and the reading of the gauges (`read_usage`, `/usage`, stopped after 15 seconds), which share its single process. |
 | `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
 | `hook_channel.py` | `HookChannel`: a server on `127.0.0.1` (one per message, a token in the URL) that receives the POST of the CLI's `PermissionRequest` hook, hands it to the interface as a `PermissionRequest` event and writes the response from its own thread; the interface thread only stores the decision. A question nobody answers gives `PermissionExpired`. |
 | `process_input.py` | `ProcessInput`: the JSON lines written to the standard input of the process, from several threads, closed once. |
@@ -80,6 +81,8 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `permissions.py` | The answer to a permission question (`Decision`, `Choice`) and the text that describes a request. |
 | `progress.py` | What is said while a turn runs, and how it ended. |
 | `usage.py` | `UsageTracker`: subscription gauges and tokens / cost spent, as lines of the usage dialog. |
+| `usage_text.py` | `parse_usage`: the text answered by `/usage` read as the 5-hour and weekly gauges (a text not understood gives none). |
+| `gauge_schedule.py` | `GaugeSchedule`: when the gauges are read again with `/usage` (unknown, or a reset time is past) and how long to wait after a failure. |
 | `tasks.py` | The tasks Claude wrote for a session (`<config>/tasks/<id>/*.json`), read only. |
 | `plans.py` | The plans of a conversation: the `Write` calls of its session file to `<config>/plans/`, with their text (from the file, else from the session), read only. |
 
@@ -127,7 +130,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
-| `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
+| `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt) and the reading of the gauges (`refresh_gauges_if_due`, handled like a message: busy, silent), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
 | `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window (the name of a conversation is the one of its session: `--name`, `/rename`); what is remembered in the workspace file (current conversation, main agent). |
 | `workspace_presenter.py` | `WorkspacePresenter`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
 | `search_presenter.py` | `SearchPresenter`: Find, Find next and Find previous in the conversation; keeps the last search. |
@@ -142,6 +145,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `main_window.py` | The conversation view, the prompt and the buttons, the menus, and the wiring of the presenters and their views. |
 | `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs). |
 | `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
+| `gauge_watch.py` | `GaugeWatch`: the one-minute timer that asks whether the gauges are to be read (started by the application, not by the window). |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list) and `read_session` (the error is shown). |
 | `workspace_view.py` | `WxWorkspaceView`: the view of `WorkspacePresenter` (folder dialog, messages). |
 | `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |

@@ -15,6 +15,8 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
 - ``garbage``: a line that is not JSON, then like ``ok``;
 - ``slow``: init, then waits (to be interrupted);
 - ``rename_fails``: ``/rename`` answers with an error (``-p "/rename <name>"``, no stdin).
+- ``/usage`` (``-p "/usage"``, no stdin) answers the gauges as text; ``usage_fails`` answers with an
+  error, ``usage_garbage`` with a text without gauges, ``usage_slow`` waits 60 seconds.
 
 ``--name <name>`` and ``/rename <name>`` append a ``custom-title`` entry to the session file.
 
@@ -203,12 +205,17 @@ def write_title(session_id: str, name: str) -> None:
         file.write(json.dumps(entry) + "\n")
 
 
+def prompt_argument() -> str:
+    """The prompt given after ``-p`` ('' if there is none: it then comes through stdin)."""
+    if "-p" not in sys.argv:
+        return ""
+    index = sys.argv.index("-p") + 1
+    return sys.argv[index] if index < len(sys.argv) else ""
+
+
 def rename_command() -> str | None:
     """The new name when the prompt is ``/rename <name>`` (given after ``-p``), else None."""
-    if "-p" not in sys.argv:
-        return None
-    index = sys.argv.index("-p") + 1
-    prompt = sys.argv[index] if index < len(sys.argv) else ""
+    prompt = prompt_argument()
     return prompt.removeprefix("/rename ") if prompt.startswith("/rename ") else None
 
 
@@ -226,10 +233,41 @@ def rename(name: str) -> int:
     return 0
 
 
-def main() -> int:
+def usage() -> int:
+    """Answer ``/usage`` like the CLI: the gauges as text, at once, no model, no session file."""
+    log = os.environ.get("FAKE_CLAUDE_LOG")
+    if log:
+        Path(log).write_text(json.dumps({"arguments": sys.argv[1:]}), encoding="utf-8")
+    scenario = os.environ.get("FAKE_CLAUDE", "ok")
+    if scenario == "usage_slow":
+        time.sleep(60)
+    if scenario == "usage_fails":
+        print(json.dumps({"type": "result", "is_error": True, "result": "No access"}))
+        return 1
+    text = "Nothing to see here."
+    if scenario != "usage_garbage":
+        text = (
+            "Current session: 96% used · resets Oct 23, 1:50pm (Europe/Paris)\n"
+            "Current week (all models): 67% used · resets Oct 26, 1am (Europe/Paris)\n"
+        )
+    print(json.dumps({"type": "result", "is_error": False, "result": text}))
+    return 0
+
+
+def local_command() -> int | None:
+    """Run the command given as the prompt (``/rename``, ``/usage``), else None."""
     renamed = rename_command()
     if renamed is not None:
         return rename(renamed)
+    if prompt_argument() == "/usage":
+        return usage()
+    return None
+
+
+def main() -> int:
+    local = local_command()
+    if local is not None:
+        return local
     first_line = sys.stdin.buffer.readline().decode("utf-8")
     prompt = json.loads(first_line)["message"]["content"]
     scenario = os.environ.get("FAKE_CLAUDE", "ok")

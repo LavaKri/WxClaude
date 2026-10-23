@@ -70,10 +70,12 @@ edited since. The dialog shows what exists when it opens.
 **Help**: WxClaude help (F1), About. The help page is one plain HTML file per language
 (`src/wxclaude/help/fr.html`, `en.html`, package data; no CSS, no script) that F1 opens as it is in
 the default browser; a language without a page falls back on English, and a missing page is
-reported. The text is written in Markdown in `MakeHelp/` (`Aide.md`, French) and
+reported. The text is written in Markdown in `MakeHelp/` (`Aide.md` for French, `Help.md` for
+English, with the same headings: a test checks it) and
 `MakeHelp/make_help.py` turns it into the HTML page: `.venv\Scripts\python.exe MakeHelp\make_help.py
-[source.md] [language]` (defaults: `Aide.md`, `fr`), to run again after every edit and once per
-language. The text only describes what exists and was tested, names no shortcut, and is updated with
+[source.md] [language]` (defaults: `Aide.md`, `fr`; for English `MakeHelp\make_help.py
+MakeHelp\Help.md en`), to run again after every edit and once per language. A test fails when a page
+of the package is not the conversion of its text. The text only describes what exists and was tested, names no shortcut, and is updated with
 the features.
 
 ## Permissions
@@ -144,16 +146,28 @@ is displayed, titles included).
   "No next occurrence of ..." or "No previous occurrence of ..." goes where the category
   "Unsuccessful search" says: nothing, a message (default; said to the screen reader, not written
   in the status bar) or a message dialog. The status bar keeps the messages of the progress of
-  Claude, the answers to a permission, the refresh and the gauge alerts (`accessibility.md`).
+  Claude, the answers to a permission and the refresh (`accessibility.md`).
 - **Gauge alerts**: the 5-hour gauge and the weekly gauge (`unifiedWindows` of the `rate_limit_event`)
   are announced the first time they reach or pass an alert threshold (90 % for the 5 hours; 25 %,
   50 % and 75 % for the week: the early-warning thresholds of Claude Code itself, see
   `claude-cli.md`; `ALERT_THRESHOLDS` in `core/claude/usage.py`), by the category "Gauge alerts" (nothing or a message, default message):
   "Alert: the 5-hour gauge is at 91 %." and "Alert: the weekly gauge is at 76 %.". A gauge is
   announced again only after it went back under that threshold, so the windows that start again
-  at 0 % (every 5 hours, every week) are announced again in an application left open.
+  at 0 % (every 5 hours, every week) are announced again in an application left open. An alert is
+  only said, never written in the status bar (it would stay there until the next message).
 - When Claude has answered (or was interrupted) the status bar goes back to "Ready", followed by
-  the 5-hour gauge when it is known: "Ready, gauge at 50 %". After a failure it keeps the error.
+  the 5-hour gauge when it is known: "Ready, gauge at 50 %". The weekly gauge is added once it is at
+  or over its last alert threshold (75 %): "Ready, gauge at 50 %, week at 76 %"; under it, the usage
+  dialog has it. This line is state, not an announcement: it does not depend on the destination of
+  the gauge alerts. After a failure the status bar keeps the error.
+- **Reading the gauges** (`claude-cli.md`, "Gauges without a message"): at startup, when a first
+  workspace opens, and by a timer of one minute when a gauge is unknown or past its reset time,
+  WxClaude reads them with `/usage`, without sending a message. It is handled like a message: both
+  send buttons and the *Claude usage* item of the Tools menu are greyed, the message field of the
+  status bar says "Refreshing the gauges", and *Interrupt Claude* stays available to stop it. At the
+  end, success or not, the window is back to waiting for a prompt ("Ready, gauge at 50 %"). Nothing
+  is shown as an error and the only thing said is a gauge alert when a threshold is reached; nothing
+  is read without a workspace.
 
 Resume lists the conversations of the workspace, the one with the most recent message first.
 

@@ -27,13 +27,18 @@ class _Announcer(wx.Window):
 class UiaMessageSink:
     """Sends the messages as UI Automation notifications raised by a hidden window.
 
-    The window is a child of the status bar. The notification makes screen readers that listen
-    to it (NVDA, Narrator) say the text; the text is also the name of the window's element.
-    Nothing is shown on screen and no control takes the focus. Needs Windows 10 version 1709.
+    The window is not a child of the status bar: the screen readers read the children of the
+    status bar with it, and would add the name of this element (the last announcement, kept by
+    the screen reader from its first reading) to what the status bar says. It is a child of the
+    panel of the window (a second child of the frame itself would stop the panel from filling it).
+    The notification makes screen readers that listen to it (NVDA, Narrator) say the text; the
+    text is also the name of the window's element. Nothing is shown on screen and no control takes
+    the focus. Needs Windows 10 version 1709.
     """
 
     def __init__(self, window: wx.Frame) -> None:
-        self._announcer = _Announcer(window.GetStatusBar() or window)
+        panel = next((child for child in window.GetChildren() if isinstance(child, wx.Panel)), None)
+        self._announcer = _Announcer(panel or window)
         self._provider = UiaProvider(self._announcer.GetHandle())
         self._announcer.Bind(wx.EVT_WINDOW_DESTROY, self._on_announcer_destroyed)
 

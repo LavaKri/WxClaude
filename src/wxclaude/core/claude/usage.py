@@ -76,16 +76,32 @@ class UsageTracker:
     def record_rate_limit(self, event: RateLimit, now: datetime) -> None:
         """Keep the gauges of ``event`` (a window not named in it keeps its last value)."""
         self.status = event.status
-        for window in event.windows:
+        self.record_windows(event.windows, now)
+
+    def record_windows(self, windows: tuple[RateWindow, ...], now: datetime) -> None:
+        """Keep these gauges (a window not named keeps its last value); the status is left alone."""
+        for window in windows:
             self.windows[window.name] = window
         self.gauges_at = now
 
     def ready_line(self) -> str:
-        """ "Ready", with the 5-hour gauge when it is known: ``Ready, gauge at 50 %``."""
-        window = self.windows.get("five_hour")
-        if window is None or window.utilization is None:
+        """ "Ready", with the 5-hour gauge when it is known (``Ready, gauge at 50 %``) and the
+        weekly gauge once it reached its last alert threshold (``..., week at 76 %``)."""
+        five_hours = _percent(self.windows.get("five_hour"))
+        week_window = self.windows.get("seven_day")
+        week = _percent(week_window)
+        last_threshold = ALERT_THRESHOLDS["seven_day"][-1]
+        if week_window is None or (week_window.utilization or 0) < last_threshold:
+            week = None  # not worth a look yet: the usage dialog has it
+        if five_hours is None and week is None:
             return _("Ready")
-        return _("Ready, gauge at {percent} %").format(percent=round(window.utilization * 100))
+        if week is None:
+            return _("Ready, gauge at {percent} %").format(percent=five_hours)
+        if five_hours is None:
+            return _("Ready, week at {week} %").format(week=week)
+        return _("Ready, gauge at {percent} %, week at {week} %").format(
+            percent=five_hours, week=week
+        )
 
     def record_result(self, result: TurnResult) -> None:
         """Add the tokens and the cost of a finished message to the conversation."""
@@ -144,6 +160,13 @@ class UsageTracker:
                 details=_details(self.conversation_cost, None, None, self.conversation_turns)
             ),
         ]
+
+
+def _percent(window: RateWindow | None) -> int | None:
+    """How full a gauge is, in whole percent (None when it is not known)."""
+    if window is None or window.utilization is None:
+        return None
+    return round(window.utilization * 100)
 
 
 def _when(moment: datetime, now: datetime) -> str:

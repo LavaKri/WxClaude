@@ -29,9 +29,18 @@ the file it belongs to and delete it from this one.
 - **Screen readers and the Preferences, Claude tab.** The list *Interface type* and the spin
   control are to be checked with NVDA and JAWS.
 
+- **The hidden window of the announcements.** It now lives under the panel, no longer under the
+  status bar (the status bar read by the screen reader gave the last announcement, in the same
+  launch every time, and not in another). To check with NVDA and JAWS: reading the status bar
+  several times, over several launches, gives only the position, the step and the message; if a
+  screen reader still adds an announcement, empty the name of the element after the notification.
 - **UI Automation notifications and JAWS.** They reach NVDA and Narrator; test JAWS, with a focusable
   progress field as a fallback if they do not.
-- **Reading the usage gauge without sending a message** (no way found yet).
+- **Reading the usage gauges with `/usage`** (built, `interface.md`). To check by hand: the wording
+  of the text on other plans or when a gauge is at 0 % (no reset time?), a week gauge named
+  differently, the status bar message with NVDA and JAWS (JAWS may read it by itself), and that a
+  reading never takes the focus away from a send button (rule of `focus.md`). The status bar error
+  of a failed answer is replaced by "Ready" at the next reading.
 - **Cost of a resumed message.** The usage dialog adds the `total_cost_usd` of each `result` to get
   the cost of the conversation; check on a resumed message that it only covers that message and not
   the whole session.

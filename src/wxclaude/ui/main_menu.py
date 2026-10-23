@@ -89,7 +89,8 @@ class MainMenu:
         conversation_menu.AppendSubMenu(search_menu, _("Sear&ch"))
 
         tools_menu = wx.Menu()
-        add_entries(window, tools_menu, self._tools_entries(), registry)
+        kept_tools = add_entries(window, tools_menu, self._tools_entries(), registry)
+        self.usage_item = kept_tools["usage"]
         help_menu = wx.Menu()
         help_entry = MenuEntry(_("WxClaude &help\tF1"), handlers.show_help)
         about = MenuEntry(_("&About"), handlers.about, item_id=wx.ID_ABOUT)
@@ -156,7 +157,7 @@ class MainMenu:
         return [
             MenuEntry(_("Task &list…"), h.tasks, TASKS_COMMAND, Needs.CONVERSATION),
             MenuEntry(_("Pla&n…"), h.plans, needs=Needs.CONVERSATION),
-            MenuEntry(_("Claude &usage…"), h.usage, USAGE_COMMAND),
+            MenuEntry(_("Claude &usage…"), h.usage, USAGE_COMMAND, key="usage"),
             MenuEntry(
                 _("Open the workspace &folder"), h.open_workspace_folder, needs=Needs.WORKSPACE
             ),
@@ -172,13 +173,17 @@ class MainMenu:
             shortcut = shortcut_for(command)
             item.SetItemLabel(f"{text}\t{shortcut}" if shortcut else text)
 
-    def refresh_enabled(self, *, has_workspace: bool, has_conversation: bool, busy: bool) -> None:
-        """Grey out what needs a workspace or a conversation that is not there."""
+    def refresh_enabled(
+        self, *, has_workspace: bool, has_conversation: bool, busy: bool, refreshing: bool
+    ) -> None:
+        """Grey out what needs a workspace or a conversation that is not there, and the usage
+        while the gauges are read (what it would show is not known yet)."""
         for item in self.needs_workspace:
             item.Enable(has_workspace)
         for item in self.needs_conversation:
             item.Enable(has_conversation)
         self.interrupt_item.Enable(busy)
+        self.usage_item.Enable(not refreshing)
 
     def refresh_recent(self) -> None:
         """Rebuild the recent workspaces (the handler drops the folders that no longer exist)."""

@@ -5,6 +5,7 @@ from wxclaude.core.config.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.shortcuts import INTERRUPT_COMMAND, ShortcutProblem
 from wxclaude.core.speech.announcements import CATEGORIES, END_OF_ANSWER, Destination
+from wxclaude.presenters.announcements_presenter import sorted_categories
 from wxclaude.ui.preferences_dialog import PreferencesDialog
 
 pytestmark = pytest.mark.ui
@@ -53,18 +54,20 @@ def test_the_screen_reader_page_lists_the_categories_with_their_default_destinat
 ) -> None:
     page = dialog.screen_reader
     assert page.category_list.GetItemCount() == len(CATEGORIES)
-    assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message.wav"
+    assert (
+        page.category_list.GetItemText(sorted_categories().index(END_OF_ANSWER), 1) == "Message.wav"
+    )
     assert page.category_list.GetFirstSelected() == 0
-    assert page.destination_choice.GetCount() == len(CATEGORIES[0].choices)
+    assert page.destination_choice.GetCount() == len(sorted_categories()[0].choices)
 
 
 def test_a_destination_is_applied_only_with_ok_and_the_default_can_be_restored(
     dialog: PreferencesDialog, settings: Settings
 ) -> None:
     page = dialog.screen_reader
-    page.category_list.Select(CATEGORIES.index(END_OF_ANSWER))
+    page.category_list.Select(sorted_categories().index(END_OF_ANSWER))
     page.presenter.choose(END_OF_ANSWER.choices.index(Destination.MESSAGE))
-    assert page.category_list.GetItemText(CATEGORIES.index(END_OF_ANSWER), 1) == "Message"
+    assert page.category_list.GetItemText(sorted_categories().index(END_OF_ANSWER), 1) == "Message"
     assert settings.destination_for(END_OF_ANSWER) is Destination.SOUND_1  # not yet
     dialog.apply(settings)
     assert settings.destination_for(END_OF_ANSWER) is Destination.MESSAGE

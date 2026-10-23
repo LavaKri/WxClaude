@@ -126,7 +126,9 @@ SEARCH_FAILED = Category(
     in_status_bar=False,
 )
 #: A gauge of the subscription (the 5 hours, the week) reached its alert threshold.
-GAUGE = Category("gauge", N_("Gauge alerts"), Destination.MESSAGE, _NONE_OR_MESSAGE)
+GAUGE = Category(
+    "gauge", N_("Gauge alerts"), Destination.MESSAGE, _NONE_OR_MESSAGE, in_status_bar=False
+)  # the "Ready" line of the status bar shows the gauges worth a look (``UsageTracker.ready_line``)
 #: The conversation read again.
 REFRESH = Category("refresh", N_("Refresh"), Destination.MESSAGE, _NONE_OR_MESSAGE)
 

@@ -543,6 +543,15 @@ msgstr "Alerte : la jauge hebdomadaire est à {percent} %."
 msgid "Ready, gauge at {percent} %"
 msgstr "Prêt, jauge à {percent} %"
 
+msgid "Ready, week at {week} %"
+msgstr "Prêt, semaine à {week} %"
+
+msgid "Ready, gauge at {percent} %, week at {week} %"
+msgstr "Prêt, jauge à {percent} %, semaine à {week} %"
+
+msgid "Refreshing the gauges"
+msgstr "Actualisation des jauges"
+
 msgid "Wait for Claude to finish before renaming the conversation."
 msgstr "Attendez que Claude ait fini avant de renommer la conversation."
 

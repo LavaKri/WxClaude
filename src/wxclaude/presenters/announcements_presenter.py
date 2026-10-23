@@ -1,6 +1,7 @@
 """The categories of announcements of the Screen reader page of the Preferences: the destination
 of each, edited until OK (see ``docs/accessibility.md``)."""
 
+import unicodedata
 from typing import Protocol
 
 from wxclaude.core.config.settings import Settings
@@ -8,11 +9,22 @@ from wxclaude.core.speech.announcements import CATEGORIES, Category, Destination
 from wxclaude.i18n import _
 
 
+def sorted_categories() -> list[Category]:
+    """The categories in alphabetical order of their label in the language of the interface
+    (accents and case do not count): the order of the list of the page."""
+
+    def key(category: Category) -> str:
+        decomposed = unicodedata.normalize("NFD", _(category.label))
+        return "".join(c for c in decomposed if not unicodedata.combining(c)).casefold()
+
+    return sorted(CATEGORIES, key=key)
+
+
 class AnnouncementsView(Protocol):
     """What the presenter asks of the page."""
 
     def show_destinations(self, labels: list[str]) -> None:
-        """The destination of every category, in the order of ``CATEGORIES``."""
+        """The destination of every category, in the order of ``sorted_categories()``."""
         ...
 
     def show_choices(self, labels: list[str], selected: int) -> None:
@@ -25,6 +37,7 @@ class AnnouncementsPresenter:
 
     def __init__(self, view: AnnouncementsView, settings: Settings) -> None:
         self._view = view
+        self._categories = sorted_categories()
         self._destinations = {c.id: settings.destination_for(c) for c in CATEGORIES}
         self._selected: Category | None = None
         self._view.show_destinations(self._labels())
@@ -35,7 +48,7 @@ class AnnouncementsPresenter:
 
     def select(self, index: int) -> None:
         """The category at ``index`` of the list is selected (-1: none)."""
-        self._selected = CATEGORIES[index] if 0 <= index < len(CATEGORIES) else None
+        self._selected = self._categories[index] if 0 <= index < len(self._categories) else None
         self._show_choices()
 
     def choose(self, index: int) -> None:
@@ -60,7 +73,7 @@ class AnnouncementsPresenter:
         self._show_choices()
 
     def _labels(self) -> list[str]:
-        return [_(self._destinations[category.id].label) for category in CATEGORIES]
+        return [_(self._destinations[category.id].label) for category in self._categories]
 
     def _show_choices(self) -> None:
         category = self._selected

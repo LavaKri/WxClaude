@@ -168,6 +168,43 @@ the entries instead. One JSON object per line; interesting entries have `type` `
   a usage limit was reached); keep them, they have no model and no effort.
 - A user entry holding only a `tool_result` has no text of its own.
 
+### Gauges without a message (verified 2026-10-23, CLI 2.1.286)
+
+`claude -p "/usage" --output-format json` (the `/` must reach the CLI as is) answers at once, with
+no model call: `total_cost_usd` 0, `num_turns` 0, no token. The `result` is text for people, in
+English, for example:
+
+```
+Current session: 96% used · resets Oct 23, 1:50pm (Europe/Paris)
+Current week (all models): 67% used · resets Oct 26, 1am (Europe/Paris)
+```
+
+followed by a breakdown "What's contributing to your limits usage?" (local, approximate). Notes:
+
+- It is **text**: whole percentages, the reset in local time, no structured data, and the stream has no
+  `rate_limit_event` for it. The label "Current session" is the 5-hour window. Parsing it depends on
+  wording the CLI may change.
+- Each call writes a session file in the project folder, unless `--no-session-persistence` is given
+  (verified: with it, no session file; only the project folder and its `memory` folder are made).
+  Without it the sessions would appear in the list of conversations of the workspace.
+- `/status` is a local command of the same kind, without the gauges.
+- `claude auth status` and the other subcommands do not give the gauges.
+
+How WxClaude uses it (`ClaudeRunner.read_usage`, `core/claude/usage_text.py`,
+`core/claude/gauge_schedule.py`; `interface.md`, "Status bar"):
+
+- The command is `-p /usage --no-session-persistence --output-format json`, run without standard
+  input in the folder of the workspace (without a workspace nothing is read). Only the lines
+  "Current session" (5-hour window) and "Current week (all models)" (weekly window) are read; the
+  reset time is local time with no year (the nearest matching date), the zone in brackets is ignored.
+  Anything else is skipped: a text without these lines gives no gauge and the known values stay.
+- The process is stopped after 15 seconds, or at once by Interrupt. A CLI that is missing, fails or
+  does not answer is not reported: nothing is said and the next try waits 1, 2, 4, 8 then 10
+  minutes. The reading shares the single process of the runner, so it never runs with a message.
+- It is read when the application starts, when a first workspace opens, and by a timer of one
+  minute when a gauge is unknown or past its reset time (the value shown is then out of date). A
+  reading is not asked for when a window is opened: the usage dialog shows what is known.
+
 ### Name of a session (verified 2026-10-23, CLI 2.1.286, haiku, effort `low`)
 
 The name is the last `{"type": "custom-title", "customTitle": "...", "sessionId": "..."}` entry of

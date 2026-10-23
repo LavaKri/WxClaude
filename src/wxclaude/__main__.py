@@ -31,6 +31,7 @@ def main() -> int:
     wx_locale = init_wx_locale(settings.language)  # must stay referenced while the app runs
     window = MainWindow(settings)
     window.Show()
+    window.gauge_watch.start()
     try:
         publish_window(instance_file(settings_file), window.GetHandle())
     except JsonStoreError as error:

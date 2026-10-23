@@ -4,11 +4,11 @@ import pytest
 
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.speech.announcements import CATEGORIES, END_OF_ANSWER, PROGRESS, Destination
-from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter
+from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter, sorted_categories
 
 pytestmark = pytest.mark.unit
 
-END = CATEGORIES.index(END_OF_ANSWER)
+END = sorted_categories().index(END_OF_ANSWER)
 
 
 class FakePage:
@@ -30,6 +30,22 @@ def test_the_page_shows_every_category_with_its_destination() -> None:
     AnnouncementsPresenter(page, Settings.load(None))
     assert len(page.destinations) == len(CATEGORIES)
     assert page.destinations[END] == "Message.wav"
+
+
+def test_the_categories_are_sorted_by_label_without_regard_to_case_or_accents(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    labels = [category.label for category in sorted_categories()]
+    assert labels == sorted(labels, key=str.casefold)
+    assert sorted(c.id for c in sorted_categories()) == sorted(c.id for c in CATEGORIES)
+    translations = {"Gauge alerts": "Alertes", "Search reached": "Étape", "Refresh": "Zèbre"}
+    monkeypatch.setattr(
+        "wxclaude.presenters.announcements_presenter._", lambda text: translations.get(text, "M")
+    )
+    ordered = [translations.get(c.label, "M") for c in sorted_categories()]
+    assert ordered[0] == "Alertes"
+    assert ordered.index("Étape") < ordered.index("Zèbre")  # É sorts as E, before Z
+    assert ordered[-1] == "Zèbre"
 
 
 def test_selecting_a_category_shows_what_it_accepts() -> None:

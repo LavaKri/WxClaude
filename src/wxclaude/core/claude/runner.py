@@ -17,10 +17,18 @@ import sys
 import threading
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import IO
 
-from wxclaude.core.claude.events import PermissionRequest, RunEvent, TurnEnded, TurnResult
+from wxclaude.core.claude.events import (
+    GaugesRead,
+    PermissionRequest,
+    RateWindow,
+    RunEvent,
+    TurnEnded,
+    TurnResult,
+)
 from wxclaude.core.claude.permission_channel import (
     DEFAULT_HOOK_TIMEOUT_SECONDS,
     STDIO,
@@ -29,11 +37,13 @@ from wxclaude.core.claude.permission_channel import (
 )
 from wxclaude.core.claude.process_input import ProcessInput
 from wxclaude.core.claude.stream import parse_stream_line
+from wxclaude.core.claude.usage_text import parse_usage
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
 
 _KILL_WAIT_SECONDS = 5
 _RENAME_WAIT_SECONDS = 30
+_USAGE_WAIT_SECONDS = 15  # ``/usage`` answers in under a second: longer means the CLI is stuck
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,6 +232,57 @@ class ClaudeRunner:
                 reply.get("result") or done.stderr.strip() or f"exit code {done.returncode}"
             )
             raise RunnerError(detail)
+
+    def read_usage(self, cwd: Path, on_event: Callable[[RunEvent], None]) -> None:
+        """Read the gauges with the ``/usage`` command of the CLI, without waiting.
+
+        ``claude -p /usage`` sends nothing to the model and answers at once; without a session
+        file (``--no-session-persistence``) it adds no conversation to the user's list. The
+        process is the running one (``interrupt`` stops it, no message can start meanwhile) and
+        is killed after ``_USAGE_WAIT_SECONDS``. ``on_event`` receives one ``GaugesRead`` from a
+        thread, with no windows when the reading failed for any reason. Raises
+        ``ClaudeNotFoundError`` or ``RunnerError`` if the CLI cannot be started.
+        """
+        command = self._command if self._command is not None else find_claude(self.claude_path)
+        argv = [*command, "-p", "/usage", "--no-session-persistence", "--output-format", "json"]
+        with self._lock:
+            if self._process is not None:
+                raise RunnerError("Claude is already answering.")
+            try:
+                process = subprocess.Popen(
+                    argv,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=cwd,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            except OSError as error:
+                raise RunnerError(f"Cannot start {argv[0]}: {error}") from error
+            self._process = process
+            self._interrupted = False
+        threading.Thread(target=self._finish_usage, args=(process, on_event), daemon=True).start()
+
+    def _finish_usage(
+        self, process: subprocess.Popen[str], on_event: Callable[[RunEvent], None]
+    ) -> None:
+        """Wait for ``/usage`` (at most ``_USAGE_WAIT_SECONDS``) and report the gauges it gave."""
+        windows: tuple[RateWindow, ...] = ()
+        try:
+            stdout, _stderr = process.communicate(timeout=_USAGE_WAIT_SECONDS)
+        except subprocess.TimeoutExpired:
+            _kill_tree(process)
+            process.communicate()
+        else:
+            reply = _last_json_object(stdout)
+            if process.returncode == 0 and not reply.get("is_error"):
+                windows = parse_usage(str(reply.get("result") or ""), datetime.now())
+        with self._lock:
+            self._process = None
+        on_event(GaugesRead(windows))
 
     def allow(self, request: PermissionRequest) -> None:
         """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""

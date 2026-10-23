@@ -28,6 +28,7 @@ from wxclaude.ui.conversation_screen import WxConversationScreen
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.file_view import WxFileView
+from wxclaude.ui.gauge_watch import GaugeWatch
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_view import WxMessageView
 from wxclaude.ui.preferences_dialog import PreferencesDialog
@@ -48,6 +49,10 @@ class MainWindow(wx.Frame):
         super().__init__(None, title=_("WxClaude"), size=wx.Size(900, 650))
         self._settings = settings
         self._closing = False
+        # Reads the gauges now and every minute once started (by the application, not the tests).
+        self.gauge_watch = GaugeWatch(
+            self, lambda now: self._run.refresh_gauges_if_due(now), lambda: self._closing
+        )
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
         runner = runner or ClaudeRunner()
         # Sessions, tasks, plans, rules of Claude Code (a session is renamed through the runner).
@@ -165,6 +170,7 @@ class MainWindow(wx.Frame):
         """A workspace was opened: the title and what is greyed follow."""
         self._conversations.update_title()
         self._refresh_enabled()
+        self.gauge_watch.check()  # a first workspace: the gauges may not be known yet
 
     @property
     def conversation_id(self) -> str:
@@ -232,7 +238,10 @@ class MainWindow(wx.Frame):
         has_workspace = self._workspaces.workspace is not None
         has_conversation = bool(self.conversation_id)
         self._menu.refresh_enabled(
-            has_workspace=has_workspace, has_conversation=has_conversation, busy=self._run.busy
+            has_workspace=has_workspace,
+            has_conversation=has_conversation,
+            busy=self._run.busy,
+            refreshing=self._run.refreshing,
         )
         self._prompt.Enable(has_conversation)
 
@@ -325,6 +334,7 @@ class MainWindow(wx.Frame):
 
     def _on_close(self, event: wx.CloseEvent) -> None:
         self._closing = True
+        self.gauge_watch.stop()
         self._run.runner.interrupt()
         self._save_settings()
         event.Skip()

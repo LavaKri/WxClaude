@@ -12,7 +12,7 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs. 488 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+shown in dialogs. 527 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question, the expiry of the hook), the allow / ask / deny rules of
@@ -20,17 +20,28 @@ a structured question, the expiry of the hook), the allow / ask / deny rules of
 dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`):
 the new list *Interface type* and spin control of Preferences > Claude, and the *Plan* dialog.
 
-Last work (permission channels), in order: the channel behind `PermissionChannel`, the HTTP hook
-(`core/claude/hook_channel.py`), the choice in the Preferences, *Tools > Plan…*. What is left of it is in
-`open-questions.md`: the hook options not tested yet, the `&` of the Preferences labels. The help
-page (F1) is written in Markdown in `MakeHelp/` and turned into `src/wxclaude/help/fr.html` / `en.html` by
-`MakeHelp/make_help.py`. The HTML files are not made yet: until they are, F1 reports that the page is
-missing. The announcements are grouped in categories with a
-destination each (Preferences > Screen reader; two sounds, for the end of an answer and for the
-question of permission).
+Last work, in order: the permission channels (`PermissionChannel`, the HTTP hook, the choice in the
+Preferences, *Tools > Plan…*); the announcement categories (a destination each, Preferences >
+Screen reader, two sounds); the MVP structure; the names of the conversations taken from the CLI
+sessions; the version setup; the help pages; and the **reading of the gauges with `/usage`** (at
+startup, when a first workspace opens, and by a one-minute timer when a gauge is unknown or past its
+reset time; handled like a message: send buttons and *Claude usage* greyed, silent; see
+`interface.md`, "Status bar", and `claude-cli.md`). Gauge alerts are only said; the "Ready" line
+of the status bar shows the 5-hour gauge, and the week from 75 %. The hidden window of the
+announcements now lives under the panel, no longer under the status bar. What is left of all this
+is in `open-questions.md` (hook options not tested, the `&` of the Preferences labels, the checks
+with NVDA and JAWS).
+
+The help page (F1) is written in Markdown in `MakeHelp/` (`Aide.md` French, `Help.md` English) and
+turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <source> <language>`
+(run it for each language after editing a text; a test fails when a page is out of date).
 
 ## Decisions taken
 
+- **Versions**: `MAJOR.MINOR.PATCH`, the number is `__version__` in `src/wxclaude/__init__.py`
+  (read by `pyproject.toml`), a tag `vX.Y.Z` marks each release and `CHANGELOG.md` says what it holds
+  (`versions.md`). The current number is `0.1.0`, not tagged yet: it waits for the checks with NVDA and
+  JAWS and for the packaging.
 - **Model-View-Presenter, adopted progressively.** The folders stay `core/` (model) and `ui/`
   (views); `presenters/` is added. One screen at a time moves its logic into a presenter without
   wx, tested with a fake view (`architecture.md`). The first one is the sending of a message.
@@ -71,8 +82,9 @@ question of permission).
   `.claude/settings.local.json`; the general file is only read), not in WxClaude's own files, so the
   CLI shares them. "Always allow" writes in the personal file. The preference "Change the tools only
   in the local file" protects the versioned one.
-- **Usage dialog**: `Ctrl+Shift+U`, fed by the stream (`rate_limit_event`, `result`), nothing is
-  asked of the CLI for it.
+- **Usage dialog**: `Ctrl+Shift+U`, fed by the stream (`rate_limit_event`, `result`) and by the
+  reading of `/usage` (startup, one-minute timer); it never reads by itself when it opens, so it
+  never waits for the CLI.
 - **Details of a message** are opened from the context menu of the view, never displayed in the
   text (`conversation-display.md`); only web and mail addresses are handed to the system.
 - **"Options" is named "Preferences"**; the per-workspace settings are "Workspace settings".

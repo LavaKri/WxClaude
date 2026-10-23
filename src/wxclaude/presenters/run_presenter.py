@@ -13,14 +13,17 @@ from typing import Protocol
 
 from wxclaude.core.claude.events import (
     AssistantText,
+    GaugesRead,
     PermissionExpired,
     PermissionRequest,
     RateLimit,
+    RateWindow,
     RunEvent,
     ToolUsed,
     TurnEnded,
     TurnResult,
 )
+from wxclaude.core.claude.gauge_schedule import GaugeSchedule
 from wxclaude.core.claude.permissions import Choice, Decision
 from wxclaude.core.claude.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
@@ -118,12 +121,58 @@ class RunPresenter:
         self._turn_allowed: set[str] = set()  # rules always allowed during this message
         self._expired: set[str] = set()  # questions the CLI stopped waiting for (hook channel)
         self._alerts = GaugeAlerts()  # which gauges were announced, for as long as the window lives
+        self._schedule = GaugeSchedule()  # when the gauges are read again
+        self._refreshing = False  # True while the gauges are read (busy too)
         self._local_messages = 0  # messages added by this run, for their identifiers
 
     @property
     def busy(self) -> bool:
-        """True while Claude is answering."""
+        """True while Claude is answering or the gauges are being read."""
         return self._busy
+
+    @property
+    def refreshing(self) -> bool:
+        """True while the gauges are being read: what they would show is not known yet."""
+        return self._refreshing
+
+    def refresh_gauges_if_due(self, now: datetime) -> bool:
+        """Read the gauges with ``/usage`` when they are not known or out of date.
+
+        It is handled like a message: the send buttons are greyed and the status bar says so until
+        the end, and nothing is announced. Nothing is read without a workspace, while a message is
+        answered, or when the CLI cannot be started (the next try waits longer). True if started.
+        """
+        workspace = self._links.workspace()
+        if self._busy or workspace is None:
+            return False
+        if not self._schedule.due(self._usage.windows.values(), now):
+            return False
+        try:
+            self.runner.read_usage(workspace, self._post_reading)
+        except ClaudeNotFoundError, RunnerError:
+            self._schedule.finished(self._usage.windows.values(), now, ok=False)
+            return False
+        self._busy = self._refreshing = True
+        self._view.set_status(_("Refreshing the gauges"))
+        self._links.state_changed()
+        return True
+
+    def _post_reading(self, event: RunEvent) -> None:
+        """Called by the thread of the reading: hand the end of it over to the interface thread."""
+        self._view.call_after(self._finish_gauge_refresh, event)
+
+    def _finish_gauge_refresh(self, read: RunEvent) -> None:
+        """The reading ended (or failed): the gauges are kept if it gave any, nothing is said."""
+        if self._links.is_closing() or not isinstance(read, GaugesRead):
+            return
+        self._busy = self._refreshing = False
+        now = datetime.now()
+        if read.windows:
+            self._usage.record_windows(read.windows, now)
+        self._schedule.finished(self._usage.windows.values(), now, ok=bool(read.windows))
+        self._links.state_changed()
+        self._view.set_status(self._usage.ready_line())
+        self._alert_gauges(read.windows)
 
     def start(self, text: str, agent: Agent) -> bool:
         """Start Claude on ``text``; False (with the error shown) if it cannot be started."""
@@ -159,9 +208,11 @@ class RunPresenter:
         return True
 
     def interrupt(self) -> None:
-        """Stop the message being answered (nothing happens if none is)."""
+        """Stop the message being answered, or the reading of the gauges (nothing happens if
+        neither is going on; the reading is stopped without a word)."""
         if self._busy:
-            self._view.say(Announce.CLAUDE_INTERRUPTING)
+            if not self._refreshing:
+                self._view.say(Announce.CLAUDE_INTERRUPTING)
             self.runner.interrupt()
 
     def _local_id(self) -> str:
@@ -196,7 +247,7 @@ class RunPresenter:
             return
         elif isinstance(event, RateLimit):
             self._usage.record_rate_limit(event, datetime.now())
-            self._alert_gauges(event)
+            self._alert_gauges(event.windows)
         elif isinstance(event, TurnResult):
             self._turn_result = event
             self._usage.record_result(event)
@@ -207,9 +258,9 @@ class RunPresenter:
         if progress is not None:
             self._show_progress(progress)
 
-    def _alert_gauges(self, event: RateLimit) -> None:
+    def _alert_gauges(self, windows: tuple[RateWindow, ...]) -> None:
         """Announce the gauges that just reached their alert threshold (once per crossing)."""
-        for window in self._alerts.update(event.windows):
+        for window in self._alerts.update(windows):
             announce = _GAUGE_ALERTS.get(window.name)
             if announce is not None and window.utilization is not None:
                 self._view.say(announce, percent=round(window.utilization * 100))

@@ -12,10 +12,9 @@ import wx
 from wxclaude.core.claude.permission_channel import CHANNEL_KINDS, HOOK, STDIO
 from wxclaude.core.config.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
 from wxclaude.core.labels import accessible_name
-from wxclaude.core.speech.announcements import CATEGORIES
 from wxclaude.core.speech.screen_reader import available_outputs, default_output, output_named
 from wxclaude.i18n import N_, _
-from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter
+from wxclaude.presenters.announcements_presenter import AnnouncementsPresenter, sorted_categories
 from wxclaude.ui.agent_panel import AgentPanel, permission_levels_lines
 from wxclaude.ui.fields import read_only_field
 
@@ -266,7 +265,7 @@ class ScreenReaderPage(PreferencesPage):
         )
         self.category_list.AppendColumn(_("Category"), width=260)
         self.category_list.AppendColumn(_("Destination"), width=200)
-        for category in CATEGORIES:
+        for category in sorted_categories():
             self.category_list.Append((_(category.label), ""))
         destination_text = _("&Destination of the selected category")
         destination_label = wx.StaticText(self, label=destination_text)

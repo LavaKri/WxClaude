@@ -135,6 +135,13 @@ class TurnEnded:
     diagnostics: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True, slots=True)
+class GaugesRead:
+    """The end of a reading of the gauges (``/usage``); ``windows`` is empty when it failed."""
+
+    windows: tuple[RateWindow, ...]
+
+
 RunEvent = (
     SessionInit
     | Thinking
@@ -147,4 +154,5 @@ RunEvent = (
     | RateLimit
     | TurnResult
     | TurnEnded
+    | GaugesRead
 )

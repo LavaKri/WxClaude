@@ -152,3 +152,15 @@ def test_ready_says_the_gauge_of_the_five_hours_when_it_is_known() -> None:
     assert tracker.ready_line() == "Ready"  # only the 5 hours count
     tracker.record_rate_limit(_rate(RateWindow("five_hour", 0.504, 1)), NOW)
     assert tracker.ready_line() == "Ready, gauge at 50 %"
+
+
+def test_ready_adds_the_week_from_its_last_alert_threshold() -> None:
+    tracker = UsageTracker()
+    tracker.record_rate_limit(_rate(RateWindow("seven_day", 0.749, 1)), NOW)
+    assert tracker.ready_line() == "Ready"  # 74.9 % is under the threshold
+    tracker.record_rate_limit(_rate(RateWindow("seven_day", 0.76, 1)), NOW)
+    assert tracker.ready_line() == "Ready, week at 76 %"
+    tracker.record_rate_limit(_rate(RateWindow("five_hour", 0.5, 1)), NOW)
+    assert tracker.ready_line() == "Ready, gauge at 50 %, week at 76 %"
+    tracker.record_rate_limit(_rate(RateWindow("seven_day", 0.75, 1)), NOW)
+    assert tracker.ready_line() == "Ready, gauge at 50 %, week at 75 %"
