@@ -44,6 +44,15 @@ def test_the_conversation_is_exported_to_the_chosen_file(tmp_path: Path) -> None
     assert target.read_text(encoding="utf-8").startswith("# Hello")
 
 
+def test_an_export_that_cannot_be_written_is_reported(tmp_path: Path) -> None:
+    blocker = tmp_path / "blocker"
+    blocker.write_text("a file, not a folder", encoding="utf-8")
+    view = FakeView(blocker / "out.md")
+    FilePresenter(view).export("text")
+    (error,) = view.errors
+    assert error.startswith("Cannot export the conversation.\nCannot write ")
+
+
 def test_a_cancelled_export_says_nothing() -> None:
     view = FakeView(None)
     FilePresenter(view).export("text")

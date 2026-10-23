@@ -1,6 +1,7 @@
 """The presenter of the messages and their details, with a fake view: no wx, no window."""
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 from fake_claude_files import FakeClaudeFiles
@@ -142,6 +143,29 @@ def test_the_tasks_of_the_conversation_are_read_and_shown(
     (tasks,) = view.shown
     assert isinstance(tasks, TaskList)
     assert [task.subject for task in tasks.tasks] == ["Alpha"]
+
+
+def test_the_plans_of_the_conversation_are_read_and_shown(
+    view: FakeView, presenter: MessagePresenter, files: FakeClaudeFiles, tmp_path: Path
+) -> None:
+    plan = Plan(tmp_path / "calm-fox.md", "# Plan", in_file=True)
+    files.plans[CONVERSATION] = [plan]
+    presenter.show_plans()
+    assert view.shown == [[plan]]
+
+
+def test_tasks_or_plans_that_cannot_be_read_are_reported(
+    view: FakeView, presenter: MessagePresenter, files: FakeClaudeFiles
+) -> None:
+    files.tasks_error = "broken task folder"
+    files.plans_error = "broken session file"
+    presenter.show_tasks()
+    presenter.show_plans()
+    assert view.shown == []
+    assert view.errors == [
+        "Cannot read the tasks.\nbroken task folder",
+        "Cannot read the plans.\nbroken session file",
+    ]
 
 
 def test_the_usage_is_shown_even_before_any_answer(

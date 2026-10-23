@@ -11,7 +11,13 @@ from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.claude.tasks import Task, TaskList
 from wxclaude.core.conversation.messages import Message, Role
-from wxclaude.core.errors import RunnerError, SessionReadError
+from wxclaude.core.errors import (
+    ClaudeSettingsError,
+    PlanReadError,
+    RunnerError,
+    SessionReadError,
+    TaskReadError,
+)
 
 
 @dataclass(slots=True)
@@ -26,6 +32,9 @@ class FakeClaudeFiles:
     rules: list[tuple[Path, str]] = field(default_factory=list)
     renamed: list[tuple[str, str]] = field(default_factory=list)  # (conversation, name)
     rename_error: str = ""  # when set, a rename fails with this message
+    allow_error: str = ""  # when set, writing a rule fails with this message
+    tasks_error: str = ""  # when set, reading the tasks fails with this message
+    plans_error: str = ""  # when set, reading the plans fails with this message
 
     def add_session(
         self, workspace: Path, identifier: str, *prompts: str, title: str = ""
@@ -54,9 +63,13 @@ class FakeClaudeFiles:
         return self.contents[path]
 
     def load_tasks(self, conversation_id: str) -> TaskList:
+        if self.tasks_error:
+            raise TaskReadError(self.tasks_error)
         return TaskList(list(self.tasks.get(conversation_id, [])))
 
     def load_plans(self, conversation_id: str) -> list[Plan]:
+        if self.plans_error:
+            raise PlanReadError(self.plans_error)
         return list(self.plans.get(conversation_id, []))
 
     def list_projects(self) -> list[ClaudeProject]:
@@ -68,4 +81,6 @@ class FakeClaudeFiles:
         self.renamed.append((conversation_id, name))
 
     def allow_always(self, workspace: Path, rule: str) -> None:
+        if self.allow_error:
+            raise ClaudeSettingsError(self.allow_error)
         self.rules.append((workspace, rule))

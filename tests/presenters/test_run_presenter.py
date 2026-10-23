@@ -203,6 +203,17 @@ def test_always_allow_writes_the_rule_and_is_not_asked_again_in_the_message(
     assert files.rules == [(tmp_path, "Bash(touch x)")]
 
 
+def test_a_rule_that_cannot_be_written_is_reported_and_the_tool_still_allowed(
+    tmp_path: Path,
+) -> None:
+    view = FakeView(Decision(Choice.ALLOW_ALWAYS))
+    files = FakeClaudeFiles(allow_error="Cannot read settings.local.json")
+    presenter, runner = _presenter(view, tmp_path, files)
+    presenter.on_event(PermissionRequest("r1", "Bash", "t", {}, "", "", "Bash(touch x)"))
+    assert runner.answers == [("allow", "r1")]
+    assert view.errors == ["The rule could not be saved.\nCannot read settings.local.json"]
+
+
 def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
     view = FakeView()
     presenter, runner = _presenter(view, tmp_path)

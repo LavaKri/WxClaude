@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 import wx
 from main_window_support import (
-    _Errors,
     _send,
 )
 
@@ -96,18 +95,6 @@ def test_always_allow_writes_the_personal_settings_file_of_the_workspace(
     assert settings == {"permissions": {"allow": ["Bash(touch fake.txt)"]}}
     _send(conversation, "second")  # the CLI reads the file, so it does not ask again
     assert len(asked) == 1
-
-
-def test_an_unreadable_settings_file_is_reported_and_left_alone(
-    conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _local_file(tmp_path).parent.mkdir()
-    _local_file(tmp_path).write_text("{ not json", encoding="utf-8")
-    _permission_setup(conversation, monkeypatch, tmp_path, Decision(Choice.ALLOW_ALWAYS))
-    errors = _Errors(conversation)
-    _send(conversation, "first")
-    assert any("could not be saved" in message for message in errors.messages)
-    assert _local_file(tmp_path).read_text(encoding="utf-8") == "{ not json"
 
 
 def _hook_decision(log: Path) -> dict[str, object]:

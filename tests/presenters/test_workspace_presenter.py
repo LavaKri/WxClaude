@@ -5,7 +5,9 @@ from pathlib import Path
 import pytest
 from fake_claude_files import FakeClaudeFiles
 
+from wxclaude.core.claude.claude_projects import ClaudeProject
 from wxclaude.core.config.settings import Settings
+from wxclaude.core.config.workspaces import workspace_label
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
 
 pytestmark = pytest.mark.unit
@@ -112,6 +114,19 @@ def test_without_any_claude_project_an_error_is_shown() -> None:
     presenter.choose_project()
     assert view.errors == ["Claude Code has no project yet."]
     assert view.choices == []
+
+
+def test_a_claude_project_can_be_chosen_and_opened(tmp_path: Path) -> None:
+    first, second = _folder(tmp_path, "first"), _folder(tmp_path, "second")
+    files = FakeClaudeFiles(projects=[ClaudeProject(first, 2.0), ClaudeProject(second, 1.0)])
+    view = FakeView(index=1)
+    presenter = WorkspacePresenter(view, Settings.load(None), Window().links(), files)
+    presenter.choose_project()
+    assert view.choices == [[workspace_label(str(first)), workspace_label(str(second))]]
+    assert presenter.workspace == second
+    view.index = None  # cancelled: the workspace stays
+    presenter.choose_project()
+    assert presenter.workspace == second
 
 
 def test_a_recent_folder_that_is_gone_is_dropped_and_reported(tmp_path: Path) -> None:
