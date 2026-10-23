@@ -543,6 +543,12 @@ msgstr "Alerte : la jauge hebdomadaire est à {percent} %."
 msgid "Ready, gauge at {percent} %"
 msgstr "Prêt, jauge à {percent} %"
 
+msgid "Wait for Claude to finish before renaming the conversation."
+msgstr "Attendez que Claude ait fini avant de renommer la conversation."
+
+msgid "The conversation could not be renamed.\n{error}"
+msgstr "La conversation n'a pas pu être renommée.\n{error}"
+
 msgid "Unsuccessful search"
 msgstr "Recherche non aboutie"
 

@@ -17,7 +17,7 @@ from wxclaude.core.config.shortcuts import (
 )
 from wxclaude.core.errors import ClaudeSettingsError, SettingsError
 from wxclaude.i18n import _
-from wxclaude.presenters.conversation_presenter import ConversationPresenter
+from wxclaude.presenters.conversation_presenter import ConversationLinks, ConversationPresenter
 from wxclaude.presenters.file_presenter import FilePresenter
 from wxclaude.presenters.message_presenter import MessagePresenter
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
@@ -49,10 +49,12 @@ class MainWindow(wx.Frame):
         self._settings = settings
         self._closing = False
         self._usage = UsageTracker()  # gauges and spending, fed by the answers
-        self._files_of_claude = DiskClaudeFiles()  # sessions, tasks, plans, rules of Claude Code
+        runner = runner or ClaudeRunner()
+        # Sessions, tasks, plans, rules of Claude Code (a session is renamed through the runner).
+        self._files_of_claude = DiskClaudeFiles(runner)
         self._shared = Shared(settings, self._usage, self._files_of_claude)
         self._create_helpers()
-        self._build_panel(runner or ClaudeRunner())
+        self._build_panel(runner)
         self._build_menu_bar()
         # The position in the conversation, the step of Claude, then the messages.
         status_bar = self.CreateStatusBar(3)
@@ -112,6 +114,7 @@ class MainWindow(wx.Frame):
             RunLinks(
                 workspace=lambda: self._workspaces.workspace,
                 conversation_id=lambda: self.conversation_id,
+                conversation_name=lambda: self._conversations.name,
                 is_closing=lambda: self._closing,
                 state_changed=lambda: self._refresh_enabled(),
             ),
@@ -149,7 +152,9 @@ class MainWindow(wx.Frame):
             WxConversationScreen(self, self._conversation, self._prompt, self._feedback),
             self._shared,
             self._workspaces,
-            lambda: self._refresh_enabled(),
+            ConversationLinks(
+                state_changed=lambda: self._refresh_enabled(), is_busy=lambda: self._run.busy
+            ),
         )
 
     def open_workspace(self, folder: Path) -> None:

@@ -85,11 +85,12 @@ class RunView(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class RunLinks:
-    """What the presenter asks of the window: where it works, which conversation, whether the
-    window is closing, and a call when the busy state changes (to grey what must be)."""
+    """What the presenter asks of the window: where it works, which conversation and its name,
+    whether the window is closing, and a call when the busy state changes (to grey what must be)."""
 
     workspace: Callable[[], Path | None]
     conversation_id: Callable[[], str]
+    conversation_name: Callable[[], str]
     is_closing: Callable[[], bool]
     state_changed: Callable[[], None]
 
@@ -136,6 +137,7 @@ class RunPresenter:
             conversation_id,
             self._files.find_session(conversation_id) is not None,
             workspace,
+            self._links.conversation_name(),  # given to the CLI by the first message only
         )
         self.runner.permission_channel = self._settings.permission_channel
         self.runner.hook_timeout_seconds = self._settings.hook_timeout_minutes * 60

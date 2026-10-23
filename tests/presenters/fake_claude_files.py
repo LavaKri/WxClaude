@@ -11,7 +11,7 @@ from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.claude.tasks import Task, TaskList
 from wxclaude.core.conversation.messages import Message, Role
-from wxclaude.core.errors import SessionReadError
+from wxclaude.core.errors import RunnerError, SessionReadError
 
 
 @dataclass(slots=True)
@@ -24,12 +24,16 @@ class FakeClaudeFiles:
     plans: dict[str, list[Plan]] = field(default_factory=dict)
     projects: list[ClaudeProject] = field(default_factory=list)
     rules: list[tuple[Path, str]] = field(default_factory=list)
+    renamed: list[tuple[str, str]] = field(default_factory=list)  # (conversation, name)
+    rename_error: str = ""  # when set, a rename fails with this message
 
-    def add_session(self, workspace: Path, identifier: str, *prompts: str) -> SessionInfo:
+    def add_session(
+        self, workspace: Path, identifier: str, *prompts: str, title: str = ""
+    ) -> SessionInfo:
         """A conversation of ``workspace`` holding ``prompts``, the most recent one."""
         path = Path(f"{identifier}.jsonl")
-        info = SessionInfo(identifier, path, "", float(len(self.contents)))
-        session = Session()
+        info = SessionInfo(identifier, path, title, float(len(self.contents)))
+        session = Session(title=title)
         session.messages = [
             Message(f"{identifier}-{i}", Role.USER, p) for i, p in enumerate(prompts)
         ]
@@ -57,6 +61,11 @@ class FakeClaudeFiles:
 
     def list_projects(self) -> list[ClaudeProject]:
         return list(self.projects)
+
+    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
+        if self.rename_error:
+            raise RunnerError(self.rename_error)
+        self.renamed.append((conversation_id, name))
 
     def allow_always(self, workspace: Path, rule: str) -> None:
         self.rules.append((workspace, rule))

@@ -10,7 +10,7 @@ from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.conversation.messages import Message
 from wxclaude.core.speech.announcements import Announce
-from wxclaude.presenters.conversation_presenter import ConversationPresenter
+from wxclaude.presenters.conversation_presenter import ConversationLinks, ConversationPresenter
 from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
 
@@ -84,7 +84,7 @@ class FakeWorkspaceView:
 
 
 def _presenters(
-    tmp_path: Path, files: FakeClaudeFiles | None = None
+    tmp_path: Path, files: FakeClaudeFiles | None = None, busy: list[bool] | None = None
 ) -> tuple[ConversationPresenter, FakeScreen, WorkspacePresenter, Settings]:
     files = files or FakeClaudeFiles()
     settings = Settings.load(tmp_path / "config" / "settings.json")
@@ -98,7 +98,8 @@ def _presenters(
     )
     workspaces = WorkspacePresenter(FakeWorkspaceView(), settings, links, files)
     shared = Shared(settings, UsageTracker(), files)
-    conversations = ConversationPresenter(screen, shared, workspaces, lambda: None)
+    window = ConversationLinks(state_changed=lambda: None, is_busy=lambda: bool(busy))
+    conversations = ConversationPresenter(screen, shared, workspaces, window)
     holder.append(conversations)
     return conversations, screen, workspaces, settings
 
@@ -197,3 +198,78 @@ def test_the_agent_is_remembered_and_the_alternative_one_goes_over_it(tmp_path: 
     settings.alternative_agent = Agent(effort="max")
     assert conversations.agent_for(alternative=True).effort == "max"
     assert conversations.agent_for(alternative=True).model == "haiku"
+
+
+def test_the_name_of_a_conversation_is_the_title_of_its_session(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "d278c1fc-1d73", "Hello", title="My notes")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    assert conversations.name == "My notes"
+    assert screen.title == f"My notes - {tmp_path.name} - WxClaude"
+
+
+def test_a_session_without_a_title_is_named_by_the_start_of_its_identifier(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "d278c1fc-1d73", "Hello")
+    conversations, _screen, workspaces, settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    assert conversations.name == "d278c1fc"
+    assert settings.conversation_counter == 1  # opening a conversation uses no number
+
+
+def test_a_conversation_with_a_session_is_renamed_by_the_cli(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="Before")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    screen.name = "After"
+    conversations.rename()
+    assert files.renamed == [("one", "After")]
+    assert conversations.name == "After"
+    assert screen.title == f"After - {tmp_path.name} - WxClaude"
+
+
+def test_a_conversation_without_a_session_is_only_named_here(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    conversations.start_new("Notes")
+    screen.name = "Other"
+    conversations.rename()  # no session yet: the first message gives the name to the CLI
+    assert files.renamed == []
+    assert conversations.name == "Other"
+
+
+def test_a_rename_that_fails_keeps_the_name_and_says_why(tmp_path: Path) -> None:
+    files = FakeClaudeFiles(rename_error="No such session")
+    files.add_session(tmp_path, "one", "Hello", title="Before")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    screen.name = "After"
+    conversations.rename()
+    assert conversations.name == "Before"
+    assert screen.errors == ["The conversation could not be renamed.\nNo such session"]
+
+
+def test_a_conversation_is_not_renamed_while_claude_answers(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="Before")
+    conversations, screen, workspaces, _settings = _presenters(tmp_path, files, busy=[True])
+    workspaces.open(tmp_path)
+    screen.name = "After"
+    conversations.rename()
+    assert files.renamed == []
+    assert conversations.name == "Before"
+    assert screen.errors == ["Wait for Claude to finish before renaming the conversation."]
+    assert not any(call.startswith("ask") for call in screen.calls)
+
+
+def test_refreshing_takes_a_name_given_elsewhere(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    info = files.add_session(tmp_path, "one", "Hello", title="Before")
+    conversations, _screen, workspaces, _settings = _presenters(tmp_path, files)
+    workspaces.open(tmp_path)
+    files.contents[info.path].title = "Renamed in the CLI"
+    conversations.refresh()
+    assert conversations.name == "Renamed in the CLI"

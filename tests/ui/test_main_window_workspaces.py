@@ -54,7 +54,6 @@ def test_a_conversation_enables_everything_that_needs_one(conversation: MainWind
     state = conversation._workspaces.state
     assert state is not None
     assert state.current_conversation == conversation.conversation_id
-    assert state.conversations[conversation.conversation_id].name == "Notes"
     assert state.conversations[conversation.conversation_id].agent == OPUS
 
 
@@ -85,10 +84,11 @@ def test_the_remembered_conversation_of_the_last_workspace_is_selected(
     settings = _settings(tmp_path / "config" / "settings.json")
     settings.last_workspace = str(tmp_path)
     state = WorkspaceState.load(tmp_path, settings.workspaces_dir)
-    state.remember(older, "Mine", Agent(model="opus"))
+    state.remember(older, Agent(model="opus"))
     state.save()
     reopened = MainWindow(settings)
-    assert reopened.GetTitle() == f"Mine - {tmp_path.name} - WxClaude"
+    # The name is the one of the session, kept by the CLI.
+    assert reopened.GetTitle() == f"Older - {tmp_path.name} - WxClaude"
     assert reopened.conversation_id == older
     expected = Agent(model="opus", effort="high", permission_mode="manual")
     assert reopened._conversations.agent == expected

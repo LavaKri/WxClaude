@@ -96,8 +96,8 @@ the file it belongs to and delete it from this one.
   `wx.CallAfter` instead of being raised on the spot. The hook channel does no input or output in
   the window thread: the window thread only hands the decision to the thread of the HTTP handler.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
-- Rename and branch are provisional (a rename only changes the name WxClaude keeps; a branch starts
-  a new identifier with the same text on screen): see milestone 6 of `roadmap.md`.
+- A branch is provisional (it starts a new identifier with the same text on screen): see
+  milestone 6 of `roadmap.md`. To try: `--fork-session` with `--name` for the name of a branch.
 - The managed settings of an organization (`managed-settings.json`, MDM, server) are not read; they
   have the highest priority and could be shown read only like the general file (Windows path to
   find in the official documentation).

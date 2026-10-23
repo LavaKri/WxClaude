@@ -102,6 +102,7 @@ def _presenter(
     links = RunLinks(
         workspace=lambda: workspace,
         conversation_id=lambda: CONVERSATION,
+        conversation_name=lambda: "Notes",
         is_closing=lambda: False,
         state_changed=lambda: None,
     )
@@ -232,7 +233,7 @@ def test_a_step_put_in_progress_replaces_the_tool_progress(tmp_path: Path) -> No
 def test_nothing_is_started_without_a_workspace() -> None:
     view = FakeView()
     runner = FakeRunner()
-    links = RunLinks(lambda: None, lambda: CONVERSATION, lambda: False, lambda: None)
+    links = RunLinks(lambda: None, lambda: CONVERSATION, lambda: "", lambda: False, lambda: None)
     shared = Shared(Settings.load(None), UsageTracker(), FakeClaudeFiles())
     presenter = RunPresenter(view, runner, shared, links)
     assert not presenter.start("hello", Settings.load(None).default_agent)

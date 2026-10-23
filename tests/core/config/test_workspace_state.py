@@ -25,18 +25,17 @@ def test_round_trip(tmp_path: Path) -> None:
     identifier = new_conversation_id()
     agent = Agent(model="opus", effort="high", permission_mode="plan")
     state = WorkspaceState.load(work, tmp_path / "workspaces")
-    state.remember(identifier, "Notes", agent)
+    state.remember(identifier, agent)
     state.save()
     loaded = WorkspaceState.load(work, tmp_path / "workspaces")
     assert loaded.current_conversation == identifier
-    assert loaded.conversations[identifier].name == "Notes"
     assert loaded.conversations[identifier].agent == agent
     assert loaded.warning == ""
 
 
 def test_without_a_directory_the_state_stays_in_memory(tmp_path: Path) -> None:
     state = WorkspaceState.load(tmp_path, None)
-    state.remember(new_conversation_id(), "Notes", Agent())
+    state.remember(new_conversation_id(), Agent())
     state.save()
     assert list(tmp_path.iterdir()) == []
 
@@ -45,7 +44,7 @@ def test_a_file_of_another_workspace_is_not_used(tmp_path: Path) -> None:
     directory = tmp_path / "workspaces"
     work = tmp_path / "work"
     state = WorkspaceState.load(work, directory)
-    state.remember(new_conversation_id(), "Notes", Agent())
+    state.remember(new_conversation_id(), Agent())
     state.save()
     assert state.store is not None
     data = json.loads(state.store.read_text(encoding="utf-8"))
@@ -59,8 +58,27 @@ def test_a_file_of_another_workspace_is_not_used(tmp_path: Path) -> None:
 def test_missing_conversations_are_forgotten(tmp_path: Path) -> None:
     kept, gone = new_conversation_id(), new_conversation_id()
     state = WorkspaceState.load(tmp_path, None)
-    state.remember(kept, "Kept", Agent())
-    state.remember(gone, "Gone", Agent())
+    state.remember(kept, Agent())
+    state.remember(gone, Agent())
     state.forget_missing({kept})
     assert list(state.conversations) == [kept]
     assert state.current_conversation == ""
+
+
+def test_a_name_in_an_older_file_is_ignored(tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    identifier = new_conversation_id()
+    state = WorkspaceState.load(work, tmp_path / "workspaces")
+    state.remember(identifier, Agent(model="opus"))
+    state.save()
+    assert state.store is not None
+    data = json.loads(state.store.read_text(encoding="utf-8"))
+    data["conversations"][identifier]["name"] = "Old name"  # the names now belong to the CLI
+    state.store.write_text(json.dumps(data), encoding="utf-8")
+    loaded = WorkspaceState.load(work, tmp_path / "workspaces")
+    assert loaded.conversations[identifier].agent == Agent(model="opus")
+    loaded.save()
+    assert (
+        "name"
+        not in json.loads(state.store.read_text(encoding="utf-8"))["conversations"][identifier]
+    )

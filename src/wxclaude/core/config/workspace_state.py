@@ -1,5 +1,5 @@
-"""What WxClaude remembers about one workspace: its current conversation, and the name and main
-agent of each of its conversations.
+"""What WxClaude remembers about one workspace: its current conversation, and the main agent of
+each of its conversations (the name of a conversation is the one of its session, kept by the CLI).
 
 One file per workspace, ``workspaces/<hash>.json`` next to ``settings.json``. The hash is made of
 the lower-case path; the path itself is written in the file and checked when reading, so two paths
@@ -17,9 +17,8 @@ from wxclaude.core.config.settings import workspace_key
 
 @dataclass(slots=True)
 class ConversationRecord:
-    """The name of a conversation and its main agent (never the alternative agent)."""
+    """The main agent of a conversation (never the alternative agent)."""
 
-    name: str
     agent: Agent
 
 
@@ -60,9 +59,9 @@ class WorkspaceState:
         records = data.get("conversations")
         if isinstance(records, dict):
             for key, value in records.items():
-                if isinstance(value, dict) and isinstance(value.get("name"), str):
+                if isinstance(value, dict):
                     state.conversations[key] = ConversationRecord(
-                        value["name"], Agent.from_dict(value.get("agent"))
+                        Agent.from_dict(value.get("agent"))
                     )
         return state
 
@@ -74,16 +73,15 @@ class WorkspaceState:
             "workspace": str(self.workspace),
             "current_conversation": self.current_conversation,
             "conversations": {
-                key: {"name": record.name, "agent": record.agent.to_dict()}
-                for key, record in self.conversations.items()
+                key: {"agent": record.agent.to_dict()} for key, record in self.conversations.items()
             },
         }
         write_json(self.store, data)
 
-    def remember(self, conversation_id: str, name: str, agent: Agent) -> None:
-        """Remember the name and main agent of a conversation, and that it is the current one."""
+    def remember(self, conversation_id: str, agent: Agent) -> None:
+        """Remember the main agent of a conversation, and that it is the current one."""
         self.current_conversation = conversation_id
-        self.conversations[conversation_id] = ConversationRecord(name, agent)
+        self.conversations[conversation_id] = ConversationRecord(agent)
 
     def forget_missing(self, existing_ids: set[str]) -> None:
         """Drop the conversations whose session file no longer exists."""

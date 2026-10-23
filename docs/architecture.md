@@ -128,7 +128,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 |---|---|
 | `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
-| `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window; what is remembered in the workspace file. |
+| `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window (the name of a conversation is the one of its session: `--name`, `/rename`); what is remembered in the workspace file (current conversation, main agent). |
 | `workspace_presenter.py` | `WorkspacePresenter`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
 | `search_presenter.py` | `SearchPresenter`: Find, Find next and Find previous in the conversation; keeps the last search. |
 | `message_presenter.py` | `MessagePresenter`: the details of a message (tools, table, links), copying it or its exchange, the task list, the plans and the usage of Claude. |

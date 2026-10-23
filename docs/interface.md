@@ -34,7 +34,7 @@
 
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again; the focus goes to the conversation, the caret to
-the last prompt), Rename, New conversation branch (provisional: a new identifier, the text stays),
+the last prompt), Rename (the CLI renames the session), New conversation branch (provisional: a new identifier, the text stays),
 Delete (greyed until it is built), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
@@ -172,6 +172,17 @@ Opening another workspace closes the current conversation.
 A dialog with one field, the proposal selected, opens for: New conversation (`Conversation x`,
 the number grows only when the name is accepted), Rename (current name) and New conversation
 branch (current name followed by `branch x`). An empty name is refused.
+
+The name of a conversation is the name of its Claude Code session, so Claude Code (`--resume`, the
+picker, `/rename`) and WxClaude show the same one:
+
+- A conversation that has no session yet (no message sent) only has its name in WxClaude; the first
+  message gives it to the CLI with `--name` (`claude-cli.md`, "Name of a session").
+- Rename on a conversation that has a session runs `/rename <name>` through the CLI
+  (`ClaudeRunner.rename_session`, instant and free); if it fails the name does not change and the
+  error is shown. It is refused while Claude is answering. Refresh takes a name given elsewhere.
+- A session without a name is shown by the start of its identifier. WxClaude no longer stores
+  names (`settings.md`).
 
 ## Agents
 

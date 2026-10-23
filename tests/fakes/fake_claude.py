@@ -13,7 +13,10 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
 - ``error``: a result with ``is_error`` and exit code 1;
 - ``crash``: nothing on stdout, a message on stderr, exit code 2;
 - ``garbage``: a line that is not JSON, then like ``ok``;
-- ``slow``: init, then waits (to be interrupted).
+- ``slow``: init, then waits (to be interrupted);
+- ``rename_fails``: ``/rename`` answers with an error (``-p "/rename <name>"``, no stdin).
+
+``--name <name>`` and ``/rename <name>`` append a ``custom-title`` entry to the session file.
 
 After the result the fake waits for the end of stdin, as the real CLI does, so a runner that does
 not close stdin hangs the test. ``FAKE_CLAUDE_LOG`` (a file) receives the arguments and the prompt
@@ -188,7 +191,45 @@ def ask_permission(log: str | None) -> tuple[bool, str]:
     return False, str(body.get("message", ""))
 
 
+def write_title(session_id: str, name: str) -> None:
+    """Append a ``custom-title`` entry to the session file, like ``--name`` and ``/rename``."""
+    config = os.environ.get("CLAUDE_CONFIG_DIR")
+    if not config:
+        return
+    folder = Path(config) / "projects" / "fake"
+    folder.mkdir(parents=True, exist_ok=True)
+    entry = {"type": "custom-title", "customTitle": name, "sessionId": session_id}
+    with (folder / f"{session_id}.jsonl").open("a", encoding="utf-8") as file:
+        file.write(json.dumps(entry) + "\n")
+
+
+def rename_command() -> str | None:
+    """The new name when the prompt is ``/rename <name>`` (given after ``-p``), else None."""
+    if "-p" not in sys.argv:
+        return None
+    index = sys.argv.index("-p") + 1
+    prompt = sys.argv[index] if index < len(sys.argv) else ""
+    return prompt.removeprefix("/rename ") if prompt.startswith("/rename ") else None
+
+
+def rename(name: str) -> int:
+    """Answer ``/rename <name>`` like the CLI: write the title, say so, no model involved."""
+    log = os.environ.get("FAKE_CLAUDE_LOG")
+    if log:
+        Path(log).write_text(json.dumps({"arguments": sys.argv[1:]}), encoding="utf-8")
+    if os.environ.get("FAKE_CLAUDE") == "rename_fails":
+        print(json.dumps({"type": "result", "is_error": True, "result": "No such session"}))
+        return 1
+    write_title(option("--resume"), name)
+    result = f"Session renamed to: {name}"
+    print(json.dumps({"type": "result", "is_error": False, "result": result}))
+    return 0
+
+
 def main() -> int:
+    renamed = rename_command()
+    if renamed is not None:
+        return rename(renamed)
     first_line = sys.stdin.buffer.readline().decode("utf-8")
     prompt = json.loads(first_line)["message"]["content"]
     scenario = os.environ.get("FAKE_CLAUDE", "ok")
@@ -199,6 +240,8 @@ def main() -> int:
             encoding="utf-8",
         )
     session_id = option("--session-id") or option("--resume")
+    if option("--name"):
+        write_title(session_id, option("--name"))
     model = "claude-" + option("--model") + "-fake"
     if scenario == "crash":
         print("fake claude: not logged in", file=sys.stderr, flush=True)

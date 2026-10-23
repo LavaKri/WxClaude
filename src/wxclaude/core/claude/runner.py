@@ -10,6 +10,7 @@ from those threads; the interface must hand the event over to its own thread (``
 This module never imports ``wx``.
 """
 
+import json
 import shutil
 import subprocess
 import sys
@@ -32,6 +33,7 @@ from wxclaude.core.config.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
 
 _KILL_WAIT_SECONDS = 5
+_RENAME_WAIT_SECONDS = 30
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +41,8 @@ class RunRequest:
     """One message to send: the prompt, the agent, and the conversation it belongs to.
 
     ``resume`` is False for the first message of a conversation (the session is created with
-    ``--session-id``) and True afterwards (``--resume``).
+    ``--session-id``) and True afterwards (``--resume``). ``name`` is the name of the session, given
+    with ``--name`` to the first message (a later rename goes through ``rename_session``).
     """
 
     prompt: str
@@ -47,6 +50,7 @@ class RunRequest:
     session_id: str
     resume: bool
     cwd: Path
+    name: str = ""
 
 
 def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str]:
@@ -70,6 +74,7 @@ def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str
         agent.permission_mode,
         "--resume" if request.resume else "--session-id",
         request.session_id,
+        *(["--name", request.name] if request.name and not request.resume else []),
     ]
 
 
@@ -177,6 +182,47 @@ class ClaudeRunner:
             self._interrupted = False
         return process, stdin
 
+    def rename_session(self, session_id: str, name: str, cwd: Path) -> None:
+        """Give the session ``session_id`` of the folder ``cwd`` the name ``name``.
+
+        It is the ``/rename`` command of the CLI, run as the prompt of ``claude -p --resume``: the
+        CLI writes the name in the session file itself, sends nothing to the model and answers at
+        once. Raises ``ClaudeNotFoundError`` or ``RunnerError``.
+        """
+        command = self._command if self._command is not None else find_claude(self.claude_path)
+        argv = [
+            *command,
+            "-p",
+            f"/rename {name}",
+            "--resume",
+            session_id,
+            "--output-format",
+            "json",
+        ]
+        try:
+            done = subprocess.run(
+                argv,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                cwd=cwd,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=_RENAME_WAIT_SECONDS,
+                check=False,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except OSError as error:
+            raise RunnerError(f"Cannot start {argv[0]}: {error}") from error
+        except subprocess.TimeoutExpired as error:
+            raise RunnerError("Claude did not answer in time.") from error
+        reply = _last_json_object(done.stdout)
+        if done.returncode != 0 or reply.get("is_error"):
+            detail = str(
+                reply.get("result") or done.stderr.strip() or f"exit code {done.returncode}"
+            )
+            raise RunnerError(detail)
+
     def allow(self, request: PermissionRequest) -> None:
         """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""
         self._answer(request, {"behavior": "allow", "updatedInput": request.input})
@@ -241,6 +287,18 @@ class ClaudeRunner:
         run.channel.close()
         stderr = "".join(run.stderr_lines).strip()
         run.on_event(TurnEnded(exit_code, interrupted, stderr, run.diagnostics))
+
+
+def _last_json_object(text: str) -> dict[str, object]:
+    """The last line of ``text`` that is a JSON object ({} if there is none)."""
+    for line in reversed(text.splitlines()):
+        try:
+            value = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return {}
 
 
 def _kill_tree(process: subprocess.Popen[str]) -> None:

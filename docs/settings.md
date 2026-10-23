@@ -35,14 +35,14 @@ path of the workspace (16 hexadecimal characters). The file holds:
   "workspace": "C:\\Users\\Example\\Dev\\WxClaude",
   "current_conversation": "<uuid>",
   "conversations": {
-    "<uuid>": {"name": "Notes", "agent": {"model": "opus", "effort": "high", "permission_mode": "plan"}}
+    "<uuid>": {"agent": {"model": "opus", "effort": "high", "permission_mode": "plan"}}
   }
 }
 ```
 
-The agent is the main agent of the conversation, never the alternative one. The name is only
-kept by WxClaude: it is never written in the session files of the CLI, and it wins over the title
-found in the session file. The path is checked when
+The agent is the main agent of the conversation, never the alternative one. The name of a
+conversation is not kept here: it is the name of its session, kept by the CLI (`interface.md`,
+"Names of conversations"); a `name` found in an older file is ignored. The path is checked when
 reading: a file that belongs to another path is ignored and the user is told. When a workspace is
 opened, the conversations whose session file no longer exists are dropped.
 

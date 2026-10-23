@@ -71,7 +71,13 @@ def test_sending_runs_claude_and_shows_the_answer(
     assert sink.messages.count("Claude is thinking.") == 1  # not repeated
     assert "Claude uses the tool Read." in sink.messages
     sent = json.loads(log.read_text(encoding="utf-8"))
-    assert sent["arguments"][-2:] == ["--session-id", conversation.conversation_id]
+    # The first message gives the name of the conversation to the CLI, which keeps it.
+    assert sent["arguments"][-4:] == [
+        "--session-id",
+        conversation.conversation_id,
+        "--name",
+        "Notes",
+    ]
     assert sent["prompt"] == "hello"
     assert sent["cwd"].lower() == str(tmp_path).lower()
     # The view now equals the session file written by the CLI.
@@ -237,3 +243,21 @@ def test_the_runner_uses_the_claude_file_chosen_in_the_preferences(window: MainW
     window._settings.claude_auto_search = True
     window._apply_claude_path()
     assert window._run.runner.claude_path == ""
+
+
+def test_renaming_a_conversation_that_was_answered_goes_through_the_cli(
+    conversation: MainWindow, claude_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _send(conversation, "hello")
+    screen = conversation._conversations._view
+    monkeypatch.setattr(screen, "ask_name", lambda _title, _proposal: "Renamed")
+    conversation._conversations.rename()
+    assert conversation._conversations.name == "Renamed"
+    assert conversation.GetTitle().startswith("Renamed - ")
+    session = claude_config / "projects" / "fake" / f"{conversation.conversation_id}.jsonl"
+    titles = [
+        json.loads(line)["customTitle"]
+        for line in session.read_text(encoding="utf-8").splitlines()
+        if '"custom-title"' in line
+    ]
+    assert titles == ["Notes", "Renamed"]  # the first message named it, the rename followed

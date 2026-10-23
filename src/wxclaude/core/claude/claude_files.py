@@ -14,6 +14,7 @@ from typing import Protocol
 from wxclaude.core.claude import claude_projects, claude_settings, plans, session_reader, tasks
 from wxclaude.core.claude.claude_projects import ClaudeProject, SessionInfo
 from wxclaude.core.claude.plans import Plan
+from wxclaude.core.claude.runner import ClaudeRunner
 from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.claude.tasks import TaskList
 
@@ -45,6 +46,11 @@ class ClaudeFiles(Protocol):
         """The folders Claude Code has worked in that still exist."""
         ...
 
+    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
+        """Give a conversation that has a session file a new name (the CLI's ``/rename``); raises
+        ``RunnerError`` or ``ClaudeNotFoundError`` if it cannot."""
+        ...
+
     def allow_always(self, workspace: Path, rule: str) -> None:
         """Write an allow rule in the personal settings file of ``workspace``; raises
         ``ClaudeSettingsError`` if it cannot."""
@@ -52,7 +58,13 @@ class ClaudeFiles(Protocol):
 
 
 class DiskClaudeFiles:
-    """The files of Claude Code on disk (``CLAUDE_CONFIG_DIR`` is honoured)."""
+    """The files of Claude Code on disk (``CLAUDE_CONFIG_DIR`` is honoured).
+
+    A rename is not a write of ours: the CLI does it, through ``runner``.
+    """
+
+    def __init__(self, runner: ClaudeRunner | None = None) -> None:
+        self._runner = runner or ClaudeRunner()
 
     def list_sessions(self, workspace: Path) -> list[SessionInfo]:
         return claude_projects.list_sessions(workspace)
@@ -71,6 +83,9 @@ class DiskClaudeFiles:
 
     def list_projects(self) -> list[ClaudeProject]:
         return claude_projects.list_projects()
+
+    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
+        self._runner.rename_session(conversation_id, name, workspace)
 
     def allow_always(self, workspace: Path, rule: str) -> None:
         claude_settings.allow_always(workspace, rule)

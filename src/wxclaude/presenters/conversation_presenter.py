@@ -3,6 +3,7 @@
 (``WorkspacePresenter``); see ``docs/interface.md``."""
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Protocol
@@ -13,7 +14,12 @@ from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.workspaces import describe
 from wxclaude.core.conversation.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.conversation.messages import Message
-from wxclaude.core.errors import JsonStoreError, SessionReadError
+from wxclaude.core.errors import (
+    ClaudeNotFoundError,
+    JsonStoreError,
+    RunnerError,
+    SessionReadError,
+)
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _
 from wxclaude.presenters.shared import Shared
@@ -78,11 +84,22 @@ def session_label(session: SessionInfo) -> str:
     return _("{title} ({when})").format(title=session.title or session.id[:8], when=when)
 
 
+@dataclass(frozen=True, slots=True)
+class ConversationLinks:
+    """What the presenter asks of the window: ``state_changed`` is called when what is greyed may
+    have changed (a conversation appears or goes away), ``is_busy`` tells whether Claude is
+    answering."""
+
+    state_changed: Callable[[], None]
+    is_busy: Callable[[], bool]
+
+
 class ConversationPresenter:
     """The current conversation of the window.
 
-    ``state_changed`` is called when what is greyed may have changed (a conversation appears or
-    goes away).
+    Its name is the one of its session, kept by the CLI (``--name`` with the first message,
+    ``/rename`` afterwards): until the first message there is no session and the name only lives
+    here.
     """
 
     def __init__(
@@ -90,14 +107,14 @@ class ConversationPresenter:
         view: ConversationView,
         shared: Shared,
         workspaces: WorkspacePresenter,
-        state_changed: Callable[[], None],
+        links: ConversationLinks,
     ) -> None:
         self._view = view
         self._settings = shared.settings
         self._usage = shared.usage
         self._files = shared.files
         self._workspaces = workspaces
-        self._state_changed = state_changed
+        self._links = links
         self.conversation_id = ""
         self.name = ""
         self.agent = shared.settings.default_agent  # the main agent of the conversation
@@ -124,7 +141,7 @@ class ConversationPresenter:
         self._branch_count = 0
         self._usage.start_conversation()
         self.update_title()
-        self._state_changed()
+        self._links.state_changed()
 
     def select_in_workspace(self, workspace: Path) -> None:
         """Select the remembered conversation of ``workspace``, else its most recent one.
@@ -194,6 +211,8 @@ class ConversationPresenter:
         session = self._read(found[0].path)
         if session is None:
             return
+        if session.title and session.title != self.name:
+            self._set_name(session.title)  # renamed elsewhere (the CLI, another window)
         before = self._view.shown_count()
         self._view.show_messages(session.messages)
         self._view.focus_last_prompt()
@@ -201,9 +220,25 @@ class ConversationPresenter:
         self._view.say(Announce.CONVERSATION_REFRESHED, count=added)
 
     def rename(self) -> None:
+        """Ask for a name; a conversation that has a session is renamed by the CLI itself."""
+        workspace = self._workspaces.workspace
+        if workspace is None or not self.conversation_id:
+            return
+        if self._links.is_busy():
+            self._view.show_error(_("Wait for Claude to finish before renaming the conversation."))
+            return
         name = self._view.ask_name(_("Rename the conversation"), self.name)
-        if name is not None:
-            self._set_name(name)
+        if name is None or name == self.name:
+            return
+        if self._files.find_session(self.conversation_id) is not None:
+            try:
+                self._files.rename_session(self.conversation_id, name, workspace)
+            except (ClaudeNotFoundError, RunnerError) as error:
+                self._view.show_error(
+                    _("The conversation could not be renamed.\n{error}").format(error=error)
+                )
+                return
+        self._set_name(name)
 
     def new_branch(self) -> None:
         # Until --fork-session is used a branch keeps the text on screen under a new name.
@@ -227,21 +262,22 @@ class ConversationPresenter:
         if conversation_id != self.conversation_id:
             self._usage.start_conversation()
         self.conversation_id = conversation_id
-        self._set_name(name)  # also remembers the conversation
-        self._state_changed()
-
-    def _set_name(self, name: str) -> None:
         self.name = name
         self._remember()
         self.update_title()
+        self._links.state_changed()
+
+    def _set_name(self, name: str) -> None:
+        self.name = name
+        self.update_title()
 
     def _remember(self) -> None:
-        """Keep what is remembered of the workspace: its current conversation, the name and the
-        main agent of that conversation."""
+        """Keep what is remembered of the workspace: its current conversation and the main agent
+        of that conversation."""
         state = self._workspaces.state
         if not self.conversation_id or state is None:
             return
-        state.remember(self.conversation_id, self.name, self.agent)
+        state.remember(self.conversation_id, self.agent)
         try:
             state.save()
         except JsonStoreError as error:
@@ -255,10 +291,6 @@ class ConversationPresenter:
         settings = self._settings
         state = self._workspaces.state
         record = state.conversations.get(chosen.id) if state is not None else None
-        name = (record.name if record else "") or chosen.title
-        if not name:
-            name = default_name(settings.conversation_counter)
-            settings.conversation_counter += 1
         # A conversation WxClaude knows nothing about takes the agent of its last message as its
         # main agent (it is remembered by _set_conversation below).
         known = record.agent if record else session.last_agent
@@ -266,7 +298,7 @@ class ConversationPresenter:
         self._view.show_messages(session.messages)
         self._view.clear_prompt()
         self._branch_count = 0
-        self._set_conversation(chosen.id, name)
+        self._set_conversation(chosen.id, session.title or chosen.id[:8])
         self._view.focus_last_prompt()
         return True
 

@@ -175,3 +175,36 @@ def test_a_chosen_claude_file_is_used_instead_of_the_path(tmp_path: Path) -> Non
 def test_a_chosen_claude_file_that_is_missing_is_reported(tmp_path: Path) -> None:
     with pytest.raises(ClaudeNotFoundError, match="does not exist"):
         find_claude(str(tmp_path / "nowhere.exe"))
+
+
+def test_the_name_is_given_to_the_cli_by_the_first_message_only(tmp_path: Path) -> None:
+    first = RunRequest("Hello", AGENT, "s-1", False, tmp_path, "My notes")
+    arguments = build_arguments(first, StdioChannel())
+    assert arguments[-4:] == ["--session-id", "s-1", "--name", "My notes"]
+    later = RunRequest("Hello", AGENT, "s-1", True, tmp_path, "My notes")
+    assert "--name" not in build_arguments(later, StdioChannel())
+    unnamed = RunRequest("Hello", AGENT, "s-1", False, tmp_path)
+    assert "--name" not in build_arguments(unnamed, StdioChannel())
+
+
+def test_a_session_is_renamed_by_the_rename_command_of_the_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = tmp_path / "config"
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(config))
+    log = tmp_path / "log.json"
+    monkeypatch.setenv("FAKE_CLAUDE_LOG", str(log))
+    _runner().rename_session("s-1", "New name", tmp_path)
+    arguments = json.loads(log.read_text(encoding="utf-8"))["arguments"]
+    assert arguments[:2] == ["-p", "/rename New name"]
+    assert arguments[arguments.index("--resume") + 1] == "s-1"
+    written = (config / "projects" / "fake" / "s-1.jsonl").read_text(encoding="utf-8")
+    assert json.loads(written)["customTitle"] == "New name"
+
+
+def test_a_rename_that_the_cli_refuses_is_reported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE", "rename_fails")
+    with pytest.raises(RunnerError, match="No such session"):
+        _runner().rename_session("s-1", "New name", tmp_path)

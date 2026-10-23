@@ -12,7 +12,7 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs. 476 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
+shown in dialogs. 488 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question, the expiry of the hook), the allow / ask / deny rules of
@@ -59,8 +59,9 @@ question of permission).
   the waiting time). A conversation can switch at any time. Details and test results in
   `claude-cli.md`, "Permission channels"; the other ways that were considered are listed there.
 - **One instance** of WxClaude per user; a second launch brings the first window to the front.
-- **Names of conversations** are kept by WxClaude only; the session files of the CLI are never
-  written by WxClaude.
+- **Names of conversations** are the names of the sessions, kept by the CLI: `--name` with the first
+  message, `/rename` afterwards (`claude-cli.md`). WxClaude stores no name and never writes the
+  session files of the CLI.
 - **Errors from Claude** (CLI not found or not logged in, process failure, API error such as an
   overload or a reached limit, result with an error) go to the status bar and to a dialog, never
   into the conversation text.
@@ -119,9 +120,9 @@ question of permission).
 ## Next milestones
 
 
-6. **Rename, branch (`--fork-session`), delete**, export. Rename and branch exist but are
-   provisional: a rename only changes the name kept by WxClaude, a branch only starts a new
-   conversation identifier with the text still on screen. Delete is greyed.
+6. **Branch (`--fork-session`), delete**, export. Rename is done (through the CLI). A branch is
+   provisional: it only starts a new conversation identifier with the text still on screen.
+   Delete is greyed.
 7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
    manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace

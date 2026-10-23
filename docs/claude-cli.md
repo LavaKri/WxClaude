@@ -167,6 +167,23 @@ the entries instead. One JSON object per line; interesting entries have `type` `
 - Messages whose model is `<synthetic>` can carry real information (for example the message that
   a usage limit was reached); keep them, they have no model and no effort.
 - A user entry holding only a `tool_result` has no text of its own.
+
+### Name of a session (verified 2026-10-23, CLI 2.1.286, haiku, effort `low`)
+
+The name is the last `{"type": "custom-title", "customTitle": "...", "sessionId": "..."}` entry of
+the session file (`ai-title` / `aiTitle` is a title the CLI generated, `custom-title` wins). Three
+ways to change it, all seen working:
+
+- **`/rename <name>` as the prompt of `claude -p --resume <id>`** (the name must reach the CLI
+  as is: no path conversion of the leading `/`). The result line says `Session renamed to: <name>`
+  (`local_command` `rename`), the call takes about 60 ms and sends nothing to the model, so it costs
+  nothing. The CLI appends a `custom-title` entry (and an `agent-name` one).
+- **`--name <name>`** (`-n`) on a message, the first one (with `--session-id`) or a later one
+  (with `--resume`): it appends a `custom-title` entry. The stream starts with a system line
+  `{"type": "system", "subtype": "session_title_changed", "title": "<name>"}`.
+- **Appending a `custom-title` line to the file by hand**: the next `--resume` reports the new
+  title in `session_title_changed`. Possible, but the file belongs to the CLI (it may be open in
+  another process), so WxClaude does not write it.
 - The title is written to the file by the CLI, asynchronously; a rename adds a `custom-title`
   entry with `customTitle` (repeated many times in a long session: the last one wins, and it takes
   precedence over a generated title).
