@@ -26,11 +26,12 @@ are only in `docs/open-questions.md`; the other docs hold what is true, not ques
 ## Layout
 Model-View-Presenter, adopted one screen at a time (see `docs/architecture.md`):
 - `src/wxclaude/core/`: the model: logic, files, CLI runner. **Never imports `wx`.** Grouped by subject: `claude/` (the CLI and its files), `conversation/`, `config/` (WxClaude's settings), `speech/` (announcements, sounds); `errors.py`, `labels.py`, `list_spec.py`, `help.py` at the root.
-- `MakeHelp/`: the help text (`Aide.md`) and `make_help.py`, which turns it into `src/wxclaude/help/<language>.html` (see `docs/interface.md`, Help).
+- `MakeHelp/`: the help texts (`Aide.md` French, `Help.md` English) and `make_help.py`, which turns them into `src/wxclaude/help/<language>.html` (see `docs/interface.md`, Help). After editing a text, run the script again.
 - `src/wxclaude/presenters/`: the logic of a screen. **Never imports `wx`.** Talks to its view through a `Protocol`; tested with a fake view.
 - `src/wxclaude/ui/`: wx windows, dialogs and the views of the presenters; thin, no business logic.
 - `tests/` mirrors `src/wxclaude/` (`tests/core/`, `tests/presenters/`, `tests/ui/`). Markers: `unit`, `ui`, `slow`.
 - `docs/`: specifications, one file per topic (architecture, interface, settings, accessibility, focus). Update them when behaviour changes.
+- `CHANGELOG.md` (root): what each version holds. Versions: `docs/versions.md` (`MAJOR.MINOR.PATCH`, `__version__` in `src/wxclaude/__init__.py` is the only place of the number, tag `vX.Y.Z`).
 
 ## Rules
 - **Never commit without asking the user first.** Propose the message and wait for approval.
@@ -40,6 +41,7 @@ Model-View-Presenter, adopted one screen at a time (see `docs/architecture.md`):
 - Full type annotations; mypy strict on `core/` and `presenters/`. `@dataclass(slots=True)`, `Protocol` for contracts, `pathlib.Path`, explicit file encodings.
 - Specific exceptions derived from `WxClaudeError`; never a bare `except` or a swallowed error. User-facing errors are announced.
 - Ruff (line length 100), mypy and pytest must pass before proposing a commit.
+- User-visible changes go in the "Unreleased" section of `CHANGELOG.md` as they are made; a version is only released as described in `docs/versions.md`.
 - Run only the tests you need while working; the full suite, ruff and mypy run once, just before proposing a commit.
 - Only the main thread touches wx: worker threads (CLI reader, hook server) post to the UI with `wx.CallAfter`.
 - For manual tests with the real CLI, use the cheapest model and effort (`haiku`, or `sonnet` with `low`).

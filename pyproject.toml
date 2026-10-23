@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wxclaude"
-version = "0.1.0"
+dynamic = ["version"]  # the single source is __version__ in src/wxclaude/__init__.py
 description = "Screen-reader-friendly desktop front end for the Claude Code CLI (claude -p)."
 requires-python = ">=3.14"
 dependencies = [
@@ -28,6 +28,9 @@ wxclaude = "wxclaude.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "wxclaude.__version__"}
 
 [tool.setuptools.package-data]
 wxclaude = ["locale/*/LC_MESSAGES/*.mo", "data/*.txt", "help/*.html", "sounds/*.wav"]

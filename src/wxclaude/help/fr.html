@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Aide de WxClaude</title>
+</head>
+<body>
+<h1>Aide de WxClaude</h1>
+<p>WxClaude est une interface de bureau pour la ligne de commande Claude Code, utilisée en mode non interactif (<code>claude -p</code>).
+Elle est conçue pour un usage avec lecteur d'écran et au clavier seul.
+Elle utilise les contrôles natifs de Windows.
+Ce n'est pas un terminal.</p>
+<h2>Installation et configuration</h2>
+<h3>Claude Code (claude -p)</h3>
+<p>WxClaude a besoin du programme Claude Code.
+Installez-le en suivant la <a href="https://code.claude.com/docs/en/overview">documentation de Claude Code</a>.</p>
+<p>Vérifiez l'installation dans un terminal avec <code>claude --version</code>.</p>
+<p>Pour utiliser Claude Code, il est obligatoire de s'authentifier :</p>
+<ul>
+<li>dans un terminal, lancez <code>claude auth login</code> et suivez les instructions.</li>
+<li>Vérification avec <code>claude auth status</code>.</li>
+</ul>
+<h3>Claude dans WxClaude</h3>
+<p>Dans l'onglet &quot;Claude&quot; des préférences, il sera possible de définir l'utilisation du programme Claude Code.</p>
+<p>Notamment, le type d'interface est la façon dont les questions de permission de Claude parviennent à WxClaude.
+Il s'applique au message suivant et peut être changé à tout moment.</p>
+<ul>
+<li><strong>Protocole stdio</strong> (par défaut) :
+toutes les questions de permission, les questions structurées de Claude et l'approbation de ses plans.</li>
+<li><strong>Hook HTTP</strong> :
+les questions de permission sur les outils. WxClaude démarre pour cela un serveur HTTP local sur 127.0.0.1.</li>
+</ul>
+<p>Avec le hook HTTP, une question sans réponse dans le délai d'attente est refusée par Claude Code. Réglez ce délai (1 à 10 minutes) sur la même page.</p>
+<p>Dans le mode de permission <em>Ne pas demander</em>, rien n'est demandé, quel que soit le type.</p>
+<h2>Fonctionnement</h2>
+<h3>Espaces de travail</h3>
+<p>Un espace de travail est un dossier de travail. Claude y travaille et en lit les fichiers.</p>
+<ul>
+<li>Fichier &gt; Ouvrir depuis les projets Claude liste les dossiers déjà utilisés avec Claude Code.</li>
+<li>Au démarrage, le dernier espace de travail est rouvert. Vous pouvez le désactiver dans les Préférences, page Général.</li>
+<li>Outils &gt; Paramètres de l'espace de travail modifie les règles de permission du dossier <code>.claude</code>. Elles sont partagées avec Claude Code dans un terminal.</li>
+</ul>
+<h3>Conversations</h3>
+<p>Une conversation appartient toujours à un espace de travail. Ouvrir un espace de travail charge sa conversation mémorisée, sinon la plus récente. Une conversation n'est jamais créée automatiquement.</p>
+<ul>
+<li>Conversation &gt; Reprendre une conversation liste celles de l'espace de travail, la plus récente d'abord.</li>
+<li>Conversation &gt; Actualiser la conversation relit le fichier de session.</li>
+</ul>
+<p>Conversation &gt; Modifier l'agent change l'agent de la conversation courante.
+Changer de modèle fait perdre le cache de l'invite de la conversation. Changer l'effort ou le mode de permission ne le fait pas.</p>
+<h3>Agents</h3>
+<p>Un agent est un ensemble de caractéristiques.
+Pour WxClaude, il se limite à un modèle, un effort et un mode de permission.</p>
+<p>Deux agents se définissent dans les Préférences, page Agent :</p>
+<ul>
+<li>celui des nouvelles conversations, par défaut.
+Il est propre à une conversation et pourra être modifié indépendamment des autres.</li>
+<li>un agent alternatif.
+L'agent alternatif a son propre bouton d'envoi et il sera le même pour tous les espaces de travail.
+Il sera utile pour envoyer facilement des prompts avec un niveau d'effort faible, par exemple, sans avoir à modifier l'agent principal.</li>
+</ul>
+<h3>Permissions</h3>
+<p>Quand Claude veut utiliser un outil que le mode de permission n'autorise pas, une boîte de dialogue pose la question. La barre d'état l'annonce.</p>
+<ul>
+<li><em>Autoriser</em> autorise l'outil cette fois.</li>
+<li><em>Toujours autoriser</em> écrit une règle dans <code>.claude/settings.local.json</code>, comme le fait Claude Code. Ce bouton apparaît quand Claude Code propose une règle.</li>
+<li><em>Refuser</em> refuse. Vous pouvez saisir une explication envoyée à Claude.</li>
+</ul>
+<p>Fermer la boîte avec Échap est un refus. Le premier champ décrit la demande et reçoit le focus initial.</p>
+<p>Les paramètres de l'espace de travail permettent de donner à chaque outil une règle d'autorisation, de demande ou de refus. Le refus l'emporte sur la demande, et la demande sur l'autorisation.</p>
+<h2>Interface utilisateur</h2>
+<h3>Zone de conversation</h3>
+<p>La zone de conversation affiche l'échange en lecture seule.
+Votre message est un titre de niveau 1. La réponse de Claude est un titre de niveau 2.
+Parcourez-la avec la navigation par titres de votre lecteur d'écran.</p>
+<p>Elle ne prend jamais le focus quand une réponse arrive.
+Elle le prend quand vous chargez, envoyez, actualisez ou cherchez.</p>
+<p>Vous pouvez y chercher du texte. La recherche ne revient pas au début : à la fin, elle vous le dit.</p>
+<p>Le menu contextuel dépend du message où se trouve le curseur. Il ne propose que ce qui s'applique :</p>
+<ul>
+<li><em>Afficher les outils utilisés</em> : quand la réponse a utilisé des outils. Une liste donne le détail de chacun.</li>
+<li><em>Afficher le tableau</em> : quand le curseur est dans un tableau. Ses lignes sont lues une par une. Vous pouvez copier le tableau.</li>
+<li><em>Afficher les liens</em> : quand le message en contient. Vous pouvez ouvrir un lien web ou de messagerie, ou copier l'adresse.</li>
+</ul>
+<h3>Prompt</h3>
+<p>Le prompt est le champ où vous écrivez votre message à Claude.
+Il peut contenir plusieurs lignes. Son menu contextuel est celui de Windows.
+Il est grisé tant qu'il n'y a pas de conversation active.</p>
+<p>Deux boutons envoient le message : l'un avec l'agent de la conversation, l'autre avec l'agent alternatif.
+Pendant que Claude répond, l'envoi est grisé. Le champ reste utilisable pour de la saisie.</p>
+<p>Le bouton <em>Interrompre Claude</em> arrête la réponse et les programmes lancés par Claude.
+Il n'est actif que pendant une réponse.</p>
+<h3>Barre d'état</h3>
+<p>La barre d'état a trois zones. Elle ne prend pas le focus : utilisez la commande de votre lecteur d'écran pour la lire.</p>
+<ul>
+<li>La position : <code>Message 3 sur 8</code> indique le message où se trouve le curseur parmi les vôtres. Elle est vide s'il n'y en a pas.</li>
+<li>L'étape : <code>Étape 2 sur 5 : sujet</code> indique la tâche de la liste de Claude qu'il vient de commencer. Elle est vide s'il n'y en a pas et quand WxClaude attend votre message.</li>
+<li>Le message : la dernière annonce. Quand WxClaude attend votre message, il dit <code>Prêt</code>, suivi de la jauge des 5 heures si elle est connue : <code>Prêt, jauge à 50 %</code>. La semaine s'y ajoute à partir de 75 % : <code>Prêt, jauge à 50 %, semaine à 76 %</code>. Après un échec, il garde l'erreur.</li>
+</ul>
+<h3>Annonces</h3>
+<p>WxClaude dit ce qui se passe à votre lecteur d'écran. Les annonces sont regroupées en catégories.</p>
+<p>Dans l'onglet &quot;Lecteur d'écran&quot; des préférences, vous choisissez pour chaque catégorie ce qui est fait.
+Selon la catégorie : rien, un message, la lecture de la ligne, une boîte de dialogue ou un son.
+Le choix <em>Annonces</em> coupe ou rétablit l'envoi vers le lecteur d'écran.</p>
+<p>Les erreurs de Claude ouvrent toujours une boîte de dialogue.</p>
+<h4>Alertes de jauge</h4>
+<p>L'abonnement a deux jauges : la fenêtre de 5 heures et la semaine.
+Chaque alerte est dite la première fois que la jauge atteint ou dépasse son seuil.
+Les seuils sont ceux de Claude Code : 90 % pour les 5 heures, 25, 50 et 75 % pour la semaine.</p>
+<h3>Tâches, plans et utilisation</h3>
+<p>Trois fenêtres d'information s'ouvrent à la demande. Elles montrent ce que WxClaude sait au moment de l'ouverture.</p>
+<ul>
+<li>La liste de tâches donne les tâches que Claude s'est fixées pour la conversation : numéro, sujet et état (en attente, en cours, terminée). Une ligne dit aussi ce qui la bloque. Le détail de la tâche choisie est dessous.</li>
+<li>Les plans sont ceux que Claude a écrits dans le mode de permission <em>Planifier seulement</em>. Ils sont en lecture seule : il n'y a rien à approuver ici.</li>
+<li>L'utilisation montre les jauges de l'abonnement et leur remise à zéro. Elle donne aussi des informations sur les jetons utilisés.</li>
+</ul>
+</body>
+</html>
