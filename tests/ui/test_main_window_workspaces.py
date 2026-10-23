@@ -1,6 +1,7 @@
 """Tests of the main window: workspaces and conversations (selection, refresh, folder)."""
 
 import json
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -77,7 +78,7 @@ def test_the_same_workspace_keeps_the_conversation(
 
 
 def test_the_remembered_conversation_of_the_last_workspace_is_selected(
-    wx_app: wx.App, tmp_path: Path, claude_config: Path
+    destroy_after: Callable[[MainWindow], MainWindow], tmp_path: Path, claude_config: Path
 ) -> None:
     older = _session(claude_config, tmp_path, age=100, title="Older")
     _session(claude_config, tmp_path, age=0, title="Newer")
@@ -86,7 +87,7 @@ def test_the_remembered_conversation_of_the_last_workspace_is_selected(
     state = WorkspaceState.load(tmp_path, settings.workspaces_dir)
     state.remember(older, Agent(model="opus"))
     state.save()
-    reopened = MainWindow(settings)
+    reopened = destroy_after(MainWindow(settings))
     # The name is the one of the session, kept by the CLI.
     assert reopened.GetTitle() == f"Older - {tmp_path.name} - WxClaude"
     assert reopened.conversation_id == older
@@ -94,29 +95,25 @@ def test_the_remembered_conversation_of_the_last_workspace_is_selected(
     assert reopened._conversations.agent == expected
     assert reopened.can_send
     assert "# You say: Hello" in reopened._conversation.GetValue()
-    reopened.Destroy()
-    wx.SafeYield()
 
 
 def test_an_unknown_session_takes_the_agent_of_its_last_message(
-    wx_app: wx.App, tmp_path: Path, claude_config: Path
+    destroy_after: Callable[[MainWindow], MainWindow], tmp_path: Path, claude_config: Path
 ) -> None:
     identifier = _session(claude_config, tmp_path, effort="max")
     settings = _settings(tmp_path / "config" / "settings.json")
     settings.last_workspace = str(tmp_path)
-    window = MainWindow(settings)
+    window = destroy_after(MainWindow(settings))
     expected = Agent(model="claude-haiku-4-5", effort="max", permission_mode="plan")
     assert window.conversation_id == identifier
     assert window._conversations.agent == expected
     window.Destroy()
     wx.SafeYield()
     # It is now remembered: another start finds the same agent in the workspace file.
-    again = MainWindow(settings)
+    again = destroy_after(MainWindow(settings))
     assert again._conversations.agent == expected
     state = WorkspaceState.load(tmp_path, settings.workspaces_dir)
     assert state.conversations[identifier].agent == expected
-    again.Destroy()
-    wx.SafeYield()
 
 
 def test_without_a_remembered_conversation_the_most_recent_one_is_selected(
@@ -167,26 +164,26 @@ def test_refreshing_a_conversation_without_history_says_so(conversation: MainWin
     assert sink.messages == ["This conversation has no history yet."]
 
 
-def test_without_the_option_nothing_is_opened(wx_app: wx.App, tmp_path: Path) -> None:
+def test_without_the_option_nothing_is_opened(
+    destroy_after: Callable[[MainWindow], MainWindow], tmp_path: Path
+) -> None:
     settings = _settings()
     settings.reopen_last = False
     settings.last_workspace = str(tmp_path)
-    fresh = MainWindow(settings)
+    fresh = destroy_after(MainWindow(settings))
     assert fresh.GetTitle() == "WxClaude"
     assert fresh.conversation_id == ""
-    fresh.Destroy()
-    wx.SafeYield()
 
 
-def test_a_workspace_that_no_longer_exists_is_not_opened(wx_app: wx.App, tmp_path: Path) -> None:
+def test_a_workspace_that_no_longer_exists_is_not_opened(
+    destroy_after: Callable[[MainWindow], MainWindow], tmp_path: Path
+) -> None:
     settings = _settings()
     settings.last_workspace = str(tmp_path / "gone")
-    fresh = MainWindow(settings)
+    fresh = destroy_after(MainWindow(settings))
     assert fresh.GetTitle() == "WxClaude"
     assert fresh.conversation_id == ""
     assert not any(_enabled(fresh._menu.needs_workspace))
-    fresh.Destroy()
-    wx.SafeYield()
 
 
 def test_the_help_page_is_opened_in_the_browser(

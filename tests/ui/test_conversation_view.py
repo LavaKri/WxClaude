@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import pytest
 import wx
 
@@ -132,8 +134,10 @@ def test_the_focus_goes_to_the_start_of_the_last_prompt(view: ConversationView) 
     assert view.GetInsertionPoint() == 0  # no prompt: the start
 
 
-def test_the_position_in_the_prompts_is_reported_when_the_caret_moves() -> None:
-    frame = wx.Frame(None)
+def test_the_position_in_the_prompts_is_reported_when_the_caret_moves(
+    destroy_after: Callable[[wx.Frame], wx.Frame],
+) -> None:
+    frame = destroy_after(wx.Frame(None))
     reported: list[tuple[int, int]] = []
     view = ConversationView(
         frame, lambda *_a, **_k: None, None, lambda n, t: reported.append((n, t))
@@ -155,5 +159,3 @@ def test_the_position_in_the_prompts_is_reported_when_the_caret_moves() -> None:
     assert reported[-1] == (3, 3)  # the caret, at the old end, now starts the new prompt
     view.clear_messages()
     assert reported[-1] == (0, 0)
-    frame.Destroy()
-    wx.SafeYield()

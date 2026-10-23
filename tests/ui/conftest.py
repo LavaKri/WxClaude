@@ -1,4 +1,6 @@
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TypeVar
 
 import pytest
 import wx
@@ -7,19 +9,13 @@ from main_window_support import _runner, _settings
 from wxclaude.core.speech.announcements import NullSoundPlayer
 from wxclaude.ui.main_window import MainWindow
 
+_Window = TypeVar("_Window", bound=wx.Window)
+
 
 @pytest.fixture(scope="session")
 def wx_app():
     """One wx application for the whole session: wx cannot cleanly recreate it per test."""
     return wx.App()
-
-
-@pytest.fixture(autouse=True)
-def claude_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """An empty Claude Code configuration folder: the tests never read the real one."""
-    folder = tmp_path / "claude-config"
-    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
-    return folder
 
 
 @pytest.fixture(autouse=True)
@@ -33,6 +29,25 @@ def window(wx_app: wx.App):
     window = MainWindow(_settings(), _runner())
     yield window
     window.Destroy()
+    wx.SafeYield()
+
+
+@pytest.fixture
+def destroy_after(wx_app: wx.App) -> Iterator[Callable[[_Window], _Window]]:
+    """Give a window made by the test; it is destroyed after the test, even when it fails.
+
+    A window the test already destroyed is left alone.
+    """
+    windows: list[wx.Window] = []
+
+    def keep(window: _Window) -> _Window:
+        windows.append(window)
+        return window
+
+    yield keep
+    for window in reversed(windows):
+        if window:  # False once wx has deleted it
+            window.Destroy()
     wx.SafeYield()
 
 
