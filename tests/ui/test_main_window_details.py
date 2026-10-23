@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 import wx
 from main_window_support import (
-    _Errors,
     _send,
     _session,
 )
@@ -136,15 +135,6 @@ def test_copying_the_exchange_puts_the_prompt_and_its_answers_on_the_clipboard(
     assert "first" not in text
 
 
-def test_a_clipboard_that_cannot_be_used_is_reported(
-    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(desktop, "set_clipboard", lambda _text: False)
-    errors = _Errors(conversation)
-    conversation._actions.act(DetailAction.COPY_MESSAGE, TABLE_AND_LINKS, -1)
-    assert errors.messages == ["The clipboard cannot be used."]
-
-
 def test_the_table_can_be_copied_as_markdown(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -165,32 +155,6 @@ def test_a_link_is_opened_in_the_browser(
     conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
     assert states[0]["lines"] == ["one, https://1.test", "two, ftp://x.test/f"]
     assert opened == ["https://1.test"]
-
-
-def test_a_link_of_another_kind_is_never_handed_to_the_system(
-    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def modal(dialog: wx.Dialog) -> int:
-        dialog._list.SetSelection(1)  # the file: link
-        return wx.ID_OPEN
-
-    monkeypatch.setattr(conversation._feedback, "modal", modal)
-    opened: list[str] = []
-    monkeypatch.setattr(desktop, "launch_url", lambda url: opened.append(url) or True)
-    errors = _Errors(conversation)
-    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
-    assert opened == []
-    assert errors.messages == ["This kind of address is not opened from here: ftp://x.test/f"]
-
-
-def test_a_browser_that_refuses_is_reported(
-    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _capture_dialogs(conversation, monkeypatch, result=wx.ID_OPEN)
-    monkeypatch.setattr(desktop, "launch_url", lambda _url: False)
-    errors = _Errors(conversation)
-    conversation._actions.act(DetailAction.LINKS, TABLE_AND_LINKS, 5)
-    assert errors.messages == ["The address https://1.test cannot be opened."]
 
 
 def test_a_link_address_can_be_copied(

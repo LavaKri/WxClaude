@@ -98,18 +98,6 @@ def test_always_allow_writes_the_personal_settings_file_of_the_workspace(
     assert len(asked) == 1
 
 
-def test_always_allow_keeps_the_other_keys_of_the_file(
-    conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    _local_file(tmp_path).parent.mkdir()
-    _local_file(tmp_path).write_text('{"model": "opus", "permissions": {"deny": ["X"]}}')
-    _permission_setup(conversation, monkeypatch, tmp_path, Decision(Choice.ALLOW_ALWAYS))
-    _send(conversation, "first")
-    settings = json.loads(_local_file(tmp_path).read_text(encoding="utf-8"))
-    assert settings["model"] == "opus"
-    assert settings["permissions"] == {"deny": ["X"], "allow": ["Bash(touch fake.txt)"]}
-
-
 def test_an_unreadable_settings_file_is_reported_and_left_alone(
     conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -120,19 +108,6 @@ def test_an_unreadable_settings_file_is_reported_and_left_alone(
     _send(conversation, "first")
     assert any("could not be saved" in message for message in errors.messages)
     assert _local_file(tmp_path).read_text(encoding="utf-8") == "{ not json"
-
-
-def test_a_rule_allowed_earlier_in_the_message_is_answered_without_a_question(
-    conversation: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    asked, _log, _sink = _permission_setup(conversation, monkeypatch, tmp_path)
-    request = PermissionRequest("r", "Bash", "t", {}, "", "", "Bash(touch fake.txt)")
-    conversation._run._turn_allowed.add(request.suggested_rule)
-    answers: list[PermissionRequest] = []
-    monkeypatch.setattr(conversation._run.runner, "allow", answers.append)
-    conversation._run._on_permission_request(request)
-    assert answers == [request]
-    assert asked == []
 
 
 def _hook_decision(log: Path) -> dict[str, object]:

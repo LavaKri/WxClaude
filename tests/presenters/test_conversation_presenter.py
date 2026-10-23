@@ -181,7 +181,7 @@ def test_a_branch_proposes_a_numbered_name_and_starts_a_new_identifier(tmp_path:
     first = conversations.conversation_id
     screen.name = "Notes, branch"
     conversations.new_branch()
-    assert screen.calls[-1].startswith("ask Notes")
+    assert screen.calls[-1] == "ask Notes branch 1"
     assert conversations.conversation_id != first
     assert conversations.name == "Notes, branch"
 

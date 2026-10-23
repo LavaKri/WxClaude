@@ -52,7 +52,7 @@ def test_a_rule_is_written_approval_then_pattern() -> None:
 
 
 def test_the_files_are_read_and_a_missing_one_is_empty(tmp_path: Path) -> None:
-    workspace, general, shared, _local = _files(tmp_path)
+    _workspace, general, shared, local = _files(tmp_path)
     _write(general, {"permissions": {"deny": ["WebFetch"]}})
     _write(shared, {"permissions": {"allow": ["Bash(ls)", 3, "  "], "ask": ["Edit"]}})
     settings = _load(tmp_path)
@@ -63,7 +63,7 @@ def test_the_files_are_read_and_a_missing_one_is_empty(tmp_path: Path) -> None:
     ]
     assert settings.rules(Source.LOCAL) == []
     assert settings.files[Source.LOCAL].error == ""
-    assert workspace  # the folder itself is not created by reading
+    assert not local.exists()  # reading does not create the missing file
 
 
 def test_rules_are_sorted_by_tool_then_approval(tmp_path: Path) -> None:

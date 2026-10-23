@@ -70,6 +70,5 @@ def test_without_a_last_search_next_and_previous_ask_and_the_last_one_is_propose
     assert presenter.options is None  # cancelled: nothing is kept
     view.answer = SearchOptions("fish")
     presenter.find()
-    presenter.options = SearchOptions("zebra")
-    presenter.find_next()
-    assert view.said[-1] == (Announce.SEARCH_NO_NEXT, {"term": "zebra"})
+    presenter.find()
+    assert view.asked[-1] == SearchOptions("fish")

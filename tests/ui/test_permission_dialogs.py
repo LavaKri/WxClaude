@@ -24,7 +24,7 @@ def test_the_request_is_shown_and_has_the_initial_focus(dialog: PermissionDialog
     text = dialog._request.GetValue()
     assert "Tool: Bash" in text
     assert "command: touch x" in text
-    assert dialog._request.HasFocus() or dialog._request.IsEnabled()
+    assert dialog.FindFocus() is dialog._request
     assert not dialog._request.IsEditable()
 
 

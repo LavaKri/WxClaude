@@ -80,8 +80,9 @@ def test_sending_runs_claude_and_shows_the_answer(
     ]
     assert sent["prompt"] == "hello"
     assert sent["cwd"].lower() == str(tmp_path).lower()
-    # The view now equals the session file written by the CLI.
-    assert not text.count("local")
+    # The view now holds the messages of the session file, not those made during the run.
+    spans = conversation._conversation.document.spans
+    assert not any(span.message.id.startswith("local-") for span in spans)
 
 
 def test_the_second_message_resumes_the_conversation(

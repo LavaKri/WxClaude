@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from wxclaude.core.claude.claude_files import ClaudeFiles, DiskClaudeFiles
+from wxclaude.core.claude.claude_files import DiskClaudeFiles
 from wxclaude.core.errors import SessionReadError
 
 pytestmark = pytest.mark.unit
@@ -18,11 +18,6 @@ def config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder = tmp_path / "claude-config"
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(folder))
     return folder
-
-
-def test_the_disk_files_follow_the_contract() -> None:
-    files: ClaudeFiles = DiskClaudeFiles()  # mypy checks the Protocol here
-    assert files is not None
 
 
 def test_nothing_is_found_in_an_empty_configuration(config: Path, tmp_path: Path) -> None:

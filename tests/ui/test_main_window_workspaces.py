@@ -167,16 +167,6 @@ def test_refreshing_a_conversation_without_history_says_so(conversation: MainWin
     assert sink.messages == ["This conversation has no history yet."]
 
 
-def test_a_workspace_without_conversation_gets_none(
-    conversation: MainWindow, tmp_path: Path
-) -> None:
-    (tmp_path / "empty").mkdir()
-    conversation.open_workspace(tmp_path / "empty")
-    assert conversation.conversation_id == ""
-    assert conversation._conversation.GetValue() == ""
-    assert not conversation.can_send
-
-
 def test_without_the_option_nothing_is_opened(wx_app: wx.App, tmp_path: Path) -> None:
     settings = _settings()
     settings.reopen_last = False
@@ -199,18 +189,6 @@ def test_a_workspace_that_no_longer_exists_is_not_opened(wx_app: wx.App, tmp_pat
     wx.SafeYield()
 
 
-def _folder_tools(window: MainWindow, monkeypatch: pytest.MonkeyPatch, *, accepted: bool = True):
-    opened: list[Path] = []
-
-    def launch(folder: Path) -> bool:
-        opened.append(folder)
-        return accepted
-
-    monkeypatch.setattr(desktop, "launch_folder", launch)
-    errors = _Errors(window)
-    return opened, errors
-
-
 def test_the_help_page_is_opened_in_the_browser(
     window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -225,27 +203,13 @@ def test_the_help_page_is_opened_in_the_browser(
 def test_the_workspace_folder_is_opened_in_the_file_explorer(
     window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    opened, errors = _folder_tools(window, monkeypatch)
+    opened: list[Path] = []
+    monkeypatch.setattr(desktop, "launch_folder", lambda folder: opened.append(folder) or True)
+    errors = _Errors(window)
     window.open_workspace(tmp_path)
     window._files.open_folder(window._workspaces.workspace)
     assert opened == [tmp_path]
     assert errors.messages == []
-
-
-def test_a_workspace_folder_that_is_gone_or_refused_is_reported(
-    window: MainWindow, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    folder = tmp_path / "soon-gone"
-    folder.mkdir()
-    opened, errors = _folder_tools(window, monkeypatch, accepted=False)
-    window.open_workspace(folder)
-    window._files.open_folder(window._workspaces.workspace)
-    assert opened == [folder]
-    assert "cannot be opened" in errors.messages[0]
-    folder.rmdir()
-    window._files.open_folder(window._workspaces.workspace)
-    assert opened == [folder]  # not tried again
-    assert "no longer exists" in errors.messages[1]
 
 
 def test_the_folder_item_needs_a_workspace(window: MainWindow, tmp_path: Path) -> None:

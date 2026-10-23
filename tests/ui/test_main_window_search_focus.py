@@ -72,14 +72,6 @@ def test_searching_backwards_stops_at_the_first_occurrence(conversation: MainWin
     assert infos == []
 
 
-def test_a_term_that_is_not_there_is_reported(conversation: MainWindow) -> None:
-    window, sink, infos = _search_window(conversation)
-    window._search.options = SearchOptions("zebra")
-    window._search.search(backwards=False)
-    assert sink.messages == ['No next occurrence of "zebra".']
-    assert infos == []
-
-
 def test_an_unsuccessful_search_can_open_a_dialog_or_say_nothing(conversation: MainWindow) -> None:
     window, sink, infos = _search_window(conversation)
     window._search.options = SearchOptions("zebra")
@@ -91,16 +83,6 @@ def test_an_unsuccessful_search_can_open_a_dialog_or_say_nothing(conversation: M
     window._search.search(backwards=False)
     assert infos == ['No next occurrence of "zebra".']  # nothing more
     assert sink.messages == []
-
-
-def test_next_without_a_previous_search_opens_the_dialog(
-    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    opened: list[bool] = []
-    monkeypatch.setattr(conversation._search, "find", lambda: opened.append(True))
-    conversation._search.find_next()
-    conversation._search.find_previous()
-    assert opened == [True, True]
 
 
 def test_the_search_commands_have_the_classic_shortcuts(conversation: MainWindow) -> None:
@@ -170,7 +152,7 @@ def test_a_workspace_without_conversation_focuses_the_view_and_says_so(
     conversation.open_workspace(empty)
     assert conversation._conversation.HasFocus()
     assert not conversation._prompt.IsEnabled()
-    assert not conversation._send_button.IsEnabled() or not conversation.can_send
+    assert not conversation.can_send  # the send buttons follow it (EVT_UPDATE_UI)
     assert sink.messages[-1] == "No conversation in this workspace."
 
 

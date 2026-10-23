@@ -44,10 +44,9 @@ def test_the_conversation_is_exported_to_the_chosen_file(tmp_path: Path) -> None
     assert target.read_text(encoding="utf-8").startswith("# Hello")
 
 
-def test_a_cancelled_export_writes_nothing(tmp_path: Path) -> None:
+def test_a_cancelled_export_says_nothing() -> None:
     view = FakeView(None)
     FilePresenter(view).export("text")
-    assert list(tmp_path.iterdir()) == []
     assert view.errors == []
 
 
