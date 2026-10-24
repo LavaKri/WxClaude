@@ -337,3 +337,67 @@ def test_the_marks_can_be_removed_and_the_caret_stays_on_its_message(
     view.set_without_marks(False)
     assert "It is *so* **true**" in view.GetValue()
     assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]
+
+
+@pytest.fixture
+def linked(wx_app: wx.App, said: _Said) -> Iterator[ConversationView]:
+    frame = wx.Frame(None)
+    view = ConversationView(frame, said)
+    view.set_messages(
+        [
+            Message("1", Role.USER, "See [the docs](http://x.org) first"),
+            Message(
+                "2",
+                Role.ASSISTANT,
+                "Try <https://y.org> or `[no](code)`.\n\n```\n[fenced](http://z)\n```\n"
+                "Then [last](http://w.org).",
+                model="m",
+            ),
+        ]
+    )
+    view.SetInsertionPoint(0)
+    yield view
+    frame.Destroy()
+    wx.SafeYield()
+
+
+def _link_starts(view: ConversationView) -> list[int]:
+    text = view.document.text
+    return [text.index("[the docs]"), text.index("<https://y.org>"), text.index("[last]")]
+
+
+def test_k_goes_from_link_to_link_and_says_the_link(linked: ConversationView, said: _Said) -> None:
+    first, second, third = _link_starts(linked)
+    _press(linked, "K")
+    assert linked.GetInsertionPoint() == first
+    assert said.calls[-1] == (
+        Announce.MOVED_LINK,
+        {"label": "the docs, http://x.org", "line": "the docs, http://x.org"},
+    )
+    _press(linked, "K")
+    assert linked.GetInsertionPoint() == second  # the code and the fenced block are skipped
+    assert said.calls[-1][1]["label"] == "https://y.org"
+    _press(linked, "K")
+    assert linked.GetInsertionPoint() == third
+    _press(linked, "K")
+    assert _last(said) is Announce.NO_NEXT_LINK
+    assert linked.GetInsertionPoint() == third  # the caret stays
+
+
+def test_shift_k_goes_back_from_link_to_link(linked: ConversationView, said: _Said) -> None:
+    first, second, third = _link_starts(linked)
+    linked.SetInsertionPoint(len(linked.document.text))
+    _press(linked, "K", shift=True)
+    assert linked.GetInsertionPoint() == third
+    _press(linked, "K", shift=True)
+    assert linked.GetInsertionPoint() == second
+    _press(linked, "K", shift=True)
+    assert linked.GetInsertionPoint() == first
+    _press(linked, "K", shift=True)
+    assert _last(said) is Announce.NO_PREVIOUS_LINK
+    assert linked.GetInsertionPoint() == first
+
+
+def test_k_without_any_link_says_so(view: ConversationView, said: _Said) -> None:
+    _press(view, "K")
+    assert _last(said) is Announce.NO_NEXT_LINK

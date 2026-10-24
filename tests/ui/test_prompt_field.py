@@ -100,3 +100,42 @@ def test_other_keys_are_left_to_the_field_and_the_window(
     field._on_key(event)
     assert popups == []
     assert event.GetSkipped()
+
+
+def test_without_an_action_the_menu_has_no_agent_item(field: PromptField) -> None:
+    assert "&Modify the agent…" not in _labels(field.build_menu())
+
+
+def test_the_agent_item_follows_the_editing_commands_with_its_shortcut(
+    wx_app: wx.App,
+) -> None:
+    frame = wx.Frame(None)
+    try:
+        field = PromptField(frame, on_agent=lambda: None, agent_shortcut=lambda: "Ctrl+Shift+A")
+        assert _labels(field.build_menu()) == [
+            "Cu&t",
+            "&Copy",
+            "&Paste",
+            "&Modify the agent…\tCtrl+Shift+A",
+        ]
+        plain = PromptField(frame, on_agent=lambda: None, agent_shortcut=lambda: "")
+        assert _labels(plain.build_menu())[-1] == "&Modify the agent…"
+    finally:
+        frame.Destroy()
+        wx.SafeYield()
+
+
+def test_choosing_the_agent_item_runs_the_action_once_the_menu_is_closed(wx_app: wx.App) -> None:
+    frame = wx.Frame(None)
+    calls: list[str] = []
+    try:
+        field = PromptField(frame, on_agent=lambda: calls.append("agent"))
+        menu = field.build_menu()
+        item = next(i for i in menu.GetMenuItems() if i.GetItemLabel().startswith("&Modify"))
+        _choose(menu, item)
+        assert calls == []  # not inside the menu
+        wx.SafeYield()
+        assert calls == ["agent"]
+    finally:
+        frame.Destroy()
+        wx.SafeYield()

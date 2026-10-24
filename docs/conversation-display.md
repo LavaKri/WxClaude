@@ -51,14 +51,20 @@ The field is read-only, so letters are free. With Shift the keys go backwards:
 | `T` / `Shift+T` | next / previous table |
 | `L` / `Shift+L` | next / previous list |
 | `I` / `Shift+I` | next / previous item of a list |
+| `K` / `Shift+K` | next / previous link |
 
 `L` stops at the lists of level 1 only (a list inside another list has no stop of its own).
 `I` stays in the list the caret is in, at the level of the item it is on: in a list of level 1 it
 skips the nested items, in a nested list it moves among the nested items; outside a list, or at the
 first or last item, it says there is no item (`core/conversation/blocks.py`; ordered and bullet
-lists alike). The caret
+lists alike). `K` goes from link to link in the whole conversation: a link is `[text](address)` or
+`<address>`; links in code (spans and fenced blocks), escaped brackets, images, bare addresses and
+reference links (`[text][name]`) are not stops, and a link that runs over a line break is not found
+(`core/conversation/links.py`, line by line like the removal of the marks of bold and italic). The
+title of a prompt, which repeats the start of the prompt, shows its links as their text only, so a
+link is not met twice. The caret
 moves to the start of the heading, of the first line of the table (its header row), of the first
-line of the list or of the item. **The screen reader does not read the line when the caret is moved
+line of the list, of the item or of the link (its `[` or `<`). **The screen reader does not read the line when the caret is moved
 by the application**, so the application announces the move (category *Conversation, movement
 done*: nothing, a message, which is the default, or the line). The message depends on the key:
 
@@ -68,10 +74,11 @@ done*: nothing, a message, which is the default, or the line). The message depen
 | `T` | `Table of 2 columns and 4 rows. <first line>` (rows without the header row) | the first line, raw |
 | `L` | `List of 3 items. <first line>` (items of level 1) | the first line, raw |
 | `I` | the line of the item | the same |
+| `K` | `Link: <text>, <address>` (the address alone for an `<address>` link) | the same |
 
 When the user moves with the arrow keys the screen reader reads the raw line.
 
-When there is nothing further in that direction the application says so ("No next table.") in the
+When there is nothing further in that direction the application says so ("No next table.", "No next link.") in the
 category *Conversation, no further movement possible* (nothing or a message, a message by default).
 The context menu of the view has no item for these jumps.
 

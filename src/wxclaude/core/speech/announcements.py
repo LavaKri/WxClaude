@@ -171,6 +171,7 @@ class Announce(enum.Enum):
     CLAUDE_DONE = (END_OF_ANSWER, N_("Claude has answered."))
     CLAUDE_INTERRUPTED = (END_OF_ANSWER, N_("Claude was interrupted."))
     PERMISSION_ASKED = (PERMISSION_QUESTION, N_("Claude asks permission for the tool {tool}."))
+    PLAN_PROPOSED = (PERMISSION_QUESTION, N_("Claude proposes a plan."))
     QUESTION_ASKED = (PERMISSION_QUESTION, N_("Claude has questions for you."))
     QUESTION_ANSWERED = (PERMISSION_ANSWER, N_("Your answers were sent to Claude."))
     PERMISSION_GRANTED = (PERMISSION_ANSWER, N_("Permission granted for the tool {tool}."))
@@ -183,6 +184,7 @@ class Announce(enum.Enum):
     MOVED_HEADING = (MOVEMENT, N_("{title}, title {level}"))
     MOVED_TABLE = (MOVEMENT, N_("Table of {columns} and {rows}. {line}"))
     MOVED_LIST = (MOVEMENT, N_("List of {items}. {line}"))
+    MOVED_LINK = (MOVEMENT, N_("Link: {label}"))
     NO_NEXT_HEADING = (MOVEMENT_BLOCKED, N_("No next heading."))
     NO_PREVIOUS_HEADING = (MOVEMENT_BLOCKED, N_("No previous heading."))
     NO_NEXT_HEADING_OF_LEVEL = (MOVEMENT_BLOCKED, N_("No next title {level}."))
@@ -192,6 +194,8 @@ class Announce(enum.Enum):
     NO_NEXT_LIST = (MOVEMENT_BLOCKED, N_("No next list."))
     NO_PREVIOUS_LIST = (MOVEMENT_BLOCKED, N_("No previous list."))
     NO_NEXT_ITEM = (MOVEMENT_BLOCKED, N_("No next list item."))
+    NO_NEXT_LINK = (MOVEMENT_BLOCKED, N_("No next link."))
+    NO_PREVIOUS_LINK = (MOVEMENT_BLOCKED, N_("No previous link."))
     NO_PREVIOUS_ITEM = (MOVEMENT_BLOCKED, N_("No previous list item."))
 
     def __init__(self, category: Category | None, text: str) -> None:

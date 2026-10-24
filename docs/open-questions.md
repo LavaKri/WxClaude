@@ -18,8 +18,11 @@ the file it belongs to and delete it from this one.
 - **Plans.** *Tools > Plan…* finds the plans as the `Write` calls of the session file to
   `<config>/plans/`; only that case was seen (haiku, two runs). The folder of the plans may be
   configurable (not checked), and a plan may also be written by another tool. With the stdio
-  protocol the `ExitPlanMode` request holds the text of the plan (`input.plan`) and its result says
-  where it was saved: not used.
+  protocol the `ExitPlanMode` request holds the text of the plan (`input.plan`) and the file where it
+  is saved (`input.planFilePath`): the request is shown as a plan (see `interface.md`, Permissions;
+  tried with haiku, a refusal with an explanation is understood by Claude). Still to check: what Claude
+  does after an approval (the `Write` of the plan, then the work) with a longer plan, and the dialog
+  with NVDA and JAWS.
 - **HTTP hook channel, not tested yet.** `updatedPermissions` (a rule for the session), `interrupt`,
   `decision.rule` (one documentation page), a waiting time above 10 minutes (the maximum accepted
   by the CLI), `tool_use_id` (the documentation lists it, the real POST has none).
@@ -147,8 +150,18 @@ the file it belongs to and delete it from this one.
 - **Spelling errors in the prompt.** A test (a red wavy underline put on a word of a rich text prompt
   with `SetStyle`, which Windows held as a wavy underline) was read with NVDA: the underline was
   displayed but not reported. The test item and the rich text prompt were removed. So the errors must
-  be said another way: keys to go to the next / previous error with the word announced, and a menu of
-  suggestions, fed by a spell checker (next item).
+  be said another way, fed by a spell checker (next item). **Design wanted by the user**: a shortcut
+  in the prompt opens a spelling dialog.
+  - A list of check boxes: one line per misspelled word, with the correction proposed, all checked at
+    first (the line says the word and the proposal, for example "wrold, world").
+  - Tab goes to an editable drop-down list with the other choices for the selected line; the user can
+    pick one or type a word of their own, and that becomes the correction of the line.
+  - Enter corrects every checked line in the prompt; Esc changes nothing. Unchecked lines are left as
+    they are.
+  - To settle: the shortcut (configurable, like the others, in the Preferences list), the words
+    to skip (code, paths, names), a dictionary of the user, and the language. The prompt stays a
+    plain field, the dialog works on its text and gives the corrected text back (the caret is
+    kept as near as it was).
 - **Bold and italic shown as formatting.** The marks are removed from the conversation (item *Remove the
   Markdown formatting* of the Display submenu), but the words are not styled. `emphasis.py` could
   also give the places of the emphasis, to apply bold and italic with `SetStyle` (the view is a rich

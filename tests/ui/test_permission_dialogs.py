@@ -77,3 +77,21 @@ def test_the_waiting_time_is_the_first_line_of_the_request(wx_app: wx.App) -> No
 
 def test_without_a_waiting_time_the_request_starts_with_the_tool(dialog: PermissionDialog) -> None:
     assert dialog._request.GetValue().startswith("Tool: Bash")
+
+
+def test_a_plan_has_its_own_title_and_shows_its_text(wx_app: wx.App) -> None:
+    plan = PermissionRequest("p", "ExitPlanMode", "t", {"plan": "# Plan\n\nStep one"}, "", "", "")
+    dialog = PermissionDialog(None, plan)
+    try:
+        assert dialog.GetTitle() == "Claude proposes a plan"
+        text = dialog._request.GetValue()
+        assert text.endswith("# Plan\n\nStep one")
+        assert "Tool:" not in text
+        assert dialog.FindFocus() is dialog._request
+    finally:
+        dialog.Destroy()
+        wx.SafeYield()
+
+
+def test_an_ordinary_request_keeps_the_ordinary_title(dialog: PermissionDialog) -> None:
+    assert dialog.GetTitle() == "Claude asks for permission"

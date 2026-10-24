@@ -23,10 +23,14 @@ First version: the application works from end to end.
 - Keys of the conversation: `H` for headings (`1` to `6` as before), `T` for tables, `L` for lists
   and `I` for the items of the list the caret is in, with Shift to go backwards; two announcement
   categories for them. `Space` on a line of a table shows the table.
+- The keys `K` and `Shift+K` of the conversation go from link to link and say the text and the address
+  of the link (same announcement categories as the other jumps).
 - A submenu Display in the Conversation menu, with the summary of the tools and a new item, on by default,
   that removes the marks of bold and italic (`**`, `*`) from the conversation so the screen reader does not
   read them; the export keeps them.
-- A context menu on the prompt field: Cut, Copy, Paste.
+- The plan that Claude submits in the mode Plan is shown as such: its own title, a line that says how to
+  answer, then its text, announced "Claude proposes a plan.".
+- A context menu on the prompt field: Cut, Copy, Paste, Modify the agent.
 - The fields of the status bar are cut at 200 characters.
 - Shortcut `Ctrl+Shift+A` for *Modify the agent*, configurable in the Preferences like the others.
 - The summary the CLI writes when it compacts a conversation is hidden with the other system messages.

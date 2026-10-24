@@ -1241,3 +1241,21 @@ msgstr "A&ffichage"
 
 msgid "Remove the &Markdown formatting"
 msgstr "Retirer les mises en forme &Markdown"
+
+msgid "Claude proposes this plan. Allow approves it; Deny asks for changes (explain below)."
+msgstr "Claude propose ce plan. Autoriser l'approuve ; Refuser demande des changements (expliquez ci-dessous)."
+
+msgid "Claude proposes a plan"
+msgstr "Claude propose un plan"
+
+msgid "Claude proposes a plan."
+msgstr "Claude propose un plan."
+
+msgid "Link: {label}"
+msgstr "Lien : {label}"
+
+msgid "No next link."
+msgstr "Pas de lien suivant."
+
+msgid "No previous link."
+msgstr "Pas de lien précédent."

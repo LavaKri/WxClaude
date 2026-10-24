@@ -10,7 +10,8 @@
 - **Prompt**: multi-line field. Enter adds a line break; the send shortcuts are configurable
   (default Ctrl+Enter to send, Shift+Enter to send with the alternative agent). Its context menu
   (right click, Applications key, Shift+F10) has *Cut*, *Copy* and *Paste* (greyed when they do not
-  apply); the field itself is plain text.
+  apply), then *Modify the agent…*, the same as in the Conversation menu, with its current shortcut
+  shown; the field itself is plain text.
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
   *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
   started). While Claude answers, Send is greyed; the prompt field stays usable.
@@ -94,6 +95,16 @@ When Claude wants to run a tool that the permission mode of the agent does not a
 - *Allow*, *Always allow this* (only when the CLI proposes a rule to remember) and *Deny*. Esc or
   closing the dialog is a denial. The answer is announced ("Permission granted / refused for the
   tool ...").
+
+**A plan.** In the mode *Plan only (plan)* with the stdio protocol, Claude submits its plan by asking to
+leave the mode (the tool `ExitPlanMode`, whose input holds `plan` and `planFilePath`). The dialog is
+titled "Claude proposes a plan" and announced "Claude proposes a plan." (category *Question of
+permission*). The read-only field starts with one line that says how to answer ("Allow approves it; Deny
+asks for changes (explain below)"), then the text of the plan as Claude wrote it, then the other fields
+(the file of the plan). *Allow* approves the plan; *Deny*, with an explanation, asks for changes, and
+Claude is told the explanation. The answers are announced like any permission ("Permission granted /
+refused for the tool ExitPlanMode."). A request without a text of plan is shown as an ordinary request.
+The hook channel has no such request (`claude-cli.md`).
 
 *Always allow this* writes an *allow* rule (for example `Bash(touch x)` or `Edit`) in the personal
 settings file of the workspace, `.claude/settings.local.json`, as the CLI itself does: Claude does

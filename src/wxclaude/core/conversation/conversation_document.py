@@ -24,6 +24,8 @@ _EFFORT_NAMES = {
     "max": N_("maximum"),
 }
 _SENTENCE_END = re.compile(r"(?<=[.!?…])\s+")
+_LINK_SYNTAX = re.compile(r"\[([^\]\n]*)\]\([^)\n]*\)")  # [text](address)
+_AUTOLINK = re.compile(r"<([A-Za-z][A-Za-z0-9+.-]*:[^<>\s]*)>")  # <address>
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +35,12 @@ class MessageSpan:
     message: Message
     start: int
     end: int
+
+
+def _without_link_syntax(text: str) -> str:
+    """``text`` with each link reduced to its text: a title is not a place to follow a link, and
+    the link stays in the message itself."""
+    return _AUTOLINK.sub(r"\1", _LINK_SYNTAX.sub(r"\1", text))
 
 
 def preview(text: str) -> str:
@@ -49,7 +57,7 @@ def message_title(message: Message, *, without_marks: bool = False) -> str:
     """The level 1 title that introduces ``message`` (without the ``#``)."""
     if message.role is Role.USER:
         text = remove_emphasis(message.text) if without_marks else message.text
-        return _("You say: {preview}").format(preview=preview(text))
+        return _("You say: {preview}").format(preview=preview(_without_link_syntax(text)))
     if message.model is None:
         return _("Claude answered")
     if message.effort is None:

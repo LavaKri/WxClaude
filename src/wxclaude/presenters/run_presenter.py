@@ -26,7 +26,7 @@ from wxclaude.core.claude.events import (
 )
 from wxclaude.core.claude.gauge_schedule import GaugeSchedule
 from wxclaude.core.claude.permission_channel import HOOK
-from wxclaude.core.claude.permissions import Choice, Decision, hook_wait_text
+from wxclaude.core.claude.permissions import Choice, Decision, hook_wait_text, is_plan_request
 from wxclaude.core.claude.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.claude.questions import Question, is_question, parse_questions
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
@@ -332,7 +332,10 @@ class RunPresenter:
         if rule and rule in self._turn_allowed:
             decision = Decision(Choice.ALLOW)
         else:
-            self._view.say(Announce.PERMISSION_ASKED, tool=request.tool_name)
+            if is_plan_request(request):
+                self._view.say(Announce.PLAN_PROPOSED)
+            else:
+                self._view.say(Announce.PERMISSION_ASKED, tool=request.tool_name)
             with self._stats.waiting():
                 decision = self._view.ask_permission(request, self._wait_text())
             if request.request_id in self._expired:

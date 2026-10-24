@@ -424,3 +424,21 @@ def test_structured_questions_that_cannot_be_read_are_asked_as_a_request(tmp_pat
     assert len(view.asked) == 1
     assert view.questions == []
     assert runner.answers == [("allow", "r1")]
+
+
+def test_a_plan_is_announced_as_a_plan_and_can_be_approved(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.ALLOW))
+    presenter, runner = _presenter(view, tmp_path)
+    plan: dict[str, object] = {"plan": "# Plan\n\nStep one"}
+    presenter.on_event(PermissionRequest("r1", "ExitPlanMode", "t", plan, "", "", ""))
+    assert Announce.PLAN_PROPOSED in view.announces()
+    assert Announce.PERMISSION_ASKED not in view.announces()
+    assert runner.answers == [("allow", "r1")]
+
+
+def test_a_plan_can_be_refused_with_an_explanation(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.DENY, "Add the tests first"))
+    presenter, runner = _presenter(view, tmp_path)
+    plan: dict[str, object] = {"plan": "Do it"}
+    presenter.on_event(PermissionRequest("r1", "ExitPlanMode", "t", plan, "", "", ""))
+    assert runner.answers == [("deny", "Add the tests first")]

@@ -81,3 +81,11 @@ def test_the_export_keeps_the_marks(window: MainWindow) -> None:
     markdown = window._conversation.markdown_text()
     assert "A **bold** question" in markdown
     assert "An *italic* and **bold** answer" in markdown
+
+
+def test_the_prompt_menu_offers_modify_the_agent_with_the_current_shortcut(
+    window: MainWindow,
+) -> None:
+    menu = window._prompt.build_menu()  # kept: wx destroys the items with their menu
+    labels = [i.GetItemLabel() for i in menu.GetMenuItems()]
+    assert labels[-1] == "&Modify the agent…\tCtrl+Shift+A"

@@ -14,6 +14,7 @@ from wxclaude.core.claude.events import PermissionRequest
 from wxclaude.i18n import _
 
 DEFAULT_DENIAL = "The user denied this action."
+PLAN_TOOL = "ExitPlanMode"  # in the mode plan, Claude submits its plan by asking to leave it
 
 
 class Choice(enum.Enum):
@@ -51,8 +52,31 @@ def hook_wait_text(now: datetime, minutes: int) -> str:
     )
 
 
+def is_plan_request(request: PermissionRequest) -> bool:
+    """Is the request the proposal of a plan (and not the permission to run a tool)?"""
+    return request.tool_name == PLAN_TOOL and isinstance(request.input.get("plan"), str)
+
+
+def _describe_plan(request: PermissionRequest) -> str:
+    """The plan as text for the dialog: what to answer, then the plan as Claude wrote it."""
+    lines = [
+        _("Claude proposes this plan. Allow approves it; Deny asks for changes (explain below)."),
+        "",
+        str(request.input["plan"]).strip(),
+    ]
+    for name, value in request.input.items():
+        if name != "plan":
+            lines.append(_("{name}: {value}").format(name=name, value=_value_text(value)))
+    return "\n".join(lines)
+
+
 def describe_request(request: PermissionRequest) -> str:
-    """The request as lines of text for the dialog: the tool, what it is for, its arguments."""
+    """The request as lines of text for the dialog: the tool, what it is for, its arguments.
+
+    A plan is shown as its own text (see ``is_plan_request``).
+    """
+    if is_plan_request(request):
+        return _describe_plan(request)
     lines = [_("Tool: {tool}").format(tool=request.tool_name)]
     if request.description:
         lines.append(_("Description: {description}").format(description=request.description))

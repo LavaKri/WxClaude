@@ -13,7 +13,7 @@ Claude are asked to the user (two channels, chosen in Preferences > Claude: the 
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
 shown in dialogs; a conversation can be branched and deleted; the usage dialog ends with the
-statistics of the whole workspace, and a line under each answer sums up its tools. 788 tests
+statistics of the whole workspace, and a line under each answer sums up its tools. 810 tests
 pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
@@ -23,16 +23,17 @@ dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `a
 the new list *Interface type* and spin control of Preferences > Claude, the *Plan* dialog, the
 statistics lines of *Claude usage* (numbers written short), the line that sums up the tools under
 the answers with its check item, *Preferences* now in the File menu, the dialog of a table (list of the
-rows, Left/Right change the column, a field gives the cell), the keys `H`, `T`, `L`, `I` and `Space` of
+rows, Left/Right change the column, a field gives the cell), the keys `H`, `T`, `L`, `I`, `K` and `Space` of
 the conversation and their announcements, the tab *Announcements* of the Preferences, the dialog
 of the structured questions of Claude (lists of check boxes, the message when a question is left
 unanswered), the context menu of the prompt, the Display submenu, and the loss of the status bar by NVDA
 seen once with the executable (`open-questions.md`).
 
-Last work, in order (most recent first): the Display submenu of the Conversation menu (the summary of
+Last work, in order (most recent first): the plan of Claude shown as such in the permission dialog; the keys
+`K` / `Shift+K` between the links of the conversation; the Display submenu of the Conversation menu (the summary of
 the tools and *Remove the Markdown formatting*, which takes the marks of bold and italic out of the
 text); the fields of the status bar cut at 200 characters; the context menu of the prompt (Cut, Copy,
-Paste); the shortcut `Ctrl+Shift+A` for *Modify the agent*; the caret kept on its prompt when the view
+Paste, Modify the agent); the shortcut `Ctrl+Shift+A` for *Modify the agent*; the caret kept on its prompt when the view
 is rebuilt after an answer; the dialog of the structured questions of Claude; the hook channel saying
 until when it waits; the summary of a compaction hidden; the log file and the PyInstaller build (`build.bat`, a zip);
 the dialog of a table by column; the keys `H` / `T` / `L` / `I` / `Space` of the conversation and

@@ -1,9 +1,9 @@
-"""Tables, lists and list items of a Markdown document, and navigation between them.
+"""Tables, lists, list items and links of a Markdown document, and navigation between them.
 
 Like the headings (``headings.py``), they are found in the text the field shows, so the offsets are
 Python string indexes of that text. The lists that are not inside another list count (``L``); the
 items of every list are kept, each knowing its list, so that ``I`` stays among the items of the
-list the caret is in. Code blocks are ignored.
+list the caret is in. Links come from ``links.py``. Code blocks are ignored.
 """
 
 from bisect import bisect_left, bisect_right
@@ -11,6 +11,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from markdown_it import MarkdownIt
+
+from wxclaude.core.conversation.details import Link
+from wxclaude.core.conversation.links import link_places
 
 _PARSER = MarkdownIt("commonmark").enable("table")
 _LIST_OPEN = ("bullet_list_open", "ordered_list_open")
@@ -23,6 +26,7 @@ class BlockKind(StrEnum):
     TABLE = "table"
     LIST = "list"
     ITEM = "item"
+    LINK = "link"
 
 
 @dataclass(slots=True)
@@ -32,7 +36,7 @@ class Block:
     ``columns`` and ``count`` are filled for a table (columns, rows without the header row) and
     ``count`` for a list (its direct items); both are 0 for an item. An item also has its ``end``
     (the offset after its last line, nested lists included) and its ``group``, the start of the list
-    it belongs to; they are -1 for the others.
+    it belongs to; they are -1 for the others. A link has its ``label`` (its text and its address).
     """
 
     start: int
@@ -40,10 +44,12 @@ class Block:
     count: int = 0
     end: int = -1
     group: int = -1
+    label: str = ""
 
 
 def block_starts(text: str) -> dict[BlockKind, list[Block]]:
-    """The tables, the lists of level 1 and the items of those lists, each in document order.
+    """The tables, the lists of level 1, the items of those lists and the links, each in document
+    order.
 
     ``text`` must use ``\n`` as line break.
     """
@@ -81,7 +87,16 @@ def block_starts(text: str) -> dict[BlockKind, list[Block]]:
             end = line_starts[after] if after < len(line_starts) else len(text)
             found[BlockKind.ITEM].append(Block(start, end=end, group=group_starts[-1]))
             lists[-1].count += 1
+    found[BlockKind.LINK] = _link_blocks(text)
     return found
+
+
+def _link_blocks(text: str) -> list[Block]:
+    """The links of ``text`` as blocks, each with the label a screen reader is told."""
+    return [
+        Block(place.start, label=Link(place.text, place.url, 0).label())
+        for place in link_places(text)
+    ]
 
 
 def next_block(blocks: list[Block], position: int) -> Block | None:

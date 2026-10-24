@@ -7,14 +7,14 @@ not change, so a position in a line of the result is a position in the same line
 Emphasis is looked for line by line: one that runs over a line break keeps its marks.
 """
 
-import re
 from collections.abc import Callable
 
 from markdown_it import MarkdownIt
 from markdown_it.rules_inline import StateInline
 from markdown_it.rules_inline import emphasis as _emphasis
 
-_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+from wxclaude.core.conversation.code_blocks import lines_with_code_mark
+
 _EMPHASIS_TOKENS = frozenset({"em_open", "em_close", "strong_open", "strong_close"})
 
 
@@ -55,19 +55,9 @@ def _marks_in(line: str) -> list[int]:
 def remove_emphasis(text: str) -> str:
     """``text`` without the marks of bold and italic (see the module)."""
     lines: list[str] = []
-    fence: str | None = None  # the opening fence of the code block we are in
-    for line in text.split("\n"):
-        opening = _FENCE.match(line)
-        if fence is not None:
-            if opening and opening.group(1)[0] == fence[0] and len(opening.group(1)) >= len(fence):
-                fence = None
-            lines.append(line)
-        elif opening:
-            fence = opening.group(1)
-            lines.append(line)
-        elif "*" in line or "_" in line:
+    for _offset, line, is_code in lines_with_code_mark(text):
+        if not is_code and ("*" in line or "_" in line):
             marks = set(_marks_in(line))
-            lines.append("".join(c for i, c in enumerate(line) if i not in marks))
-        else:
-            lines.append(line)
+            line = "".join(char for index, char in enumerate(line) if index not in marks)
+        lines.append(line)
     return "\n".join(lines)

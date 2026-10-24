@@ -29,7 +29,12 @@ from wxclaude.ui.menu_keys import is_menu_key, is_shift_f10
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
 _HEADING_KEY = ord("H")
-_BLOCK_KEYS = {ord("T"): BlockKind.TABLE, ord("L"): BlockKind.LIST, ord("I"): BlockKind.ITEM}
+_BLOCK_KEYS = {
+    ord("T"): BlockKind.TABLE,
+    ord("L"): BlockKind.LIST,
+    ord("I"): BlockKind.ITEM,
+    ord("K"): BlockKind.LINK,
+}
 #: What is said when there is nothing further: (kind, backwards) -> announcement.
 _BLOCK_MISSING = {
     (BlockKind.TABLE, False): Announce.NO_NEXT_TABLE,
@@ -38,6 +43,8 @@ _BLOCK_MISSING = {
     (BlockKind.LIST, True): Announce.NO_PREVIOUS_LIST,
     (BlockKind.ITEM, False): Announce.NO_NEXT_ITEM,
     (BlockKind.ITEM, True): Announce.NO_PREVIOUS_ITEM,
+    (BlockKind.LINK, False): Announce.NO_NEXT_LINK,
+    (BlockKind.LINK, True): Announce.NO_PREVIOUS_LINK,
 }
 #: The labels of the context menu (translated when the menu opens, not at import).
 _MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
@@ -62,6 +69,8 @@ def _arrival(kind: BlockKind, block: Block, line: str) -> tuple[Announce, dict[s
     if kind is BlockKind.LIST:
         items = ngettext("{count} item", "{count} items", block.count)
         return Announce.MOVED_LIST, {"items": items.format(count=block.count), "line": line}
+    if kind is BlockKind.LINK:
+        return Announce.MOVED_LINK, {"label": block.label, "line": block.label}
     return Announce.MOVED, {"line": line}
 
 

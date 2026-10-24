@@ -226,3 +226,13 @@ def test_a_document_without_marks_keeps_its_spans_and_lines_right() -> None:
     assert document.body_line(first, document.text.index("\nthree four") + 1) == 1
     assert document.body_line(second, document.text.index("\nDone") + 1) == 0
     assert document.exchange_of("2") == document.text.rstrip("\n")
+
+
+def test_the_title_of_a_prompt_keeps_the_text_of_its_links_and_not_their_syntax() -> None:
+    assert message_title(_prompt("See [the docs](http://x.org) now")) == "You say: See the docs now"
+    assert message_title(_prompt("Open <https://y.org> now")) == "You say: Open https://y.org now"
+    assert message_title(_prompt("A [lone bracket and (parenthesis)")) == (
+        "You say: A [lone bracket and (parenthesis)"
+    )
+    # the message itself keeps its links
+    assert "[the docs](http://x.org)" in render_message(_prompt("See [the docs](http://x.org)"))

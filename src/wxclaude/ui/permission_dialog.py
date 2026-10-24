@@ -3,7 +3,7 @@
 import wx
 
 from wxclaude.core.claude.events import PermissionRequest
-from wxclaude.core.claude.permissions import Choice, Decision, describe_request
+from wxclaude.core.claude.permissions import Choice, Decision, describe_request, is_plan_request
 from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
 
@@ -19,7 +19,8 @@ class PermissionDialog(wx.Dialog):
     """
 
     def __init__(self, parent: wx.Window, request: PermissionRequest, wait_text: str = "") -> None:
-        super().__init__(parent, title=_("Claude asks for permission"))
+        title = _("Claude proposes a plan") if is_plan_request(request) else None
+        super().__init__(parent, title=title or _("Claude asks for permission"))
         self._answer = wx.ID_NO
         # Each label is created right before its control so that screen readers pair them.
         request_text = _("&Request")

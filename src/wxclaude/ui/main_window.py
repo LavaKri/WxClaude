@@ -11,6 +11,7 @@ from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.shortcuts import (
+    AGENT_COMMAND,
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
     ConfigurableCommand,
@@ -134,7 +135,11 @@ class MainWindow(wx.Frame):
         )
         self._apply_claude_path()
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
-        self._prompt = PromptField(panel)
+        self._prompt = PromptField(
+            panel,
+            on_agent=lambda: self._conversations.choose_agent(),
+            agent_shortcut=lambda: self._settings.shortcut_for(AGENT_COMMAND),
+        )
         self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
 
         self._send_button = wx.Button(panel)  # the labels come from the shortcuts, see
