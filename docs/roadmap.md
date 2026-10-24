@@ -12,16 +12,21 @@ shown, the session file of the CLI is the reference for the history, the permiss
 Claude are asked to the user (two channels, chosen in Preferences > Claude: the stdio protocol and
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
-shown in dialogs; a conversation can be branched and deleted. 553 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and
-`mypy src tests`.
+shown in dialogs; a conversation can be branched and deleted; the usage dialog ends with the
+statistics of the whole workspace, and a line under each answer sums up its tools. 665 tests
+pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question, the expiry of the hook), the allow / ask / deny rules of
 `.claude/settings.local.json`, and the `rate_limit_event` and `result` lines that feed the usage
 dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`):
-the new list *Interface type* and spin control of Preferences > Claude, and the *Plan* dialog.
+the new list *Interface type* and spin control of Preferences > Claude, the *Plan* dialog, the
+statistics lines of *Claude usage* (numbers written short), the line that sums up the tools under
+the answers with its check item, and *Preferences* now in the File menu.
 
-Last work, in order: the permission channels (`PermissionChannel`, the HTTP hook, the choice in the
+Last work, in order (most recent first): the line that sums up the tools under the answers;
+*Preferences* moved to the File menu, above Quit; the numbers of tokens written short; the
+statistics of the workspace; branch and delete a conversation; the permission channels (`PermissionChannel`, the HTTP hook, the choice in the
 Preferences, *Tools > Plan…*); the announcement categories (a destination each, Preferences >
 Screen reader, two sounds); the MVP structure; the names of the conversations taken from the CLI
 sessions; the version setup; the help pages; and the **reading of the gauges with `/usage`** (at
@@ -70,6 +75,12 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
   interface of the CLI; no structured question, no plan approval, the CLI stops waiting after
   the waiting time). A conversation can switch at any time. Details and test results in
   `claude-cli.md`, "Permission channels"; the other ways that were considered are listed there.
+- **Statistics of the workspace** live in a ledger of ours, not in the files of Claude Code (a
+  deleted conversation takes its totals with it, a branch holds those of its parent). The time is
+  the time of work, without the user's answers to permission questions (`claude-cli.md`, "The
+  stream"); there is no reset. The numbers of tokens are exact up to 999999, then `1,5 million`,
+  `721 millions`, `1,2 milliard`, `12 milliards`.
+- **The help is not changed unless the user asks** (`MakeHelp/` and the pages built from it).
 - **One instance** of WxClaude per user; a second launch brings the first window to the front.
 - **Names of conversations** are the names of the sessions, kept by the CLI: `--name` with the first
   message, `/rename` afterwards (`claude-cli.md`). WxClaude stores no name and never writes the
@@ -138,6 +149,14 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
    grouped by subject: `claude/`, `conversation/`, `config/`, `speech/`.
 9. **Branch and delete**: a branch made with `--fork-session` at its first message, and *Delete
    the conversation*, which moves its files to the Recycle Bin. Export was already there.
+10. **Statistics of the workspace**: a ledger per workspace (`workspace_stats.py`) that counts
+    every finished message (messages, conversations, tokens, time of work without the waits for
+    permission questions, cost, split by model) and keeps what deleted conversations used; the
+    conversations that exist are counted once at the first use. Shown at the end of *Claude usage*,
+    where every number of tokens is written short (`numbers.py`).
+11. **Summary of the tools under the answers** (`tool_summary.py`): one line under each answer that
+    used tools, shown or hidden by a check item of the Conversation menu (`settings.md`,
+    `show_tools_summary`). *Preferences* is in the File menu, above Quit.
 
 ## Next milestones
 

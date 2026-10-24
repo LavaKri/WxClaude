@@ -15,6 +15,11 @@ First version: the application works from end to end.
   allow" rules written in `.claude/settings.local.json`, and an editor of the permission rules of
   the workspace.
 - Agents (model, effort, permission mode) with an alternative agent for a second send button.
+- Statistics of the whole workspace at the end of the usage dialog: messages, conversations,
+  tokens, time of work, cost and split by model, deleted conversations included. The numbers
+  of tokens are written short above a million (1,5 million, 12 milliards).
+- A line under each answer that used tools sums them up (commands run, files modified and
+  read, other tools, failures); an item of the Conversation menu shows or hides it.
 - Details of a message in dialogs (tools, tables, links, copy of a message or of an exchange), task
   list, plans and usage of the subscription.
 - Announcements in categories with a destination each (nothing, message, line, dialog box, two
