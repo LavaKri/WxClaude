@@ -154,8 +154,14 @@ class UsageTracker:
         if self.status and self.status != "allowed":
             lines.append(_("Limit status: {status}.").format(status=self.status))
         if self.gauges_at is not None:
-            when = _when(self.gauges_at, now)
-            lines.append(_("Gauges updated at {when}.").format(when=when))
+            lines.append(
+                _at_or_on(
+                    self.gauges_at,
+                    now,
+                    _("Gauges updated at {when}."),
+                    _("Gauges updated on {when}."),
+                )
+            )
         return lines
 
     def _turn_lines(self) -> list[str]:
@@ -190,11 +196,12 @@ def _percent(window: RateWindow | None) -> int | None:
     return round(window.utilization * 100)
 
 
-def _when(moment: datetime, now: datetime) -> str:
-    """A time of the day for today, else the date and the time."""
+def _at_or_on(moment: datetime, now: datetime, at_text: str, on_text: str) -> str:
+    """``at_text`` with the time for a moment of today ("at 16:00"), else ``on_text`` with the date
+    and the time ("on 2026-10-22 08:00"): each text has a ``{when}`` field."""
     if moment.date() == now.date():
-        return moment.strftime("%H:%M")
-    return moment.strftime("%Y-%m-%d %H:%M")
+        return at_text.format(when=moment.strftime("%H:%M"))
+    return on_text.format(when=moment.strftime("%Y-%m-%d %H:%M"))
 
 
 def _window_line(window: RateWindow, now: datetime) -> str:
@@ -203,8 +210,14 @@ def _window_line(window: RateWindow, now: datetime) -> str:
     if window.utilization is not None:
         parts.append(_("{percent} % used").format(percent=round(window.utilization * 100)))
     if window.resets_at is not None:
-        reset = _when(datetime.fromtimestamp(window.resets_at), now)
-        parts.append(_("resets at {when}").format(when=reset))
+        parts.append(
+            _at_or_on(
+                datetime.fromtimestamp(window.resets_at),
+                now,
+                _("resets at {when}"),
+                _("resets on {when}"),
+            )
+        )
     return ", ".join(parts) + "."
 
 

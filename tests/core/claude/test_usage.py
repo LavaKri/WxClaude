@@ -39,7 +39,7 @@ def test_the_gauges_say_how_full_they_are_and_when_they_reset() -> None:
     )
     assert tracker.lines(NOW)[:3] == [
         "5-hour window, 74 % used, resets at 16:00.",
-        "weekly window, 24 % used, resets at 2026-10-22 08:00.",
+        "weekly window, 24 % used, resets on 2026-10-22 08:00.",
         "Gauges updated at 14:30.",
     ]
 

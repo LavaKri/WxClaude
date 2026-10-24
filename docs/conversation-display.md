@@ -119,7 +119,8 @@ view (`focus.md`).
   Claude works on (`interface.md`, "Step"), the third holds the last announcement.
 - **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
   field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
-  used, resets at 16:00`, from the `rate_limit_event` lines; the time alone for today, else date and
+  used, resets at 16:00`, from the `rate_limit_event` lines; "at" and the time alone for today,
+  else "on" ("le" in French) and the date and
   time), the limit status when it is not `allowed`, when the gauges were updated, then the tokens, the cost at
   list price, the duration and the turns of the last message, and the totals of the conversation
   since it was opened in WxClaude (sum of the `result` lines received; they start again when another

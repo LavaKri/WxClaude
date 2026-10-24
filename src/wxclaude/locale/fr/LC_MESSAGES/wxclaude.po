@@ -1011,11 +1011,17 @@ msgstr "État de la limite : {status}."
 msgid "Gauges updated at {when}."
 msgstr "Jauges mises à jour à {when}."
 
+msgid "Gauges updated on {when}."
+msgstr "Jauges mises à jour le {when}."
+
 msgid "{percent} % used"
 msgstr "{percent} % utilisés"
 
 msgid "resets at {when}"
 msgstr "se réinitialise à {when}"
+
+msgid "resets on {when}"
+msgstr "se réinitialise le {when}"
 
 msgid "No message sent yet in this conversation since it was opened here."
 msgstr "Aucun message envoyé dans cette conversation depuis qu'elle est ouverte ici."
