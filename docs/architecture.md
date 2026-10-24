@@ -127,6 +127,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
 | `numbers.py` | `format_tokens`: a number of tokens written exact up to 999999, then rounded (`1,5 million`, `721 millions`, `12 milliards`), with the decimal mark and the plural of the language. |
 | `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
+| `diagnostics.py` | The log file: set-up, start-up report, uncaught errors of every thread and native crashes. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
 | `help.py` | `help_page`: the HTML help page of a language in `wxclaude/help` (English as fallback), opened as it is by the browser. |
 

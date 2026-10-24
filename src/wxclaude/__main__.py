@@ -1,8 +1,18 @@
 """Application entry point: ``python -m wxclaude``."""
 
+import argparse
+import sys
+from pathlib import Path
+
 import wx
 
 from wxclaude.core.config.settings import Settings, default_settings_path
+from wxclaude.core.diagnostics import (
+    DEFAULT_LOG_LEVEL,
+    LOG_LEVELS,
+    configure_logging,
+    log_startup,
+)
 from wxclaude.core.errors import JsonStoreError
 from wxclaude.i18n import _, install
 from wxclaude.ui.main_window import MainWindow
@@ -15,8 +25,16 @@ from wxclaude.ui.single_instance import (
 from wxclaude.ui.wx_locale import init_wx_locale
 
 
+def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
+    """Read the command line (only the level of the log for now)."""
+    parser = argparse.ArgumentParser(prog="WxClaude")
+    parser.add_argument("--log-level", choices=LOG_LEVELS, default=DEFAULT_LOG_LEVEL)
+    return parser.parse_args(argv)
+
+
 def main() -> int:
     """Create the wx application and run the event loop."""
+    arguments = parse_arguments()
     settings_file = default_settings_path()
     settings = Settings.load(settings_file)
     install(settings.language)
@@ -28,6 +46,8 @@ def main() -> int:
                 _("WxClaude is already running."), _("WxClaude"), wx.OK | wx.ICON_INFORMATION
             )
         return 1
+    configure_logging(settings_file.parent, arguments.log_level)
+    log_startup(settings_file.parent, Path(sys.executable), arguments.log_level)
     wx_locale = init_wx_locale(settings.language)  # must stay referenced while the app runs
     window = MainWindow(settings)
     window.Show()

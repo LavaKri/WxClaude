@@ -39,7 +39,7 @@ Dans le mode de permission *Ne pas demander*, rien n'est demandé, quel que soit
 
 ### Espaces de travail
 
-Un espace de travail est un dossier de travail. Claude y travaille et en lit les fichiers.
+Un espace de travail est simplement un dossier de travail. Claude y travaille et en lit les fichiers.
 
 - Fichier > Ouvrir depuis les projets Claude liste les dossiers déjà utilisés avec Claude Code.
 - Au démarrage, le dernier espace de travail est rouvert. Vous pouvez le désactiver dans les Préférences, page Général.
@@ -50,7 +50,7 @@ Un espace de travail est un dossier de travail. Claude y travaille et en lit les
 Une conversation appartient toujours à un espace de travail. Ouvrir un espace de travail charge sa conversation mémorisée, sinon la plus récente. Une conversation n'est jamais créée automatiquement.
 
 - Conversation > Reprendre une conversation liste celles de l'espace de travail, la plus récente d'abord.
-- Conversation > Actualiser la conversation relit le fichier de session.
+- Conversation > Actualiser la conversation relit le fichier de session. 
 - Conversation > Nouvelle branche de conversation copie la conversation sous un autre nom. Le texte reste affiché. La copie est faite par Claude Code avec le premier message de la branche ; la conversation d'origine ne change pas.
 - Conversation > Supprimer la conversation met à la Corbeille de Windows ce que Claude Code garde de la conversation, après confirmation. Vous pouvez la récupérer depuis la Corbeille.
 

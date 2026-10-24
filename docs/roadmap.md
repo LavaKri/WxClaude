@@ -161,8 +161,9 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 ## Next milestones
 
 
-7. **Packaging** (PyInstaller; the translations `.mo` and `data/tools.txt` are package data) and
-   manual checks with NVDA and JAWS.
+7. **Packaging**: `build.bat` builds `dist\WxClaude` (one folder, no console) from
+   `packaging/WxClaude.spec`; it works and starts. Left: the zip, the icon, and the manual checks
+   with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
    settings, the tools announced by the CLI added to the list, and the other settings of the
    `.claude` files.

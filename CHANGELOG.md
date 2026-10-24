@@ -20,6 +20,7 @@ First version: the application works from end to end.
   of tokens are written short above a million (1,5 million, 12 milliards).
 - A line under each answer that used tools sums them up (commands run, files modified and
   read, other tools, failures); an item of the Conversation menu shows or hides it.
+- A log file of the errors, written with the other data files of WxClaude.
 - Details of a message in dialogs (tools, tables, links, copy of a message or of an exchange), task
   list, plans and usage of the subscription.
 - Announcements in categories with a destination each (nothing, message, line, dialog box, two

@@ -110,6 +110,10 @@ the file it belongs to and delete it from this one.
   thread removes the risk; the `RunnerError` of `allow` and `deny` would then come back with
   `wx.CallAfter` instead of being raised on the spot. The hook channel does no input or output in
   the window thread: the window thread only hands the decision to the thread of the HTTP handler.
+- **Reach the log from the application.** The log file (errors and a few events, next to the other
+  data files of WxClaude) is only found by hand. To decide: a menu item in Help that opens the
+  folder of the log, and a "Copy the details" button in the dialog of an unexpected error. Both
+  touch the interface, the translations and the accessibility checks.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
 - The managed settings of an organization (`managed-settings.json`, MDM, server) are not read; they
   have the highest priority and could be shown read only like the general file (Windows path to
