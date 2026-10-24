@@ -138,7 +138,7 @@ class _Builder:
                 id=str(entry.get("uuid") or len(self.session.messages)),
                 role=Role.USER,
                 text=text,
-                hidden=text.lower() == _NOISE_PROMPT,
+                hidden=text.lower() == _NOISE_PROMPT or bool(entry.get("isCompactSummary")),
             )
         )
 

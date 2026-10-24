@@ -178,7 +178,10 @@ the entries instead. One JSON object per line; interesting entries have `type` `
   `perTurnEffort` (`low`, `medium`, ... as seen on the existing sessions). Since the alternative agent may have sent the message, the effort of the last
   answer does not tell which agent is the conversation's: WxClaude remembers the main agent itself.
 - Identical consecutive assistant entries exist: remove duplicates.
-- Noise to hide: the answer "No response requested." and the prompt "continue".
+- Noise to hide: the answer "No response requested.", the prompt "continue" and the summary written
+  when the CLI compacts the conversation (a `user` entry with `isCompactSummary`, preceded by a
+  `system` entry of subtype `compact_boundary` whose `compactMetadata` gives `trigger`, `preTokens`,
+  `postTokens` and `durationMs`; seen in a real session).
 - Messages whose model is `<synthetic>` can carry real information (for example the message that
   a usage limit was reached); keep them, they have no model and no effort.
 - A user entry holding only a `tool_result` has no text of its own.

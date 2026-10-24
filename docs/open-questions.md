@@ -114,6 +114,23 @@ the file it belongs to and delete it from this one.
   data files of WxClaude) is only found by hand. To decide: a menu item in Help that opens the
   folder of the log, and a "Copy the details" button in the dialog of an unexpected error. Both
   touch the interface, the translations and the accessibility checks.
+- **Structured questions of Claude** (`AskUserQuestion`): the dialog is written and tested with the fake
+  `claude`, and the real CLI (stdio channel, `haiku`, `low`) was tried: a free text answer and a multiple
+  choice joined with ", " came back to Claude as given (`Database: MariaDB (my own), Extras: Cache,
+  Queue.`), and a refusal made Claude say the action was denied. Still to check with NVDA and JAWS (lists,
+  check boxes, the message when a question is left unanswered).
+- **Tell the user when Claude compacts the conversation.** The summary is hidden, but the user learns
+  nothing: after a compaction Claude keeps only a summary and may have lost details, and a new
+  conversation or a branch could be better. The session file has a `system` entry of subtype
+  `compact_boundary` just before the summary (`compactMetadata`: `trigger` `auto` or `manual`,
+  `preTokens`, `postTokens`, `durationMs`; seen in a real session, ignored by the reader). Proposed:
+  (1) in the conversation, a short line written by WxClaude where the summary was, for example
+  "Conversation compacted (automatic): 362,766 tokens reduced to 76,351. Claude may have lost details;
+  consider a new conversation or a branch.", always shown (it is information, not noise); (2) a live
+  announcement when the event arrives during an answer, in a category of the Announcements page. To
+  check with the real CLI before (2): that the stream of `-p` carries the same `compact_boundary` event
+  (`/compact` or a full context), and its fields. To decide: the wording, and whether the advice about
+  a new conversation is part of the text.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
 - The managed settings of an organization (`managed-settings.json`, MDM, server) are not read; they
   have the highest priority and could be shown read only like the general file (Windows path to

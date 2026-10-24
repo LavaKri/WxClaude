@@ -62,3 +62,18 @@ def test_always_allow_is_only_offered_with_a_rule(wx_app: wx.App) -> None:
         plain.Destroy()
         offered.Destroy()
         wx.SafeYield()
+
+
+def test_the_waiting_time_is_the_first_line_of_the_request(wx_app: wx.App) -> None:
+    dialog = PermissionDialog(
+        None, REQUEST, "Without an answer by 13:59 (10 min), Claude denies it."
+    )
+    lines = dialog._request.GetValue().split("\n")
+    assert lines[0] == "Without an answer by 13:59 (10 min), Claude denies it."
+    assert lines[1] == "Tool: Bash"
+    dialog.Destroy()
+    wx.SafeYield()
+
+
+def test_without_a_waiting_time_the_request_starts_with_the_tool(dialog: PermissionDialog) -> None:
+    assert dialog._request.GetValue().startswith("Tool: Bash")

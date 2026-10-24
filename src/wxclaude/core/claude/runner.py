@@ -36,6 +36,7 @@ from wxclaude.core.claude.permission_channel import (
     make_channel,
 )
 from wxclaude.core.claude.process_input import ProcessInput
+from wxclaude.core.claude.questions import answered_input
 from wxclaude.core.claude.stream import parse_stream_line
 from wxclaude.core.claude.usage_text import parse_usage
 from wxclaude.core.config.agents import Agent
@@ -299,6 +300,15 @@ class ClaudeRunner:
     def allow(self, request: PermissionRequest) -> None:
         """Let the tool of ``request`` run. Raises ``RunnerError`` if Claude is no longer there."""
         self._answer(request, {"behavior": "allow", "updatedInput": request.input})
+
+    def answer_questions(self, request: PermissionRequest, answers: dict[str, list[str]]) -> None:
+        """Answer the structured questions of ``request`` (``questions.py``): the labels chosen
+        for each question. Raises ``RunnerError`` if Claude is no longer there."""
+        body: dict[str, object] = {
+            "behavior": "allow",
+            "updatedInput": answered_input(request, answers),
+        }
+        self._answer(request, body)
 
     def deny(self, request: PermissionRequest, message: str) -> None:
         """Refuse the tool of ``request``; ``message`` is what Claude is told (the explanation)."""

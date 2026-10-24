@@ -25,8 +25,10 @@ from wxclaude.core.claude.events import (
     TurnResult,
 )
 from wxclaude.core.claude.gauge_schedule import GaugeSchedule
-from wxclaude.core.claude.permissions import Choice, Decision
+from wxclaude.core.claude.permission_channel import HOOK
+from wxclaude.core.claude.permissions import Choice, Decision, hook_wait_text
 from wxclaude.core.claude.progress import Outcome, Progress, progress_for, turn_outcome
+from wxclaude.core.claude.questions import Question, is_question, parse_questions
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import started_task_id, step_of
 from wxclaude.core.claude.usage import GaugeAlerts
@@ -64,8 +66,14 @@ class RunView(Protocol):
         """The messages of the session file, the reference once the turn is over."""
         ...
 
-    def ask_permission(self, request: PermissionRequest) -> Decision:
-        """Ask the user; closing the question without answering is a denial."""
+    def ask_permission(self, request: PermissionRequest, wait_text: str = "") -> Decision:
+        """Ask the user; ``wait_text`` tells until when the CLI waits (hook channel, else '').
+        Closing the question without answering is a denial."""
+        ...
+
+    def ask_questions(self, questions: list[Question]) -> dict[str, list[str]] | None:
+        """Ask the structured questions of Claude: the labels chosen for each question (by its
+        text), None if the user refused to answer."""
         ...
 
     def close_permission(self, request_id: str) -> None:
@@ -313,14 +321,20 @@ class RunPresenter:
         return True
 
     def _on_permission_request(self, request: PermissionRequest) -> None:
-        """Claude asks before running a tool: a rule allowed earlier in this message, else ask."""
+        """Claude asks before running a tool: a rule allowed earlier in this message, else ask.
+        Its structured questions have a dialog of their own."""
+        if is_question(request):
+            questions = parse_questions(request)
+            if questions:
+                self._on_questions(request, questions)
+                return
         rule = request.suggested_rule
         if rule and rule in self._turn_allowed:
             decision = Decision(Choice.ALLOW)
         else:
             self._view.say(Announce.PERMISSION_ASKED, tool=request.tool_name)
             with self._stats.waiting():
-                decision = self._view.ask_permission(request)
+                decision = self._view.ask_permission(request, self._wait_text())
             if request.request_id in self._expired:
                 return  # the CLI stopped waiting while the question was open: nothing to answer
         try:
@@ -334,6 +348,29 @@ class RunPresenter:
             self._view.say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
         except RunnerError as error:
             self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
+
+    def _on_questions(self, request: PermissionRequest, questions: list[Question]) -> None:
+        """Claude has questions: ask them, give the answers back (or refuse to answer)."""
+        self._view.say(Announce.QUESTION_ASKED)
+        with self._stats.waiting():
+            answers = self._view.ask_questions(questions)
+        if request.request_id in self._expired:
+            return  # the CLI stopped waiting while the questions were open
+        try:
+            if answers is None:
+                self.runner.deny(request, Decision(Choice.DENY).denial_message())
+                self._view.say(Announce.PERMISSION_REFUSED, tool=request.tool_name)
+                return
+            self.runner.answer_questions(request, answers)
+            self._view.say(Announce.QUESTION_ANSWERED)
+        except RunnerError as error:
+            self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
+
+    def _wait_text(self) -> str:
+        """With the hook channel the CLI stops waiting after a while: say when."""
+        if self.runner.permission_channel != HOOK:
+            return ""
+        return hook_wait_text(datetime.now(), self.runner.hook_timeout_seconds // 60)
 
     def _remember_always_allowed(self, rule: str) -> None:
         """Write the rule in the personal settings file, and keep it for the rest of the message."""

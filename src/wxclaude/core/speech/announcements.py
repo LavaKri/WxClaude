@@ -171,6 +171,8 @@ class Announce(enum.Enum):
     CLAUDE_DONE = (END_OF_ANSWER, N_("Claude has answered."))
     CLAUDE_INTERRUPTED = (END_OF_ANSWER, N_("Claude was interrupted."))
     PERMISSION_ASKED = (PERMISSION_QUESTION, N_("Claude asks permission for the tool {tool}."))
+    QUESTION_ASKED = (PERMISSION_QUESTION, N_("Claude has questions for you."))
+    QUESTION_ANSWERED = (PERMISSION_ANSWER, N_("Your answers were sent to Claude."))
     PERMISSION_GRANTED = (PERMISSION_ANSWER, N_("Permission granted for the tool {tool}."))
     PERMISSION_REFUSED = (PERMISSION_ANSWER, N_("Permission refused for the tool {tool}."))
     PERMISSION_EXPIRED = (

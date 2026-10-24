@@ -10,6 +10,9 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
   the tool result), unless ``.claude/settings.local.json`` already allows ``Bash(touch fake.txt)``.
   With ``--settings`` (a PermissionRequest hook of type http) the question is a POST to the URL of
   the hook and the response decides, with the same results;
+- ``question``: like ``ok`` but the tool call is ``AskUserQuestion``: a ``control_request`` with two
+  questions is sent and the tool result is what the CLI says of the ``answers`` read back
+  (``Your questions have been answered: "<question>"="<label>"``, or a plain denial message);
 - ``error``: a result with ``is_error`` and exit code 1;
 - ``crash``: nothing on stdout, a message on stderr, exit code 2;
 - ``garbage``: a line that is not JSON, then like ``ok``;
@@ -244,6 +247,51 @@ def ask_permission(log: str | None) -> tuple[bool, str]:
     return False, str(body.get("message", ""))
 
 
+QUESTIONS = [
+    {
+        "question": "Which database?",
+        "header": "Database",
+        "options": [
+            {"label": "SQLite", "description": "A file"},
+            {"label": "Postgres", "description": "A server"},
+        ],
+        "multiSelect": False,
+    },
+    {
+        "question": "Which extras?",
+        "header": "Extras",
+        "options": [{"label": "Cache", "description": ""}, {"label": "Queue", "description": ""}],
+        "multiSelect": True,
+    },
+]
+
+
+def ask_question(log: str | None) -> tuple[bool, str]:
+    """Send a structured question (stdio channel): (answered, the tool result of the CLI)."""
+    emit(
+        {
+            "type": "control_request",
+            "request_id": "req-q",
+            "request": {
+                "subtype": "can_use_tool",
+                "tool_name": "AskUserQuestion",
+                "input": {"questions": QUESTIONS},
+                "tool_use_id": "t1",
+            },
+        }
+    )
+    line = sys.stdin.buffer.readline().decode("utf-8")
+    if log:
+        with Path(log + ".responses").open("a", encoding="utf-8") as file:
+            file.write(line)
+    body = json.loads(line)["response"]["response"]
+    if body["behavior"] != "allow":
+        return False, str(body.get("message", ""))
+    answers = body.get("updatedInput", {}).get("answers", {})
+    said = ", ".join(f'"{question}"="{label}"' for question, label in answers.items())
+    return True, f"Your questions have been answered: {said}"
+
+
 def write_title(session_id: str, name: str) -> None:
     """Append a ``custom-title`` entry to the session file, like ``--name`` and ``/rename``."""
     config = os.environ.get("CLAUDE_CONFIG_DIR")
@@ -366,6 +414,9 @@ def main() -> int:
     tool_result, tool_error = "x", False
     if scenario == "permission" and not rule_allowed():
         allowed, tool_result = ask_permission(log)
+        tool_error = not allowed
+    if scenario == "question":
+        allowed, tool_result = ask_question(log)
         tool_error = not allowed
     if scenario == "denied":
         emit(

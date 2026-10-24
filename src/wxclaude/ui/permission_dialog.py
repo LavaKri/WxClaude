@@ -14,10 +14,11 @@ class PermissionDialog(wx.Dialog):
     """Shows what Claude wants to do. Esc and closing the window mean *Deny*.
 
     The initial focus is on the description of the request, so a screen reader reads it first and a
-    stray Enter does nothing; the buttons are one Tab away.
+    stray Enter does nothing; the buttons are one Tab away. ``wait_text`` (hook channel only) is the
+    first line of the description: until when the CLI waits for the answer.
     """
 
-    def __init__(self, parent: wx.Window, request: PermissionRequest) -> None:
+    def __init__(self, parent: wx.Window, request: PermissionRequest, wait_text: str = "") -> None:
         super().__init__(parent, title=_("Claude asks for permission"))
         self._answer = wx.ID_NO
         # Each label is created right before its control so that screen readers pair them.
@@ -25,7 +26,7 @@ class PermissionDialog(wx.Dialog):
         request_label = wx.StaticText(self, label=request_text)
         self._request = wx.TextCtrl(
             self,
-            value=describe_request(request),
+            value="\n".join(filter(None, [wait_text, describe_request(request)])),
             style=wx.TE_MULTILINE | wx.TE_READONLY,
             name=accessible_name(request_text),
         )

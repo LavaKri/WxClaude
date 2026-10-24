@@ -100,7 +100,20 @@ denied without a question (a *deny* rule, or the `dontAsk` mode) is only shown a
 With the HTTP hook channel (Preferences, Claude), the CLI stops waiting after the waiting time
 and denies the tool: if the dialog is still open it is closed, and "The question about the tool ...
 expired: Claude denied the tool." is announced. A tool refused by the user's own answer is announced
-once ("Permission refused ...", not "Permission denied ..." as well).
+once ("Permission refused ...", not "Permission denied ..." as well). With this channel the first line of
+the request field says until when the CLI waits: "Without an answer by 13:59 (10 min), Claude denies
+the tool." (the time of the question plus the waiting time; no such line with the stdio channel).
+
+The structured questions of Claude (`AskUserQuestion`, stdio channel only) are read by
+`core/claude/questions.py` and answered by `ClaudeRunner.answer_questions` (the labels chosen for
+each question, several joined with ", "). Their dialog (`ui/question_dialog.py`, "Claude asks you") has,
+for each question, a label made of its header and its text, the list of its choices (`label: description`) as check boxes (Space checks, which the screen reader says; with a single answer allowed, checking a line unchecks the others) and a text field "Your own answer, if none of the choices
+fits", which replaces the choice when it is filled. Nothing is chosen at first, the first list has the
+initial focus. *Send* needs an answer to every question (else a message and the focus on the first one
+left), *Deny* and Esc refuse (Claude is told the user denied the action). It is announced ("Claude has
+questions for you.", category *Question of permission*) and the sending of the answers too ("Your answers
+were sent to Claude.", category *Answer to a permission*). Questions that cannot be read are asked as an
+ordinary request.
 
 ## Workspace settings
 
@@ -236,7 +249,7 @@ effort or the permission mode does not.
   greyed with the stdio protocol. What the HTTP hook cannot do is in `claude-cli.md`,
   "Permission channels".
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
-  a session, such as the answer "No response requested.", is not displayed; change the tools only
+  a session, such as the answer "No response requested." or the summary of a compaction, is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).
 - **Agent**: list of the two agents, their fields, the implication of each permission level and the
   cache notice.

@@ -6,11 +6,13 @@ import wx
 
 from wxclaude.core.claude.events import PermissionRequest, RunEvent
 from wxclaude.core.claude.permissions import Decision
+from wxclaude.core.claude.questions import Question
 from wxclaude.core.conversation.messages import Message
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.permission_dialog import PermissionDialog
+from wxclaude.ui.question_dialog import QuestionDialog
 
 
 class WxRunView:
@@ -40,9 +42,9 @@ class WxRunView:
         else:
             view.replace_messages(messages)
 
-    def ask_permission(self, request: PermissionRequest) -> Decision:
+    def ask_permission(self, request: PermissionRequest, wait_text: str = "") -> Decision:
         """Show the question; closing the dialog without answering is a denial."""
-        with PermissionDialog(self._parent, request) as dialog:
+        with PermissionDialog(self._parent, request, wait_text) as dialog:
             self._open_question = (request, dialog)
             try:
                 self._feedback.modal(dialog)
@@ -50,6 +52,15 @@ class WxRunView:
                 self._open_question = None
             decision: Decision = dialog.decision
         return decision
+
+    def ask_questions(self, questions: list[Question]) -> dict[str, list[str]] | None:
+        """Show the questions of Claude; None if the user refused to answer."""
+        with QuestionDialog(self._parent, questions) as dialog:
+            self._feedback.modal(dialog)
+            if not dialog.sent:
+                return None
+            answers: dict[str, list[str]] = dialog.answers
+        return answers
 
     def close_permission(self, request_id: str) -> None:
         question = self._open_question

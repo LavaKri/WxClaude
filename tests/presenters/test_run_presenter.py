@@ -1,5 +1,6 @@
 """The presenter of a message sent to Claude, with a fake view: no wx, no window."""
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from wxclaude.core.claude.events import (
     TurnResult,
 )
 from wxclaude.core.claude.permissions import Choice, Decision
+from wxclaude.core.claude.questions import Question
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import Task
 from wxclaude.core.claude.usage import UsageTracker
@@ -46,9 +48,12 @@ class FakeView:
         self.steps: list[str] = []
         self.errors: list[str] = []
         self.asked: list[PermissionRequest] = []
+        self.waits: list[str] = []  # the waiting text given with each question
         self.closed: list[str] = []
         self.sessions: list[list[Message]] = []
         self._decisions = list(decisions)
+        self.questions: list[list[Question]] = []  # the structured questions asked
+        self.question_answers: dict[str, list[str]] | None = None  # what the user answers
 
     def call_after(self, function: Callable[[RunEvent], None], event: RunEvent) -> None:
         function(event)
@@ -59,9 +64,14 @@ class FakeView:
     def show_session(self, messages: list[Message]) -> None:
         self.sessions.append(messages)
 
-    def ask_permission(self, request: PermissionRequest) -> Decision:
+    def ask_permission(self, request: PermissionRequest, wait_text: str = "") -> Decision:
         self.asked.append(request)
+        self.waits.append(wait_text)
         return self._decisions.pop(0)
+
+    def ask_questions(self, questions: list[Question]) -> dict[str, list[str]] | None:
+        self.questions.append(questions)
+        return self.question_answers
 
     def close_permission(self, request_id: str) -> None:
         self.closed.append(request_id)
@@ -89,12 +99,16 @@ class FakeRunner(ClaudeRunner):
         super().__init__()
         self.answers: list[tuple[str, str]] = []
         self.requests: list[RunRequest] = []
+        self.answered: list[dict[str, list[str]]] = []  # answers to structured questions
 
     def start(self, request: RunRequest, on_event: Callable[[RunEvent], None]) -> None:
         self.requests.append(request)
 
     def allow(self, request: PermissionRequest) -> None:
         self.answers.append(("allow", request.request_id))
+
+    def answer_questions(self, request: PermissionRequest, answers: dict[str, list[str]]) -> None:
+        self.answered.append(answers)
 
     def deny(self, request: PermissionRequest, message: str) -> None:
         self.answers.append(("deny", message))
@@ -231,7 +245,7 @@ def test_an_expired_question_is_closed_and_not_answered(tmp_path: Path) -> None:
     presenter, runner = _presenter(view, tmp_path)
     request = PermissionRequest("r1", "Write", "t", {}, "", "", "")
 
-    def ask(asked: PermissionRequest) -> Decision:
+    def ask(asked: PermissionRequest, _wait: str = "") -> Decision:
         presenter.on_event(PermissionExpired(asked.request_id, asked.tool_name))  # while open
         return Decision(Choice.ALLOW)
 
@@ -329,9 +343,9 @@ def test_the_time_spent_answering_a_permission_question_is_taken_off_the_time_of
     presenter._stats._clock = clock  # the user takes 30 seconds to answer
     ask = view.ask_permission
 
-    def slow_ask(request: PermissionRequest) -> Decision:
+    def slow_ask(request: PermissionRequest, wait_text: str = "") -> Decision:
         clock.seconds += 30
-        return ask(request)
+        return ask(request, wait_text)
 
     view.ask_permission = slow_ask  # type: ignore[method-assign]
     presenter.start("hello", Settings.load(None).default_agent)
@@ -346,3 +360,67 @@ def test_an_interrupted_message_has_no_result_and_is_not_counted(tmp_path: Path)
     presenter.start("hello", Settings.load(None).default_agent)
     presenter.on_event(TurnEnded(1, True, "", []))
     assert stats.messages == 0
+
+
+def test_a_question_comes_with_no_waiting_time_through_stdio(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.ALLOW))
+    presenter, _runner = _presenter(view, tmp_path)
+    presenter.on_event(PermissionRequest("r1", "Bash", "t", {}, "", "", ""))
+    assert view.waits == [""]
+
+
+def test_a_question_through_the_hook_tells_when_the_cli_stops_waiting(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.ALLOW))
+    presenter, runner = _presenter(view, tmp_path)
+    runner.permission_channel = "hook"
+    runner.hook_timeout_seconds = 600
+    presenter.on_event(PermissionRequest("r1", "Bash", "t", {}, "", "", ""))
+    (wait,) = view.waits
+    assert re.fullmatch(
+        r"Without an answer by \d\d:\d\d \(10 min\), Claude denies the tool\.", wait
+    )
+
+
+QUESTION_INPUT: dict[str, object] = {
+    "questions": [
+        {
+            "question": "Which database?",
+            "header": "Database",
+            "options": [{"label": "SQLite", "description": "A file"}],
+        }
+    ]
+}
+
+
+def test_structured_questions_have_their_own_dialog_and_the_answers_go_back(
+    tmp_path: Path,
+) -> None:
+    view = FakeView()
+    view.question_answers = {"Which database?": ["SQLite"]}
+    presenter, runner = _presenter(view, tmp_path)
+    presenter.on_event(PermissionRequest("r1", "AskUserQuestion", "t", QUESTION_INPUT, "", "", ""))
+    assert view.asked == []  # not the permission dialog
+    (questions,) = view.questions
+    assert [question.text for question in questions] == ["Which database?"]
+    assert runner.answered == [{"Which database?": ["SQLite"]}]
+    assert view.announces() == [Announce.QUESTION_ASKED, Announce.QUESTION_ANSWERED]
+
+
+def test_refusing_the_structured_questions_denies_the_tool(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, runner = _presenter(view, tmp_path)  # question_answers is None: refused
+    presenter.on_event(PermissionRequest("r1", "AskUserQuestion", "t", QUESTION_INPUT, "", "", ""))
+    assert runner.answered == []
+    assert runner.answers == [("deny", "The user denied this action.")]
+    assert view.announces() == [Announce.QUESTION_ASKED, Announce.PERMISSION_REFUSED]
+
+
+def test_structured_questions_that_cannot_be_read_are_asked_as_a_request(tmp_path: Path) -> None:
+    view = FakeView(Decision(Choice.ALLOW))
+    presenter, runner = _presenter(view, tmp_path)
+    presenter.on_event(
+        PermissionRequest("r1", "AskUserQuestion", "t", {"questions": 3}, "", "", "")
+    )
+    assert len(view.asked) == 1
+    assert view.questions == []
+    assert runner.answers == [("allow", "r1")]

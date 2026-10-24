@@ -89,7 +89,8 @@ UTF-16 units, so convert between Python indexes and field positions (an emoji ta
   bisection (context menu, copy).
 - After each turn, the session file written by the CLI is read again; it is the reference. If the
   messages differ from what was appended, the field is rebuilt.
-- Hidden noise (the answer "No response requested.", the prompt "continue") is not displayed unless
+- Hidden noise (the answer "No response requested.", the prompt "continue", the summary of a
+  compaction) is not displayed unless
   the option "Hide the system messages" is cleared; the view keeps all the messages and rebuilds
   the text when the option changes, the caret staying on its message.
 

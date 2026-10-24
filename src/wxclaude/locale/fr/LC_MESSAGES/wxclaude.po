@@ -1202,3 +1202,27 @@ msgstr "Cellule vide"
 
 msgid "&Rows, column {number} of {count}: {header}"
 msgstr "&Lignes, colonne {number} sur {count} : {header}"
+
+msgid "Without an answer by {time} ({minutes} min), Claude denies the tool."
+msgstr "Sans réponse avant {time} ({minutes} min), Claude refusera l'outil."
+
+msgid "Claude asks you"
+msgstr "Claude vous pose des questions"
+
+msgid "{header}: {question}"
+msgstr "{header} : {question}"
+
+msgid "{label}: {description}"
+msgstr "{label} : {description}"
+
+msgid "Your own answer, if none of the choices fits"
+msgstr "Votre propre réponse, si aucun choix ne convient"
+
+msgid "Answer every question first."
+msgstr "Répondez d'abord à toutes les questions."
+
+msgid "Claude has questions for you."
+msgstr "Claude a des questions pour vous."
+
+msgid "Your answers were sent to Claude."
+msgstr "Vos réponses ont été envoyées à Claude."

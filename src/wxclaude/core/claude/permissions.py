@@ -8,6 +8,7 @@ with ``--allowedTools``), or denies it, with an explanation that Claude is told.
 import enum
 import json
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from wxclaude.core.claude.events import PermissionRequest
 from wxclaude.i18n import _
@@ -39,6 +40,15 @@ def _value_text(value: object) -> str:
     if isinstance(value, str):
         return value
     return json.dumps(value, ensure_ascii=False)
+
+
+def hook_wait_text(now: datetime, minutes: int) -> str:
+    """What the dialog says of the waiting time of the hook channel: the time at which the CLI
+    stops waiting and denies the tool, and the time it waits (``13:59 (10 min)``)."""
+    deadline = now + timedelta(minutes=minutes)
+    return _("Without an answer by {time} ({minutes} min), Claude denies the tool.").format(
+        time=deadline.strftime("%H:%M"), minutes=minutes
+    )
 
 
 def describe_request(request: PermissionRequest) -> str:

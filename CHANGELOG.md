@@ -23,6 +23,10 @@ First version: the application works from end to end.
 - Keys of the conversation: `H` for headings (`1` to `6` as before), `T` for tables, `L` for lists
   and `I` for the items of the list the caret is in, with Shift to go backwards; two announcement
   categories for them. `Space` on a line of a table shows the table.
+- The summary the CLI writes when it compacts a conversation is hidden with the other system messages.
+- A dialog for the structured questions of Claude: the choices of each question in a list of check
+  boxes (one answer at most when the question allows only one), an answer of one's own, Send and Deny.
+- With the HTTP hook channel, the permission question says until when Claude waits for the answer.
 - The table of a message is shown one column at a time: Left and Right change the column, and a field gives the cell.
 - A log file of the errors, written with the other data files of WxClaude.
 - Details of a message in dialogs (tools, tables, links, copy of a message or of an exchange), task

@@ -62,6 +62,14 @@ def test_noise_is_hidden(tmp_path: Path) -> None:
     assert [m.hidden for m in session.messages] == [True, True]
 
 
+def test_the_summary_of_a_compaction_is_hidden(tmp_path: Path) -> None:
+    summary = _user("This session is being continued...", isCompactSummary=True)
+    session = read_session(
+        _write(tmp_path / "s.jsonl", [_user("hello"), summary, _assistant([_text("Hi")])])
+    )
+    assert [m.hidden for m in session.messages] == [False, True, False]
+
+
 def test_synthetic_answers_are_kept_without_model(tmp_path: Path) -> None:
     session = read_session(
         _write(

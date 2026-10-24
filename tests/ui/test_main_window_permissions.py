@@ -30,7 +30,7 @@ def _permission_setup(
     asked: list[PermissionRequest] = []
     answers = list(decisions)
 
-    def ask(request: PermissionRequest) -> Decision:
+    def ask(request: PermissionRequest, _wait: str = "") -> Decision:
         asked.append(request)
         return answers.pop(0)
 
@@ -157,7 +157,7 @@ def test_a_question_that_expired_closes_its_dialog_and_is_not_answered(
     monkeypatch.setattr(run.runner, "deny", lambda *args: answers.append(args))
     monkeypatch.setattr(run.runner, "allow", lambda *args: answers.append(args))
     monkeypatch.setattr(
-        conversation._run_view, "ask_permission", lambda _request: Decision(Choice.DENY)
+        conversation._run_view, "ask_permission", lambda _request, _wait: Decision(Choice.DENY)
     )
     run._on_permission_request(request)
     assert answers == []

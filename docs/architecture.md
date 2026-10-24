@@ -170,6 +170,7 @@ line that sums up the tools, the context menu of a message. |
 | `workspace_settings_dialog.py` | Workspace settings: the permission rules of the `.claude` files (tab Tools). |
 | `agent_panel.py`, `agent_dialog.py` | The fields of an agent, and the dialog to modify the agent of the conversation. |
 | `permission_dialog.py` | The permission question of Claude. |
+| `question_dialog.py` | `QuestionDialog`: the structured questions of Claude (`core/claude/questions.py`), a list of choices and a field of one's own per question. |
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
 | `list_dialog.py` | `ListDialog(parent, spec, actions)`: a list of lines (from a `ListSpec`), the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
