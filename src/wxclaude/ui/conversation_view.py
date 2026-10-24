@@ -25,6 +25,7 @@ from wxclaude.core.conversation.headings import (
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _, ngettext
+from wxclaude.ui.menu_keys import is_menu_key, is_shift_f10
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
 _HEADING_KEY = ord("H")
@@ -62,15 +63,6 @@ def _arrival(kind: BlockKind, block: Block, line: str) -> tuple[Announce, dict[s
         items = ngettext("{count} item", "{count} items", block.count)
         return Announce.MOVED_LIST, {"items": items.format(count=block.count), "line": line}
     return Announce.MOVED, {"line": line}
-
-
-def _is_shift_f10(event: wx.KeyEvent) -> bool:
-    return event.GetKeyCode() == wx.WXK_F10 and event.ShiftDown() and not event.ControlDown()
-
-
-def _is_menu_key(event: wx.KeyEvent) -> bool:
-    """The keys that ask for a context menu: Applications, and Shift+F10."""
-    return event.GetKeyCode() == wx.WXK_WINDOWS_MENU or _is_shift_f10(event)
 
 
 class ConversationView(wx.TextCtrl):
@@ -140,6 +132,13 @@ class ConversationView(wx.TextCtrl):
         self._document.tools_summary = show
         self.replace_messages(self._messages)
 
+    def set_without_marks(self, without: bool) -> None:
+        """Remove (or show) the marks of bold and italic in the text; the caret stays."""
+        if without == self._document.without_marks:
+            return
+        self._document.without_marks = without
+        self.replace_messages(self._messages)
+
     def replace_messages(self, messages: list[Message]) -> None:
         """Show ``messages`` again; the caret stays on its message, at the same place in it (or at
         the end when it was at the end), and the focus is not touched."""
@@ -148,17 +147,37 @@ class ConversationView(wx.TextCtrl):
         span = self._document.span_at(caret)
         offset = caret - span.start if span is not None else 0
         at_end = caret >= len(text)
+        rank = self._rank_among_same_role(span) if span is not None else -1
         self._messages = list(messages)
         self.ChangeValue(self._document.rebuild(self._messages))
         new_text = self._document.text
         position = len(new_text) if at_end else 0
         new = None
         if span is not None and not at_end:
-            new = next((s for s in self._document.spans if s.message.id == span.message.id), None)
+            new = self._same_message(span, rank)
         if new is not None:
             position = new.start + min(offset, max(0, new.end - new.start - 1))
         self.SetInsertionPoint(to_utf16(new_text, position))
         self.report_position()
+
+    def _rank_among_same_role(self, span: MessageSpan) -> int:
+        """How many messages of the same role (prompts or answers) are shown before ``span``."""
+        return sum(
+            1
+            for s in self._document.spans
+            if s.message.role is span.message.role and s.start < span.start
+        )
+
+    def _same_message(self, old: MessageSpan, rank: int) -> MessageSpan | None:
+        """The message of the rebuilt text that ``old`` was. Messages shown live have identifiers of
+        their own and those read from the session file have the CLI's: when the identifier is gone,
+        it is the message with the same rank among those of its role."""
+        spans = self._document.spans
+        found = next((s for s in spans if s.message.id == old.message.id), None)
+        if found is not None:
+            return found
+        same_role = [s for s in spans if s.message.role is old.message.role]
+        return same_role[rank] if 0 <= rank < len(same_role) else None
 
     def append_message(self, message: Message) -> None:
         """Add a complete message at the end; the caret stays where the user left it."""
@@ -170,6 +189,14 @@ class ConversationView(wx.TextCtrl):
         self.AppendText(added)
         self.SetInsertionPoint(caret)
         self.report_position()
+
+    def markdown_text(self) -> str:
+        """The text of the view as Markdown, with the marks of bold and italic (for the export)."""
+        document = ConversationDocument(
+            show_hidden=self._document.show_hidden,
+            tools_summary=self._document.tools_summary,
+        )
+        return document.rebuild(self._messages)
 
     @property
     def text(self) -> str:
@@ -209,7 +236,9 @@ class ConversationView(wx.TextCtrl):
     def shows(self, messages: list[Message]) -> bool:
         """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""
         document = ConversationDocument(
-            show_hidden=self._document.show_hidden, tools_summary=self._document.tools_summary
+            show_hidden=self._document.show_hidden,
+            tools_summary=self._document.tools_summary,
+            without_marks=self._document.without_marks,
         )
         return document.rebuild(messages) == self._document.text
 
@@ -283,12 +312,12 @@ class ConversationView(wx.TextCtrl):
     def _on_key_up(self, event: wx.KeyEvent) -> None:
         # The rich text field would open its own menu when the key goes up. Shift+F10 opened ours
         # when it went down; the Applications key asks for it through EVT_CONTEXT_MENU.
-        if not _is_menu_key(event):
+        if not is_menu_key(event):
             event.Skip()
 
     def _on_key(self, event: wx.KeyEvent) -> None:
         wx.CallAfter(self.report_position)  # once the control has moved the caret
-        if _is_shift_f10(event):
+        if is_shift_f10(event):
             # The rich text field opens its own menu for this key without telling anyone.
             self._open_menu(self._caret_position())
             return

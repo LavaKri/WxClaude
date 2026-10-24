@@ -19,10 +19,16 @@ First version: the application works from end to end.
   tokens, time of work, cost and split by model, deleted conversations included. The numbers
   of tokens are written short above a million (1,5 million, 12 milliards).
 - A line under each answer that used tools sums them up (commands run, files modified and
-  read, other tools, failures); an item of the Conversation menu shows or hides it.
+  read, other tools, failures); an item of the Display submenu shows or hides it.
 - Keys of the conversation: `H` for headings (`1` to `6` as before), `T` for tables, `L` for lists
   and `I` for the items of the list the caret is in, with Shift to go backwards; two announcement
   categories for them. `Space` on a line of a table shows the table.
+- A submenu Display in the Conversation menu, with the summary of the tools and a new item, on by default,
+  that removes the marks of bold and italic (`**`, `*`) from the conversation so the screen reader does not
+  read them; the export keeps them.
+- A context menu on the prompt field: Cut, Copy, Paste.
+- The fields of the status bar are cut at 200 characters.
+- Shortcut `Ctrl+Shift+A` for *Modify the agent*, configurable in the Preferences like the others.
 - The summary the CLI writes when it compacts a conversation is hidden with the other system messages.
 - A dialog for the structured questions of Claude: the choices of each question in a list of check
   boxes (one answer at most when the question allows only one), an answer of one's own, Send and Deny.

@@ -1226,3 +1226,18 @@ msgstr "Claude a des questions pour vous."
 
 msgid "Your answers were sent to Claude."
 msgstr "Vos réponses ont été envoyées à Claude."
+
+msgid "Cu&t"
+msgstr "Co&uper"
+
+msgid "&Copy"
+msgstr "&Copier"
+
+msgid "&Paste"
+msgstr "Co&ller"
+
+msgid "Dis&play"
+msgstr "A&ffichage"
+
+msgid "Remove the &Markdown formatting"
+msgstr "Retirer les mises en forme &Markdown"

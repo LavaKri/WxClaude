@@ -204,3 +204,25 @@ def test_the_lines_are_not_in_the_text_of_an_exchange() -> None:
     expected = "# You say: Q1\nQ1\n\n## Answer from m\nR1\n\n## Answer from m\nS1"
     assert document.exchange_of("a2") == expected
     assert "1 file read" in document.text
+
+
+def test_the_marks_of_bold_and_italic_can_be_left_out_of_the_text() -> None:
+    prompt = Message("1", Role.USER, "Is **this** *true*?")
+    assert render_message(prompt) == "# You say: Is **this** *true*?\nIs **this** *true*?\n\n"
+    assert render_message(prompt, without_marks=True) == (
+        "# You say: Is this true?\nIs this true?\n\n"
+    )
+
+
+def test_a_document_without_marks_keeps_its_spans_and_lines_right() -> None:
+    document = ConversationDocument(without_marks=True)
+    document.append(Message("1", Role.USER, "One **two**\nthree *four*"))
+    document.append(Message("2", Role.ASSISTANT, "**Done**", model="m"))
+    assert document.text == (
+        "# You say: One two three four\nOne two\nthree four\n\n## Answer from m\nDone\n\n"
+    )
+    first, second = document.spans
+    assert document.text[first.start : first.end].startswith("# You say")
+    assert document.body_line(first, document.text.index("\nthree four") + 1) == 1
+    assert document.body_line(second, document.text.index("\nDone") + 1) == 0
+    assert document.exchange_of("2") == document.text.rstrip("\n")

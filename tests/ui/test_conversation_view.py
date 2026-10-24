@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterator
 import pytest
 import wx
 
+from wxclaude.core.conversation.headings import to_utf16
 from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
@@ -293,3 +294,46 @@ def test_the_view_knows_the_line_when_it_compares_the_messages(view: Conversatio
     assert view.shows(messages)
     bare = [Message(m.id, m.role, m.text, model=m.model) for m in messages]
     assert not view.shows(bare)  # without the tools there is no line: another text
+
+
+def test_the_caret_stays_on_the_prompt_when_the_file_gives_other_identifiers(
+    view: ConversationView,
+) -> None:
+    view.append_message(Message("local-1", Role.USER, "Sent now"))
+    view.focus_last_prompt()
+    before = view.GetInsertionPoint()
+    assert before > 0
+    # After the answer the view is rebuilt from the session file: same messages, the identifiers of
+    # the CLI, and the tools of the answer, which the live messages did not have.
+    from_file = [
+        Message("u1", Role.USER, "Hello"),
+        Message("u2", Role.ASSISTANT, "## Part\nbody", model="m", tools=[ToolUse("t", "Read", {})]),
+        Message("u3", Role.USER, "Again 😀"),
+        Message("u4", Role.USER, "Sent now"),
+        Message("u5", Role.ASSISTANT, "The answer", model="m"),
+    ]
+    view.replace_messages(from_file)
+    text = view.document.text
+    assert view.GetInsertionPoint() == to_utf16(text, text.index("# You say: Sent now"))
+    assert view.message_at_caret().message.id == "u4"  # type: ignore[union-attr]
+
+
+def test_the_marks_can_be_removed_and_the_caret_stays_on_its_message(
+    view: ConversationView,
+) -> None:
+    view.set_messages(
+        [
+            Message("1", Role.USER, "Say **this**"),
+            Message("2", Role.ASSISTANT, "It is *so* **true**", model="m"),
+        ]
+    )
+    view.SetInsertionPoint(view.document.spans[1].start + 5)  # in the answer
+    view.set_without_marks(True)
+    assert "**" not in view.GetValue()
+    assert "It is so true" in view.GetValue()
+    assert "# You say: Say this" in view.GetValue()  # the title too
+    assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]
+    assert view.shows(view._messages)  # the comparison uses the same option
+    view.set_without_marks(False)
+    assert "It is *so* **true**" in view.GetValue()
+    assert view.message_at_caret().message.id == "2"  # type: ignore[union-attr]

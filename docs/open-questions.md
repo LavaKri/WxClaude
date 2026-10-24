@@ -41,6 +41,19 @@ the file it belongs to and delete it from this one.
   differently, the status bar message with NVDA and JAWS (JAWS may read it by itself), and that a
   reading never takes the focus away from a send button (rule of `focus.md`). The status bar error
   of a failed answer is replaced by "Ready" at the next reading.
+- **The status bar lost for NVDA (seen once, with the executable).** After a few exchanges, NVDA+End
+  said there was no status bar information, and Alt+Tab, refreshing and opening WxClaude windows did
+  not bring it back. Not reproduced: the logs hold no error for that session, and a simulation of 120
+  exchanges (announcements, status texts, rebuilds of the conversation) kept the status bar with its three
+  fields (MSAA role 23). Ruled out: a status bar rebuilt (it is created once and only fed with text), and
+  the "Windows fatal exception" lines of `wxclaude-crash.log` (codes `0x8001010d`, `0x80010108` and
+  access violations: `faulthandler` logs the first-chance exceptions that Windows handles itself, they also
+  appear without the UI Automation announcements and with NVDA only watching). Long texts are cut at
+  200 characters since. Still suspected: the UI Automation provider of the announcements
+  (`ui/uia_provider.py`, hand-written with `ctypes`) or a state of NVDA. Next time: NVDA log
+  (NVDA menu, Tools, View log) around the moment, does NVDA+End work in Notepad then, and does it
+  happen from source (`wxclaude.bat`) too. A test: Preferences > Announcements > screen reader
+  output "None". The crash log mixes real crashes and this noise; filtering it is not done.
 - **Title entry of a generated title**: the reader expects an `ai-title` entry with an `aiTitle`
   field; only `custom-title` / `customTitle` was seen in real files.
 - **Effort in the session files**: only `low` and `medium` were seen. Are `xhigh` and `max` written
@@ -131,6 +144,33 @@ the file it belongs to and delete it from this one.
   check with the real CLI before (2): that the stream of `-p` carries the same `compact_boundary` event
   (`/compact` or a full context), and its fields. To decide: the wording, and whether the advice about
   a new conversation is part of the text.
+- **Spelling errors in the prompt.** A test (a red wavy underline put on a word of a rich text prompt
+  with `SetStyle`, which Windows held as a wavy underline) was read with NVDA: the underline was
+  displayed but not reported. The test item and the rich text prompt were removed. So the errors must
+  be said another way: keys to go to the next / previous error with the word announced, and a menu of
+  suggestions, fed by a spell checker (next item).
+- **Bold and italic shown as formatting.** The marks are removed from the conversation (item *Remove the
+  Markdown formatting* of the Display submenu), but the words are not styled. `emphasis.py` could
+  also give the places of the emphasis, to apply bold and italic with `SetStyle` (the view is a rich
+  text field), again after every rebuild of the text, under an option of the Preferences. NVDA says
+  such attributes only when "document formatting" is set for them, and it did not read the wavy
+  underline of the spelling test (see below), so it is a visual gain only. To decide if wanted.
+- **Which spell checker: the system API or an embedded one.** Two ways, to decide:
+  - *System API*: `ISpellChecker` on Windows (through `ctypes`), Enchant on Linux (`libenchant`,
+    `pyenchant`; Hunspell dictionaries of the distribution). Nothing to ship, but the languages
+    available depend on the machine, and the code needs one engine per system behind a common
+    interface. Linux was not tried (no Linux here).
+  - *Embedded*: `spylls` (pure Python Hunspell) with the LibreOffice French and English
+    dictionaries, about 0.5 to 2 MB per language (not measured; the application is 45 MB, its zip
+    18.8 MB). Same code and dictionaries on every system, good French (affixes), but slow loading
+    and suggestions in pure Python, and dictionary licences (LGPL / MPL) to respect. Other options
+    seen: `pyspellchecker` (frequency lists, lower quality), `symspellpy` (fast, no morphology),
+    LanguageTool (grammar too, but 200 MB or more with Java).
+  - Either way: no grammar check ("ils mange" passes); technical words (paths, identifiers, code
+    in backticks) must be skipped and a personal dictionary is needed; one language per field
+    or a word accepted when known in either; keys to go to the next error, since the underline
+    is not read by NVDA. To measure before deciding: load time and check time of `spylls` on 500
+    words, and the weight added to the executable.
 - The other suggestions of the CLI (add a directory, switch to `acceptEdits`) are ignored.
 - The managed settings of an organization (`managed-settings.json`, MDM, server) are not read; they
   have the highest priority and could be shown read only like the general file (Windows path to

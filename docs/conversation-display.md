@@ -158,8 +158,18 @@ view (`focus.md`).
   "Copy the message" nor in the one of "Copy the exchange". It appears when the answer ends and the
   view is rebuilt from the session file (the answers shown live have no tools yet) without moving the
   focus, and the caret stays on its message at the same place (`focus.md`, rule D). A check item of
-  the Conversation menu, "Summary of the tools under the answers", shows or hides it (on by
-  default, kept in `settings.json`).
+  the submenu Display of the Conversation menu, "Summary of the tools under the answers", shows or
+  hides it (on by default, kept in `settings.json`).
+- **Marks of bold and italic**: the check item "Remove the Markdown formatting" of the same submenu (on by
+  default, `remove_markdown_marks`) takes `**bold**`, `__bold__`, `*italic*` and `_italic_` out of the
+  text of the view, titles included (`core/conversation/emphasis.py`), so a screen reader does not
+  read the stars. Only real emphasis, as CommonMark reads it: `2 * 3`, `*.py`, a bullet, `snake_case`,
+  code (spans and fenced blocks), links and escaped marks stay. An emphasis that runs over a line
+  break keeps its marks. The lines are the same, so searching, the headings, the tables and the
+  position among the prompts work as before. A bare `__init__` is bold for CommonMark and loses its
+  underscores (in backticks it stays). Switching the item rebuilds the text and the caret stays on
+  its message. The export of the conversation keeps the marks (`ConversationView.markdown_text`); the
+  dialog of a table, the context menu and the copies read the Markdown of the message as written.
 - **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
   field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
   used, resets at 16:00`, from the `rate_limit_event` lines; "at" and the time alone for today,

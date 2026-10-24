@@ -11,6 +11,7 @@ import wx
 
 from wxclaude.core.claude.session_reader import Session, read_session
 from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
+from wxclaude.core.labels import shorten
 from wxclaude.core.speech.announcements import (
     Announce,
     AnnouncementCenter,
@@ -26,6 +27,7 @@ from wxclaude.ui.message_sinks import create_sink
 _POSITION_FIELD = 0
 _STEP_FIELD = 1
 _MESSAGE_FIELD = 2
+STATUS_TEXT_LIMIT = 200  # characters: a longer text is cut, a screen reader reads a field in one go
 
 
 def create_sound_player() -> SoundPlayer:
@@ -66,16 +68,19 @@ class Feedback:
 
     def set_status(self, text: str) -> None:
         """The message field of the status bar (the last one)."""
-        self._frame.SetStatusText(text, _MESSAGE_FIELD)
+        self._set_field(text, _MESSAGE_FIELD)
 
     def show_step(self, text: str) -> None:
         """Second field of the status bar: the step Claude works on, empty when there is none."""
-        self._frame.SetStatusText(text, _STEP_FIELD)
+        self._set_field(text, _STEP_FIELD)
 
     def show_position(self, number: int, total: int) -> None:
         """First field of the status bar: the prompt the caret is in, 'Message 3 of 8'."""
         text = _("Message {number} of {total}").format(number=number, total=total) if total else ""
-        self._frame.SetStatusText(text, _POSITION_FIELD)
+        self._set_field(text, _POSITION_FIELD)
+
+    def _set_field(self, text: str, field: int) -> None:
+        self._frame.SetStatusText(shorten(text, STATUS_TEXT_LIMIT), field)
 
     def apply_screen_reader_output(self, output_id: str) -> None:
         """Connect the announcements to the output chosen in the Preferences."""

@@ -32,6 +32,7 @@ from wxclaude.ui.gauge_watch import GaugeWatch
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_view import WxMessageView
 from wxclaude.ui.preferences_dialog import PreferencesDialog
+from wxclaude.ui.prompt_field import PromptField
 from wxclaude.ui.run_view import WxRunView
 from wxclaude.ui.search_view import WxSearchView
 from wxclaude.ui.shortcut_keys import shortcut_from_event
@@ -70,6 +71,8 @@ class MainWindow(wx.Frame):
         self._conversation.set_show_hidden(not settings.hide_system_messages)
         self._conversation.set_show_tools_summary(settings.show_tools_summary)
         self._menu.tools_summary_item.Check(settings.show_tools_summary)
+        self._conversation.set_without_marks(settings.remove_markdown_marks)
+        self._menu.marks_item.Check(settings.remove_markdown_marks)
         self._refresh_enabled()
         self._menu.refresh_recent()
         self._workspaces.restore_last_session()
@@ -131,7 +134,7 @@ class MainWindow(wx.Frame):
         )
         self._apply_claude_path()
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
-        self._prompt = wx.TextCtrl(panel, style=wx.TE_MULTILINE, name=_("Prompt"))
+        self._prompt = PromptField(panel)
         self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
 
         self._send_button = wx.Button(panel)  # the labels come from the shortcuts, see
@@ -192,7 +195,7 @@ class MainWindow(wx.Frame):
             MenuHandlers(
                 open_workspace=lambda _event: self._workspaces.choose_folder(),
                 open_project=lambda _event: self._workspaces.choose_project(),
-                export=lambda _event: self._files.export(self._conversation.GetValue()),
+                export=lambda _event: self._files.export(self._conversation.markdown_text()),
                 quit=lambda _event: self.Close(),
                 new_conversation=lambda _event: self._conversations.new(),
                 resume_conversation=lambda _event: self._conversations.resume(),
@@ -201,6 +204,7 @@ class MainWindow(wx.Frame):
                 new_branch=lambda _event: self._conversations.new_branch(),
                 delete_conversation=lambda _event: self._conversations.delete(),
                 toggle_tools_summary=self._on_toggle_tools_summary,
+                toggle_marks=self._on_toggle_marks,
                 interrupt=self._on_interrupt,
                 update_interrupt=self._on_update_interrupt,
                 choose_agent=lambda _event: self._conversations.choose_agent(),
@@ -261,6 +265,12 @@ class MainWindow(wx.Frame):
         """The item of the Conversation menu: show or hide the line under the answers."""
         self._settings.show_tools_summary = event.IsChecked()
         self._conversation.set_show_tools_summary(event.IsChecked())
+        self._save_settings()
+
+    def _on_toggle_marks(self, event: wx.CommandEvent) -> None:
+        """The item of the Display menu: remove or show the marks of bold and italic."""
+        self._settings.remove_markdown_marks = event.IsChecked()
+        self._conversation.set_without_marks(event.IsChecked())
         self._save_settings()
 
     def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:

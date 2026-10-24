@@ -8,7 +8,9 @@
   `conversation-display.md`. Your prompt appears as soon as it is sent, then each block of text of
   the answer.
 - **Prompt**: multi-line field. Enter adds a line break; the send shortcuts are configurable
-  (default Ctrl+Enter to send, Shift+Enter to send with the alternative agent).
+  (default Ctrl+Enter to send, Shift+Enter to send with the alternative agent). Its context menu
+  (right click, Applications key, Shift+F10) has *Cut*, *Copy* and *Paste* (greyed when they do not
+  apply); the field itself is plain text.
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
   *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
   started). While Claude answers, Send is greyed; the prompt field stays usable.
@@ -19,7 +21,8 @@
   end of a turn ("Claude has answered", "Claude was interrupted") and the other announcements go
   where the Announcements page of the Preferences says, per category. A failure ("Claude could not
   answer: ...") is written in the status bar and opens a dialog with the details; the prompt is
-  kept when Claude cannot be started.
+  kept when Claude cannot be started. No field of the status bar holds more than 200 characters: a
+  longer text is cut and ends with `…` (`STATUS_TEXT_LIMIT` in `ui/feedback.py`).
 - **Step**: when Claude puts a task of its list in progress (`TaskUpdate` with the status
   `in_progress`, seen with the real CLI), the step is the place of that task in the task files of the
   conversation (`core/claude/tasks.py`). It is announced (category "Step in progress", instead of "Claude
@@ -35,9 +38,10 @@
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again; the focus goes to the conversation, the caret to
 the last prompt), Rename (the CLI renames the session), New conversation branch (see "Branch and delete"),
-Delete the conversation (see "Branch and delete"), Summary of the tools under the answers (a
-check item, see the conversation display), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
-submenu **Search** (see below).
+Delete the conversation (see "Branch and delete"), Interrupt Claude (Ctrl+Shift+I), Modify the agent
+(Ctrl+Shift+A), the submenu **Display** (two check items, both on by default and kept in the settings:
+*Remove the Markdown formatting* and *Summary of the tools under the answers*, see the conversation
+display) and the submenu **Search** (see below).
 
 **Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open
 the workspace folder (in the file explorer; needs a workspace), Workspace settings (needs a

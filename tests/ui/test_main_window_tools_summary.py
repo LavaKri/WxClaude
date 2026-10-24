@@ -19,13 +19,24 @@ def _item(window: MainWindow) -> wx.MenuItem:
     return window._menu.tools_summary_item
 
 
-def test_the_item_is_in_the_conversation_menu_and_checked_by_default(window: MainWindow) -> None:
+def _display_menu(window: MainWindow) -> wx.Menu:
+    """The submenu *Display* of the Conversation menu."""
+    conversation_menu = window.GetMenuBar().GetMenu(1)
+    submenus = {
+        item.GetItemLabel(): item.GetSubMenu()
+        for item in conversation_menu.GetMenuItems()
+        if item.GetSubMenu() is not None
+    }
+    return submenus["Dis&play"]
+
+
+def test_the_item_is_in_the_display_menu_and_checked_by_default(window: MainWindow) -> None:
     item = _item(window)
     assert item.GetItemLabel() == LABEL
     assert item.IsCheckable()
     assert item.IsChecked()
     assert item.IsEnabled()  # it needs neither a workspace nor a conversation
-    assert item.GetMenu() is window.GetMenuBar().GetMenu(1)
+    assert item.GetMenu() is _display_menu(window)
 
 
 def test_the_item_follows_the_setting_at_the_start(wx_app: wx.App, tmp_path: Path) -> None:

@@ -9,6 +9,7 @@ import re
 from bisect import bisect_right
 from dataclasses import dataclass
 
+from wxclaude.core.conversation.emphasis import remove_emphasis
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.conversation.tool_summary import summarize_tools
 from wxclaude.i18n import N_, _
@@ -44,10 +45,11 @@ def preview(text: str) -> str:
     return " ".join(words[:PREVIEW_WORDS]) + "…"
 
 
-def message_title(message: Message) -> str:
+def message_title(message: Message, *, without_marks: bool = False) -> str:
     """The level 1 title that introduces ``message`` (without the ``#``)."""
     if message.role is Role.USER:
-        return _("You say: {preview}").format(preview=preview(message.text))
+        text = remove_emphasis(message.text) if without_marks else message.text
+        return _("You say: {preview}").format(preview=preview(text))
     if message.model is None:
         return _("Claude answered")
     if message.effort is None:
@@ -61,28 +63,41 @@ def title_level(message: Message) -> int:
     return 1 if message.role is Role.USER else 2
 
 
-def message_header(message: Message) -> str:
+def message_header(message: Message, *, without_marks: bool = False) -> str:
     """The title line of ``message`` as written in the document, with its line break."""
-    return f"{'#' * title_level(message)} {message_title(message)}\n"
+    title = message_title(message, without_marks=without_marks)
+    return f"{'#' * title_level(message)} {title}\n"
 
 
-def render_message(message: Message, *, tools_summary: bool = False) -> str:
+def render_message(
+    message: Message, *, tools_summary: bool = False, without_marks: bool = False
+) -> str:
     """The text a message adds to the document: its title, its text and a blank line.
 
     With ``tools_summary`` an answer that used tools has the line that sums them up under its text
-    (it belongs to the document only: it is not part of the text of the message).
+    (it belongs to the document only: it is not part of the text of the message). With
+    ``without_marks`` the marks of bold and italic are removed from the title and the text (the
+    lines stay the same).
     """
     summary = summarize_tools(message.tools) if tools_summary and message.model else ""
     under = f"{summary}\n\n" if summary else ""
-    return f"{message_header(message)}{message.text}\n\n{under}"
+    text = remove_emphasis(message.text) if without_marks else message.text
+    return f"{message_header(message, without_marks=without_marks)}{text}\n\n{under}"
 
 
 class ConversationDocument:
     """The messages shown, the text they make, and the span of each in that text."""
 
-    def __init__(self, *, show_hidden: bool = False, tools_summary: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        show_hidden: bool = False,
+        tools_summary: bool = False,
+        without_marks: bool = False,
+    ) -> None:
         self.show_hidden = show_hidden
         self.tools_summary = tools_summary  # a line under each answer that used tools
+        self.without_marks = without_marks  # no marks of bold and italic in the text
         self._text = ""
         self._spans: list[MessageSpan] = []
         self._starts: list[int] = []
@@ -104,7 +119,9 @@ class ConversationDocument:
         """Add ``message``; return the text to append to the field ('' if it is not shown)."""
         if message.hidden and not self.show_hidden:
             return ""
-        added = render_message(message, tools_summary=self.tools_summary)
+        added = render_message(
+            message, tools_summary=self.tools_summary, without_marks=self.without_marks
+        )
         start = len(self._text)
         self._text += added
         self._spans.append(MessageSpan(message, start, len(self._text)))
@@ -141,12 +158,16 @@ class ConversationDocument:
         last = index + 1
         while last < len(self._spans) and self._spans[last].message.role is not Role.USER:
             last += 1
-        shown = (render_message(span.message) for span in self._spans[first:last])
+        shown = (
+            render_message(span.message, without_marks=self.without_marks)
+            for span in self._spans[first:last]
+        )
         return "".join(shown).rstrip("\n")
 
     def body_line(self, span: MessageSpan, position: int) -> int:
         """The line of the text of the message that holds ``position``; -1 on its title."""
-        body_start = span.start + len(message_header(span.message))
+        header = message_header(span.message, without_marks=self.without_marks)
+        body_start = span.start + len(header)
         if position < body_start:
             return -1
         return self._text.count("\n", body_start, position)

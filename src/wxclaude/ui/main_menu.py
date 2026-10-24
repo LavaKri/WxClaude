@@ -10,6 +10,7 @@ from dataclasses import dataclass
 import wx
 
 from wxclaude.core.config.shortcuts import (
+    AGENT_COMMAND,
     FIND_COMMAND,
     FIND_NEXT_COMMAND,
     FIND_PREVIOUS_COMMAND,
@@ -45,6 +46,7 @@ class MenuHandlers:
     new_branch: Handler
     delete_conversation: Handler
     toggle_tools_summary: Handler
+    toggle_marks: Handler
     interrupt: Handler
     update_interrupt: Callable[[wx.UpdateUIEvent], None]
     choose_agent: Handler
@@ -86,8 +88,12 @@ class MainMenu:
         conversation_menu = wx.Menu()
         kept = add_entries(window, conversation_menu, self._conversation_entries(), registry)
         self.interrupt_item = kept["interrupt"]
-        self.tools_summary_item = kept["tools_summary"]
         window.Bind(wx.EVT_UPDATE_UI, handlers.update_interrupt, self.interrupt_item)
+        display_menu = wx.Menu()
+        kept_display = add_entries(window, display_menu, self._display_entries(), registry)
+        self.tools_summary_item = kept_display["tools_summary"]
+        self.marks_item = kept_display["marks"]
+        conversation_menu.AppendSubMenu(display_menu, _("Dis&play"))
         search_menu = wx.Menu()
         add_entries(window, search_menu, self._search_entries(), registry)
         conversation_menu.AppendSubMenu(search_menu, _("Sear&ch"))
@@ -142,14 +148,22 @@ class MainMenu:
             MenuEntry(_("Ren&ame the conversation"), h.rename_conversation, needs=conversation),
             MenuEntry(_("New conversation &branch"), h.new_branch, needs=conversation),
             MenuEntry(_("&Delete the conversation"), h.delete_conversation, needs=conversation),
+            MenuEntry(_("&Interrupt Claude"), h.interrupt, INTERRUPT_COMMAND, key="interrupt"),
+            MenuEntry(_("&Modify the agent…"), h.choose_agent, AGENT_COMMAND, conversation),
+        ]
+
+    def _display_entries(self) -> list[MenuEntry | None]:
+        h = self._handlers
+        return [
+            MenuEntry(
+                _("Remove the &Markdown formatting"), h.toggle_marks, key="marks", checkable=True
+            ),
             MenuEntry(
                 _("Summary of the &tools under the answers"),
                 h.toggle_tools_summary,
                 key="tools_summary",
                 checkable=True,
             ),
-            MenuEntry(_("&Interrupt Claude"), h.interrupt, INTERRUPT_COMMAND, key="interrupt"),
-            MenuEntry(_("&Modify the agent…"), h.choose_agent, needs=conversation),
         ]
 
     def _search_entries(self) -> list[MenuEntry | None]:

@@ -251,3 +251,14 @@ def test_a_save_that_fails_raises_settings_error(tmp_path: Path) -> None:
     settings = Settings.load(blocker / "settings.json")
     with pytest.raises(SettingsError):
         settings.save()
+
+
+def test_the_remove_markdown_marks_option_defaults_to_true_and_round_trips(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert settings.remove_markdown_marks is True
+    settings.remove_markdown_marks = False
+    settings.save()
+    assert Settings.load(store).remove_markdown_marks is False
+    store.write_text('{"remove_markdown_marks": "no"}', encoding="utf-8")
+    assert Settings.load(store).remove_markdown_marks is True

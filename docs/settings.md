@@ -18,7 +18,8 @@ invalid values fall back to their default; unknown keys are ignored.
 | `hook_timeout_minutes` | With the `hook` channel, how long the CLI waits for the answer (1 to 10) | `10` |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |
-| `show_tools_summary` | A line under each answer that used tools sums them up (item of the Conversation menu) | `true` |
+| `show_tools_summary` | A line under each answer that used tools sums them up (item of the Display submenu) | `true` |
+| `remove_markdown_marks` | The marks of bold and italic (`**`, `*`) are removed from the text of the conversation (item of the Display submenu) | `true` |
 | `announcements` | Only the destinations that differ from the default, by category id (`progress`, `step`, `end_of_answer`, `permission_question`, `permission_answer`, `movement`, `movement_blocked`, `search`, `search_failed`, `refresh`, `gauge`): `none`, `message`, `read_line`, `dialog`, `sound_1`, `sound_2`. A destination the category does not accept, or an unknown one, is ignored | empty |
 | `local_tools_only` | The workspace settings only modify the personal file `.claude/settings.local.json`, never the versioned `settings.json` | `false` |
 | `conversation_counter` | Number proposed in `Conversation x` | `1` |
@@ -96,4 +97,4 @@ Valid values: `effort` is one of `low`, `medium`, `high`, `xhigh`, `max`; `permi
 `conversation.resume` (Ctrl+Shift+O), `conversation.refresh` (F5), `search.find` (Ctrl+F),
 `search.next` (F3), `search.previous` (Shift+F3),
 `claude.interrupt` (Ctrl+Shift+I), `tasks.list` (Ctrl+T), `claude.usage` (Ctrl+Shift+U),
-`prompt.send` (Ctrl+Enter), `prompt.send_alternative` (Shift+Enter).
+`claude.agent` (Ctrl+Shift+A), `prompt.send` (Ctrl+Enter), `prompt.send_alternative` (Shift+Enter).

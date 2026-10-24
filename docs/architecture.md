@@ -94,6 +94,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 |---|---|
 | `messages.py` | `Message`: a prompt or an answer, with its hidden details (tools, thinking, usage). |
 | `blocks.py` | The tables, the lists of level 1 and their items of a Markdown text, and the next / previous one from a position. |
+| `emphasis.py` | `remove_emphasis`: a text without the marks of bold and italic, same lines (CommonMark rules, through `markdown-it-py`). |
 | `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
@@ -177,6 +178,8 @@ line that sums up the tools, the context menu of a message. |
 | `table_dialog.py` | `TableCellsDialog`: a table shown one column at a time (a list of the rows, Left/Right change the column, a field holds the cell), used by `message_view.TABLE_DIALOG`; the old `TableDialog` of `details_dialogs.py` (one sentence per row) comes back by changing that one line. |
 | `tasks_dialog.py`, `plans_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; plans; tools used, rows of a table and links of a message; usage of Claude. |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
+| `prompt_field.py` | `PromptField`: the prompt (a plain multi-line field) with its context menu: Cut, Copy, Paste. |
+| `menu_keys.py` | The keys that ask for a context menu (Applications, Shift+F10), for the conversation view and the prompt. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |
 | `wx_locale.py` | Language of wx's own texts. |
 | `single_instance.py` | Only one WxClaude per user (`wx.SingleInstanceChecker`); a second launch brings the first window to the front. |
