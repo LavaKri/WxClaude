@@ -13,8 +13,8 @@ explanation field of the permission question, the shortcut list, the unnamed rea
 - Where the focus and the caret go in every case (a dialog closes, the conversation is loaded,
   refreshed or searched, an answer ends...) is in `focus.md`.
 - Announcements are grouped in categories (progress of Claude, step in progress, end of an answer, question of
-  permission, answer to a permission, movement to a heading, no more heading, search, unsuccessful search, refresh, gauge alerts) and
-  the user chooses a destination per category in Preferences > Screen reader (the list is in
+  permission, answer to a permission, conversation movement done, no further movement possible, search, unsuccessful search, refresh, gauge alerts) and
+  the user chooses a destination per category in Preferences > Announcements (the list is in
   alphabetical order of the labels, accents and case ignored): none, a message
   (a UI Automation notification raised by a hidden one-pixel window, a child of the panel and not of
   the status bar: the screen readers read the children of the status bar with it and added the
@@ -23,7 +23,7 @@ explanation field of the permission question, the shortcut list, the unnamed rea
   permission; two WAV files in `wxclaude/sounds`). The status bar is only written for a message of the categories that need it (progress of Claude,
   answer to a permission, refresh, and the fixed announcements); the others are
   only said: step in progress (the step has its own field), question of permission (the dialog
-  reads itself), movement to a heading, no more heading, search reached and unsuccessful search (the
+  reads itself), conversation movement done, no further movement possible, search reached and unsuccessful search (the
   caret and the selection show them), gauge alerts (the "Ready" line shows the gauges). Some screen readers read the changes of the status bar by
   themselves, which would say twice what is already said or what the user turned off.
   The list of the announcements and their categories is `Announce` in `core/speech/announcements.py`.

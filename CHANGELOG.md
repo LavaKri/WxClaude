@@ -20,6 +20,10 @@ First version: the application works from end to end.
   of tokens are written short above a million (1,5 million, 12 milliards).
 - A line under each answer that used tools sums them up (commands run, files modified and
   read, other tools, failures); an item of the Conversation menu shows or hides it.
+- Keys of the conversation: `H` for headings (`1` to `6` as before), `T` for tables, `L` for lists
+  and `I` for the items of the list the caret is in, with Shift to go backwards; two announcement
+  categories for them. `Space` on a line of a table shows the table.
+- The table of a message is shown one column at a time: Left and Right change the column, and a field gives the cell.
 - A log file of the errors, written with the other data files of WxClaude.
 - Details of a message in dialogs (tools, tables, links, copy of a message or of an exchange), task
   list, plans and usage of the subscription.

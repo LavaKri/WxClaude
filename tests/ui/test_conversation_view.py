@@ -18,6 +18,10 @@ class _Said:
         self.calls.append((announce, values))
 
 
+def _last(said: _Said) -> Announce:
+    return said.calls[-1][0]
+
+
 @pytest.fixture
 def said() -> _Said:
     return _Said()
@@ -47,40 +51,118 @@ def _press(view: ConversationView, key: str, *, shift: bool = False) -> None:
     view.GetEventHandler().ProcessEvent(event)
 
 
-def test_t_goes_to_the_next_heading_and_announces_it(view: ConversationView, said: _Said) -> None:
-    _press(view, "T")
+def test_h_goes_to_the_next_heading_and_says_its_line(view: ConversationView, said: _Said) -> None:
+    _press(view, "H")
     assert view.GetInsertionPoint() == len("# You say: Hello\nHello\n\n")
     assert said.calls[-1] == (
-        Announce.HEADING,
+        Announce.MOVED_HEADING,
         {"title": "Answer from m", "level": 2, "line": "Answer from m"},
     )
 
 
 def test_digit_goes_to_the_next_heading_of_that_level(view: ConversationView, said: _Said) -> None:
     _press(view, "1")
-    assert said.calls[-1] == (
-        Announce.HEADING,
-        {"title": "You say: Again 😀", "level": 1, "line": "You say: Again 😀"},
-    )
+    assert said.calls[-1][1]["title"] == "You say: Again 😀"
     _press(view, "2", shift=True)
     assert said.calls[-1] == (
-        Announce.HEADING,
+        Announce.MOVED_HEADING,
         {"title": "Part", "level": 2, "line": "Part"},
     )
 
 
 def test_shift_goes_backwards_and_the_end_is_announced(view: ConversationView, said: _Said) -> None:
-    _press(view, "T", shift=True)
-    assert said.calls[-1][0] is Announce.NO_PREVIOUS_HEADING
+    _press(view, "H", shift=True)
+    assert _last(said) is Announce.NO_PREVIOUS_HEADING
     _press(view, "3")
     assert said.calls[-1] == (Announce.NO_NEXT_HEADING_OF_LEVEL, {"level": 3})
 
 
+BLOCKS = (
+    "Intro\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n- one\n  - nested\n  - deeper\n- two\n\n"
+    "1. first\n2. second\n\n| C |\n|---|\n| 3 |"
+)
+
+
+@pytest.fixture
+def blocks(view: ConversationView) -> ConversationView:
+    view.set_messages([Message("1", Role.ASSISTANT, BLOCKS, model="m")])
+    return view
+
+
+def _line_at_caret(view: ConversationView) -> str:
+    text = view.document.text
+    start = view.GetInsertionPoint()
+    return text[start : text.index("\n", start)]
+
+
+def test_t_goes_from_table_to_table(blocks: ConversationView, said: _Said) -> None:
+    _press(blocks, "T")
+    assert _line_at_caret(blocks) == "| A | B |"
+    assert said.calls[-1] == (
+        Announce.MOVED_TABLE,
+        {"columns": "2 columns", "rows": "1 row", "line": "| A | B |"},
+    )
+    _press(blocks, "T")
+    assert _line_at_caret(blocks) == "| C |"
+    _press(blocks, "T")
+    assert _last(said) is Announce.NO_NEXT_TABLE
+    _press(blocks, "T", shift=True)
+    assert _line_at_caret(blocks) == "| A | B |"
+    _press(blocks, "T", shift=True)
+    assert _last(said) is Announce.NO_PREVIOUS_TABLE
+
+
+def test_l_goes_from_list_to_list_without_the_nested_ones(
+    blocks: ConversationView, said: _Said
+) -> None:
+    _press(blocks, "L")
+    assert _line_at_caret(blocks) == "- one"
+    assert said.calls[-1] == (Announce.MOVED_LIST, {"items": "2 items", "line": "- one"})
+    _press(blocks, "L")
+    assert _line_at_caret(blocks) == "1. first"
+    _press(blocks, "L")
+    assert _last(said) is Announce.NO_NEXT_LIST
+    _press(blocks, "L", shift=True)
+    assert _line_at_caret(blocks) == "- one"
+    _press(blocks, "L", shift=True)
+    assert _last(said) is Announce.NO_PREVIOUS_LIST
+
+
+def _move_to_line(view: ConversationView, line: str) -> None:
+    view.SetInsertionPoint(view.document.text.index(line))
+
+
+def test_i_stays_among_the_items_of_the_list_the_caret_is_in(
+    blocks: ConversationView, said: _Said
+) -> None:
+    _move_to_line(blocks, "- one")
+    _press(blocks, "I")
+    assert _line_at_caret(blocks) == "- two"  # the nested item is skipped
+    assert said.calls[-1] == (Announce.MOVED, {"line": "- two"})
+    _press(blocks, "I")
+    assert _last(said) is Announce.NO_NEXT_ITEM  # the other list is not entered
+    _press(blocks, "I", shift=True)
+    assert _line_at_caret(blocks) == "- one"
+    _press(blocks, "I", shift=True)
+    assert _last(said) is Announce.NO_PREVIOUS_ITEM
+
+
+def test_i_in_a_nested_list_moves_among_the_nested_items(blocks: ConversationView) -> None:
+    _move_to_line(blocks, "  - nested")
+    _press(blocks, "I")
+    assert _line_at_caret(blocks) == "  - deeper"
+
+
+def test_i_outside_a_list_says_there_is_no_item(blocks: ConversationView, said: _Said) -> None:
+    _move_to_line(blocks, "Intro")
+    _press(blocks, "I")
+    assert _last(said) is Announce.NO_NEXT_ITEM
+
+
 def test_positions_after_an_emoji_use_utf16_units(view: ConversationView, said: _Said) -> None:
     view.SetInsertionPoint(view.GetLastPosition())
-    _press(view, "T", shift=True)
-    title = said.calls[-1][1]["title"]
-    assert title == "You say: Again 😀"
+    _press(view, "H", shift=True)
+    assert said.calls[-1][1]["title"] == "You say: Again 😀"
     text = view.document.text
     assert view.GetInsertionPoint() == len(text[: text.index("# You say: Again")])
 

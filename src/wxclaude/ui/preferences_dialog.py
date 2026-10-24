@@ -44,7 +44,7 @@ class PreferencesDialog(wx.Dialog):
         self._notebook.AddPage(self.workspace, _("Workspace"))
         self._notebook.AddPage(self.agent, _("Agent"))
         self._notebook.AddPage(self.shortcuts, _("Shortcuts"))
-        self._notebook.AddPage(self.screen_reader, _("Screen reader"))
+        self._notebook.AddPage(self.screen_reader, _("Announcements"))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self._notebook, 1, wx.EXPAND | wx.ALL, 6)

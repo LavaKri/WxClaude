@@ -36,7 +36,7 @@ def test_tabs_are_in_the_expected_order(dialog: PreferencesDialog) -> None:
         "Workspace",
         "Agent",
         "Shortcuts",
-        "Screen reader",
+        "Announcements",
     ]
 
 

@@ -17,8 +17,8 @@ Installez-le en suivant la <a href="https://code.claude.com/docs/en/overview">do
 <p>Vérifiez l'installation dans un terminal avec <code>claude --version</code>.</p>
 <p>Pour utiliser Claude Code, il est obligatoire de s'authentifier :</p>
 <ul>
-<li>dans un terminal, lancez <code>claude auth login</code> et suivez les instructions.</li>
-<li>Vérification avec <code>claude auth status</code>.</li>
+<li>dans un terminal, lancez <code>claude auth login</code> et suivez les instructions ;</li>
+<li>vérifiez avec <code>claude auth status</code>.</li>
 </ul>
 <h3>Claude dans WxClaude</h3>
 <p>Dans l'onglet &quot;Claude&quot; des préférences, il sera possible de définir l'utilisation du programme Claude Code.</p>
@@ -47,9 +47,9 @@ les questions de permission sur les outils. WxClaude démarre pour cela un serve
 <li>Conversation &gt; Actualiser la conversation relit le fichier de session.</li>
 <li>Conversation &gt; Nouvelle branche de conversation copie la conversation sous un autre nom. Le texte reste affiché. La copie est faite par Claude Code avec le premier message de la branche ; la conversation d'origine ne change pas.</li>
 <li>Conversation &gt; Supprimer la conversation met à la Corbeille de Windows ce que Claude Code garde de la conversation, après confirmation. Vous pouvez la récupérer depuis la Corbeille.</li>
+<li>Conversation &gt; Modifier l'agent change l'agent de la conversation courante.
+Changer de modèle fait perdre le cache de l'invite de la conversation. Changer l'effort ou le mode de permission ne le fait pas.</li>
 </ul>
-<p>Conversation &gt; Modifier l'agent change l'agent de la conversation courante.
-Changer de modèle fait perdre le cache de l'invite de la conversation. Changer l'effort ou le mode de permission ne le fait pas.</p>
 <h3>Agents</h3>
 <p>Un agent est un ensemble de caractéristiques.
 Pour WxClaude, il se limite à un modèle, un effort et un mode de permission.</p>
@@ -73,17 +73,10 @@ Il sera utile pour envoyer facilement des prompts avec un niveau d'effort faible
 <h2>Interface utilisateur</h2>
 <h3>Zone de conversation</h3>
 <p>La zone de conversation affiche l'échange en lecture seule.
-Votre message est un titre de niveau 1. La réponse de Claude est un titre de niveau 2.
-Parcourez-la avec la navigation par titres de votre lecteur d'écran.</p>
-<p>Elle ne prend jamais le focus quand une réponse arrive.
-Elle le prend quand vous chargez, envoyez, actualisez ou cherchez.</p>
-<p>Vous pouvez y chercher du texte. La recherche ne revient pas au début : à la fin, elle vous le dit.</p>
-<p>Le menu contextuel dépend du message où se trouve le curseur. Il ne propose que ce qui s'applique :</p>
-<ul>
-<li><em>Afficher les outils utilisés</em> : quand la réponse a utilisé des outils. Une liste donne le détail de chacun.</li>
-<li><em>Afficher le tableau</em> : quand le curseur est dans un tableau. Ses lignes sont lues une par une. Vous pouvez copier le tableau.</li>
-<li><em>Afficher les liens</em> : quand le message en contient. Vous pouvez ouvrir un lien web ou de messagerie, ou copier l'adresse.</li>
-</ul>
+Vos prompts (messages) sont sous un titre de niveau 1.
+Les réponses de Claude sont sous un titre de niveau 2.
+Les raccourcis clavier classiques de navigation web sont utilisables (titre, liste, tableau).
+Des fenêtres d'affichage adaptées facilitent la lecture de certains éléments (voir le menu contextuel).</p>
 <h3>Prompt</h3>
 <p>Le prompt est le champ où vous écrivez votre message à Claude.
 Il peut contenir plusieurs lignes. Son menu contextuel est celui de Windows.
@@ -97,11 +90,12 @@ Il n'est actif que pendant une réponse.</p>
 <ul>
 <li>La position : <code>Message 3 sur 8</code> indique le message où se trouve le curseur parmi les vôtres. Elle est vide s'il n'y en a pas.</li>
 <li>L'étape : <code>Étape 2 sur 5 : sujet</code> indique la tâche de la liste de Claude qu'il vient de commencer. Elle est vide s'il n'y en a pas et quand WxClaude attend votre message.</li>
-<li>Le message : la dernière annonce. Quand WxClaude attend votre message, il dit <code>Prêt</code>, suivi de la jauge des 5 heures si elle est connue : <code>Prêt, jauge à 50 %</code>. La semaine s'y ajoute à partir de 75 % : <code>Prêt, jauge à 50 %, semaine à 76 %</code>. Après un échec, il garde l'erreur.</li>
+<li>Le message : la dernière annonce.
+Quand WxClaude est prêt à recevoir des messages, il l'indique avec les jauges de votre abonnement.</li>
 </ul>
 <h3>Annonces</h3>
 <p>WxClaude dit ce qui se passe à votre lecteur d'écran. Les annonces sont regroupées en catégories.</p>
-<p>Dans l'onglet &quot;Lecteur d'écran&quot; des préférences, vous choisissez pour chaque catégorie ce qui est fait.
+<p>Dans l'onglet &quot;Annonces&quot; des préférences, vous choisissez pour chaque catégorie ce qui est fait.
 Selon la catégorie : rien, un message, la lecture de la ligne, une boîte de dialogue ou un son.
 Le choix <em>Annonces</em> coupe ou rétablit l'envoi vers le lecteur d'écran.</p>
 <p>Les erreurs de Claude ouvrent toujours une boîte de dialogue.</p>

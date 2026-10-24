@@ -187,6 +187,27 @@ msgstr "{title} ({when})"
 msgid "{title}, title {level}"
 msgstr "{title}, titre {level}"
 
+msgid "Table of {columns} and {rows}. {line}"
+msgstr "Tableau de {columns} et {rows}. {line}"
+
+msgid "List of {items}. {line}"
+msgstr "Liste de {items}. {line}"
+
+msgid "{count} column"
+msgid_plural "{count} columns"
+msgstr[0] "{count} colonne"
+msgstr[1] "{count} colonnes"
+
+msgid "{count} row"
+msgid_plural "{count} rows"
+msgstr[0] "{count} rangée"
+msgstr[1] "{count} rangées"
+
+msgid "{count} item"
+msgid_plural "{count} items"
+msgstr[0] "{count} élément"
+msgstr[1] "{count} éléments"
+
 msgid "No next heading."
 msgstr "Pas de titre suivant."
 
@@ -198,6 +219,24 @@ msgstr "Pas de titre {level} suivant."
 
 msgid "No previous title {level}."
 msgstr "Pas de titre {level} précédent."
+
+msgid "No next table."
+msgstr "Pas de tableau suivant."
+
+msgid "No previous table."
+msgstr "Pas de tableau précédent."
+
+msgid "No next list."
+msgstr "Pas de liste suivante."
+
+msgid "No previous list."
+msgstr "Pas de liste précédente."
+
+msgid "No next list item."
+msgstr "Pas d'élément de liste suivant."
+
+msgid "No previous list item."
+msgstr "Pas d'élément de liste précédent."
 
 msgid "Running Claude is not implemented yet."
 msgstr "Le lancement de Claude n'est pas encore implémenté."
@@ -311,8 +350,8 @@ msgstr "Agent"
 msgid "Shortcuts"
 msgstr "Raccourcis"
 
-msgid "Screen reader"
-msgstr "Lecteur d'écran"
+msgid "Announcements"
+msgstr "Annonces"
 
 msgid "&Language"
 msgstr "&Langue"
@@ -526,11 +565,11 @@ msgstr "Question de permission"
 msgid "Answer to a permission"
 msgstr "Réponse à une permission"
 
-msgid "Movement to a heading"
-msgstr "Déplacement vers un titre"
+msgid "Conversation, movement done"
+msgstr "Conversation, déplacement réussi"
 
-msgid "Movement, no more heading"
-msgstr "Déplacement, plus de titre"
+msgid "Conversation, no further movement possible"
+msgstr "Conversation, plus de déplacement possible"
 
 msgid "Search reached"
 msgstr "Recherche atteinte"
@@ -982,8 +1021,8 @@ msgstr "Message {number} sur {total}"
 msgid "Show the &tools used…"
 msgstr "Afficher les &outils utilisés…"
 
-msgid "Show the t&able…"
-msgstr "Afficher le t&ableau…"
+msgid "Show the t&able…	Space"
+msgstr "Afficher le t&ableau…	Espace"
 
 msgid "Show the &links…"
 msgstr "Afficher les &liens…"
@@ -993,12 +1032,6 @@ msgstr "&Copier le message"
 
 msgid "Copy the &exchange"
 msgstr "Copier l'&échange"
-
-msgid "&Next heading\tT"
-msgstr "Titre &suivant\tT"
-
-msgid "&Previous heading\tShift+T"
-msgstr "Titre &précédent\tShift+T"
 
 
 msgid "The clipboard cannot be used."
@@ -1160,3 +1193,12 @@ msgstr "tours : {count}"
 
 msgid "messages: {count}"
 msgstr "messages : {count}"
+
+msgid "&Cell"
+msgstr "C&ellule"
+
+msgid "Empty cell"
+msgstr "Cellule vide"
+
+msgid "&Rows, column {number} of {count}: {header}"
+msgstr "&Lignes, colonne {number} sur {count} : {header}"

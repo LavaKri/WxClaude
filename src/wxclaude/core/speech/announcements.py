@@ -1,7 +1,7 @@
 """Announcements: what the application says about what it just did, and where it goes.
 
 Every message is a member of ``Announce``. Most belong to a ``Category``: the user chooses a
-``Destination`` per category (Preferences > Screen reader), among the ones the category accepts,
+``Destination`` per category (Preferences > Announcements), among the ones the category accepts,
 not per message. The others are fixed: they are always said as a message. The code only calls
 ``AnnouncementCenter.notify``; how a message really reaches the user is the business of the sink
 and of the sound player the center is connected to (see ``ui/message_sinks.py``,
@@ -97,18 +97,18 @@ PERMISSION_QUESTION = Category(
 PERMISSION_ANSWER = Category(
     "permission_answer", N_("Answer to a permission"), Destination.MESSAGE, _NONE_OR_MESSAGE
 )
-#: Movement to a heading of the conversation.
-HEADINGS = Category(
-    "headings",
-    N_("Movement to a heading"),
+#: A jump in the conversation (heading, table, list, item) that arrived.
+MOVEMENT = Category(
+    "movement",
+    N_("Conversation, movement done"),
     Destination.MESSAGE,
     (Destination.NONE, Destination.MESSAGE, Destination.READ_LINE),
     in_status_bar=False,
 )
-#: A movement that reached nothing (no more heading in that direction).
-NO_MORE_HEADING = Category(
-    "no_more_heading",
-    N_("Movement, no more heading"),
+#: A jump that reached nothing (no more heading, table, list or item in that direction).
+MOVEMENT_BLOCKED = Category(
+    "movement_blocked",
+    N_("Conversation, no further movement possible"),
     Destination.MESSAGE,
     _NONE_OR_MESSAGE,
     in_status_bar=False,
@@ -132,15 +132,15 @@ GAUGE = Category(
 #: The conversation read again.
 REFRESH = Category("refresh", N_("Refresh"), Destination.MESSAGE, _NONE_OR_MESSAGE)
 
-#: Every category, in the order of the Screen reader page of the Preferences.
+#: Every category, in the order of the Announcements page of the Preferences.
 CATEGORIES = (
     PROGRESS,
     STEP,
     END_OF_ANSWER,
     PERMISSION_QUESTION,
     PERMISSION_ANSWER,
-    HEADINGS,
-    NO_MORE_HEADING,
+    MOVEMENT,
+    MOVEMENT_BLOCKED,
     SEARCH,
     SEARCH_FAILED,
     REFRESH,
@@ -177,11 +177,20 @@ class Announce(enum.Enum):
         PERMISSION_ANSWER,
         N_("The question about the tool {tool} expired: Claude denied the tool."),
     )
-    HEADING = (HEADINGS, N_("{title}, title {level}"))
-    NO_NEXT_HEADING = (NO_MORE_HEADING, N_("No next heading."))
-    NO_PREVIOUS_HEADING = (NO_MORE_HEADING, N_("No previous heading."))
-    NO_NEXT_HEADING_OF_LEVEL = (NO_MORE_HEADING, N_("No next title {level}."))
-    NO_PREVIOUS_HEADING_OF_LEVEL = (NO_MORE_HEADING, N_("No previous title {level}."))
+    MOVED = (MOVEMENT, N_("{line}"))
+    MOVED_HEADING = (MOVEMENT, N_("{title}, title {level}"))
+    MOVED_TABLE = (MOVEMENT, N_("Table of {columns} and {rows}. {line}"))
+    MOVED_LIST = (MOVEMENT, N_("List of {items}. {line}"))
+    NO_NEXT_HEADING = (MOVEMENT_BLOCKED, N_("No next heading."))
+    NO_PREVIOUS_HEADING = (MOVEMENT_BLOCKED, N_("No previous heading."))
+    NO_NEXT_HEADING_OF_LEVEL = (MOVEMENT_BLOCKED, N_("No next title {level}."))
+    NO_PREVIOUS_HEADING_OF_LEVEL = (MOVEMENT_BLOCKED, N_("No previous title {level}."))
+    NO_NEXT_TABLE = (MOVEMENT_BLOCKED, N_("No next table."))
+    NO_PREVIOUS_TABLE = (MOVEMENT_BLOCKED, N_("No previous table."))
+    NO_NEXT_LIST = (MOVEMENT_BLOCKED, N_("No next list."))
+    NO_PREVIOUS_LIST = (MOVEMENT_BLOCKED, N_("No previous list."))
+    NO_NEXT_ITEM = (MOVEMENT_BLOCKED, N_("No next list item."))
+    NO_PREVIOUS_ITEM = (MOVEMENT_BLOCKED, N_("No previous list item."))
 
     def __init__(self, category: Category | None, text: str) -> None:
         self.category = category

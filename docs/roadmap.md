@@ -13,7 +13,7 @@ Claude are asked to the user (two channels, chosen in Preferences > Claude: the 
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
 shown in dialogs; a conversation can be branched and deleted; the usage dialog ends with the
-statistics of the whole workspace, and a line under each answer sums up its tools. 665 tests
+statistics of the whole workspace, and a line under each answer sums up its tools. 696 tests
 pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
@@ -22,13 +22,17 @@ a structured question, the expiry of the hook), the allow / ask / deny rules of
 dialog. **Not yet verified with NVDA and JAWS** (to do at each milestone, see `accessibility.md`):
 the new list *Interface type* and spin control of Preferences > Claude, the *Plan* dialog, the
 statistics lines of *Claude usage* (numbers written short), the line that sums up the tools under
-the answers with its check item, and *Preferences* now in the File menu.
+the answers with its check item, *Preferences* now in the File menu, the dialog of a table (list of the
+rows, Left/Right change the column, a field gives the cell), the keys `H`, `T`, `L`, `I` and `Space` of
+the conversation and their announcements, and the tab *Announcements* of the Preferences.
 
-Last work, in order (most recent first): the line that sums up the tools under the answers;
+Last work, in order (most recent first): the log file and the PyInstaller build (`build.bat`, a zip);
+the dialog of a table by column; the keys `H` / `T` / `L` / `I` / `Space` of the conversation and
+two announcement categories for them; the line that sums up the tools under the answers;
 *Preferences* moved to the File menu, above Quit; the numbers of tokens written short; the
 statistics of the workspace; branch and delete a conversation; the permission channels (`PermissionChannel`, the HTTP hook, the choice in the
 Preferences, *Tools > Plan…*); the announcement categories (a destination each, Preferences >
-Screen reader, two sounds); the MVP structure; the names of the conversations taken from the CLI
+Announcements, two sounds); the MVP structure; the names of the conversations taken from the CLI
 sessions; the version setup; the help pages; and the **reading of the gauges with `/usage`** (at
 startup, when a first workspace opens, and by a one-minute timer when a gauge is unknown or past its
 reset time; handled like a message: send buttons and *Claude usage* greyed, silent; see
@@ -132,7 +136,7 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
    The context menu of the conversation is always ours (the native one of the field is never
    shown, see `conversation-display.md`).
 6. Around them: skeleton and menus, Preferences (General, Claude, Workspace, Agent, Shortcuts,
-   Screen reader), the Claude tab (automatic search of `claude`, or its path chosen by hand), the
+   Announcements), the Claude tab (automatic search of `claude`, or its path chosen by hand), the
    status bar with the position among the prompts (`Message 3 of 8`), configurable shortcuts, agents, conversation names, workspaces (recent, from Claude
    projects, last one reopened, one state file each), robust JSON files, single instance, UI
    Automation announcements, open the workspace folder.
@@ -157,13 +161,20 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 11. **Summary of the tools under the answers** (`tool_summary.py`): one line under each answer that
     used tools, shown or hidden by a check item of the Conversation menu (`settings.md`,
     `show_tools_summary`). *Preferences* is in the File menu, above Quit.
+12. **Log file** (`core/diagnostics.py`): `wxclaude.log` with a start-up report, the uncaught errors
+    of every thread, a crash file apart; the level is set by the `.bat` shipped with the zip. **Packaging**: `build.bat` makes `dist\WxClaude` (PyInstaller, one
+    folder, no console) and `dist\WxClaude-<version>.zip`.
+13. **Navigation of the conversation**: `H` headings, `1`-`6` levels, `T` tables, `L` lists of level 1,
+    `I` items of the list the caret is in (`core/conversation/blocks.py`), `Space` shows the table
+    at the caret; the announcements of the moves are two categories (*movement done*, *no further
+    movement possible*). The table dialog shows one column at a time (`ui/table_dialog.py`; the first
+    dialog is one assignment away, `TABLE_DIALOG`).
 
 ## Next milestones
 
 
-7. **Packaging**: `build.bat` builds `dist\WxClaude` (one folder, no console) from
-   `packaging/WxClaude.spec`; it works and starts. Left: the zip, the icon, and the manual checks
-   with NVDA and JAWS.
+7. **Packaging**: done for the build and the zip (item 12). Left: the icon, the tests with the real
+   zip on another machine, and the manual checks with NVDA and JAWS.
 8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
    settings, the tools announced by the CLI added to the list, and the other settings of the
    `.claude` files.

@@ -28,8 +28,7 @@ The last prompt is the last *visible* one: a hidden system message ("continue") 
 conversation without any prompt puts the caret at the start of the text.
 
 **C. The user moves inside the text: the focus is on the conversation view, on the target.**
-Search (Ctrl+F, F3, Shift+F3) selects the occurrence and announces its line; the title keys (`T`,
-`1` to `6`) move the caret, in a view that already has the focus.
+Search (Ctrl+F, F3, Shift+F3) selects the occurrence and announces its line; the keys of movement (`H`, `1` to `6`, `T`, `L`, `I`) move the caret, in a view that already has the focus.
 
 **D. An update the user did not ask for moves neither the focus nor the caret.**
 (When the text has to be rebuilt, as for the summary of the tools under the answers, the

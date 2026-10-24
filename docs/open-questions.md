@@ -23,7 +23,7 @@ the file it belongs to and delete it from this one.
 - **HTTP hook channel, not tested yet.** `updatedPermissions` (a rule for the session), `interrupt`,
   `decision.rule` (one documentation page), a waiting time above 10 minutes (the maximum accepted
   by the CLI), `tool_use_id` (the documentation lists it, the real POST has none).
-- **Screen readers and the Preferences, Screen reader tab.** The list of the announcement
+- **Screen readers and the Preferences, Announcements tab.** The list of the announcement
   categories, the two sounds (WAV files in `wxclaude/sounds`, played with `winsound`) and the status
   bar left alone with *No announcement* are to be checked with NVDA and JAWS.
 - **Screen readers and the Preferences, Claude tab.** The list *Interface type* and the spin

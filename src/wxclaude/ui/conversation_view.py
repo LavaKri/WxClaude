@@ -4,6 +4,14 @@ from collections.abc import Callable
 
 import wx
 
+from wxclaude.core.conversation.blocks import (
+    Block,
+    BlockKind,
+    block_starts,
+    next_block,
+    previous_block,
+    sibling_items,
+)
 from wxclaude.core.conversation.conversation_document import ConversationDocument, MessageSpan
 from wxclaude.core.conversation.details import DetailAction, message_details
 from wxclaude.core.conversation.headings import (
@@ -16,18 +24,44 @@ from wxclaude.core.conversation.headings import (
 )
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.speech.announcements import Announce
-from wxclaude.i18n import _
+from wxclaude.i18n import _, ngettext
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
-_HEADING_KEY = ord("T")
+_HEADING_KEY = ord("H")
+_BLOCK_KEYS = {ord("T"): BlockKind.TABLE, ord("L"): BlockKind.LIST, ord("I"): BlockKind.ITEM}
+#: What is said when there is nothing further: (kind, backwards) -> announcement.
+_BLOCK_MISSING = {
+    (BlockKind.TABLE, False): Announce.NO_NEXT_TABLE,
+    (BlockKind.TABLE, True): Announce.NO_PREVIOUS_TABLE,
+    (BlockKind.LIST, False): Announce.NO_NEXT_LIST,
+    (BlockKind.LIST, True): Announce.NO_PREVIOUS_LIST,
+    (BlockKind.ITEM, False): Announce.NO_NEXT_ITEM,
+    (BlockKind.ITEM, True): Announce.NO_PREVIOUS_ITEM,
+}
 #: The labels of the context menu (translated when the menu opens, not at import).
 _MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
     DetailAction.TOOLS: lambda: _("Show the &tools used…"),
-    DetailAction.TABLE: lambda: _("Show the t&able…"),
+    DetailAction.TABLE: lambda: _("Show the t&able…\tSpace"),  # the shortcut shown is the key
     DetailAction.LINKS: lambda: _("Show the &links…"),
     DetailAction.COPY_MESSAGE: lambda: _("&Copy the message"),
     DetailAction.COPY_EXCHANGE: lambda: _("Copy the &exchange"),
 }
+
+
+def _arrival(kind: BlockKind, block: Block, line: str) -> tuple[Announce, dict[str, str]]:
+    """What is said on arriving at ``block`` (its first line is ``line``)."""
+    if kind is BlockKind.TABLE:
+        columns = ngettext("{count} column", "{count} columns", block.columns)
+        rows = ngettext("{count} row", "{count} rows", block.count)
+        return Announce.MOVED_TABLE, {
+            "columns": columns.format(count=block.columns),
+            "rows": rows.format(count=block.count),
+            "line": line,
+        }
+    if kind is BlockKind.LIST:
+        items = ngettext("{count} item", "{count} items", block.count)
+        return Announce.MOVED_LIST, {"items": items.format(count=block.count), "line": line}
+    return Announce.MOVED, {"line": line}
 
 
 def _is_shift_f10(event: wx.KeyEvent) -> bool:
@@ -40,7 +74,9 @@ def _is_menu_key(event: wx.KeyEvent) -> bool:
 
 
 class ConversationView(wx.TextCtrl):
-    """Shows the messages; ``T`` and ``1`` to ``6`` (with Shift: backwards) jump between headings.
+    """Shows the messages. With Shift the keys go backwards: ``H`` and ``1`` to ``6`` jump between
+    headings, ``T`` between tables, ``L`` between lists and ``I`` between the items of lists (the
+    lists and items of level 1 only).
 
     The screen reader does not read the line when the application moves the caret, so every jump
     is announced through ``say``. The view never takes the focus by itself.
@@ -227,13 +263,6 @@ class ConversationView(wx.TextCtrl):
         for action in message_details(span.message).actions(line):
             item = menu.Append(wx.ID_ANY, _MENU_LABELS[action]())
             menu.Bind(wx.EVT_MENU, self._menu_handler(action, span.message, line), item)
-        # The same jumps as the keys T and Shift+T (the shortcut shown is the key itself).
-        for text, backwards in (
-            (_("&Next heading\tT"), False),
-            (_("&Previous heading\tShift+T"), True),
-        ):
-            item = menu.Append(wx.ID_ANY, text)
-            menu.Bind(wx.EVT_MENU, self._heading_handler(backwards=backwards), item)
         self.PopupMenu(menu, position)
         menu.Destroy()
 
@@ -243,12 +272,6 @@ class ConversationView(wx.TextCtrl):
         def handle(_event: wx.CommandEvent) -> None:
             if self._on_action is not None:
                 wx.CallAfter(self._on_action, action, message, line)  # once the menu is closed
-
-        return handle
-
-    def _heading_handler(self, *, backwards: bool) -> Callable[[wx.CommandEvent], None]:
-        def handle(_event: wx.CommandEvent) -> None:
-            wx.CallAfter(self._jump, None, backwards=backwards)  # once the menu is closed
 
         return handle
 
@@ -273,15 +296,17 @@ class ConversationView(wx.TextCtrl):
             event.Skip()
             return
         code = event.GetKeyCode()
-        level: int | None
-        if code == _HEADING_KEY:
-            level = None
+        if code == wx.WXK_SPACE and not event.ShiftDown():
+            if not self._open_details_at_caret():
+                event.Skip()
+        elif code in _BLOCK_KEYS:
+            self._jump_block(_BLOCK_KEYS[code], backwards=event.ShiftDown())
+        elif code == _HEADING_KEY:
+            self._jump(None, backwards=event.ShiftDown())
         elif code in _LEVEL_KEYS:
-            level = _LEVEL_KEYS[code]
+            self._jump(_LEVEL_KEYS[code], backwards=event.ShiftDown())
         else:
             event.Skip()
-            return
-        self._jump(level, backwards=event.ShiftDown())
 
     def _jump(self, level: int | None, *, backwards: bool) -> None:
         headings = parse_headings(self._document.text)
@@ -303,9 +328,43 @@ class ConversationView(wx.TextCtrl):
             return Announce.NO_PREVIOUS_HEADING_OF_LEVEL
         return Announce.NO_NEXT_HEADING_OF_LEVEL
 
+    def _open_details_at_caret(self) -> bool:
+        """Space: show what the caret is on (for now the table it is in); False if it is on
+        nothing that has a display of its own."""
+        span = self.message_at_caret()
+        if span is None or self._on_action is None:
+            return False
+        line = self._document.body_line(span, self._caret_index())
+        if message_details(span.message).table_at(line) is None:
+            return False
+        wx.CallAfter(self._on_action, DetailAction.TABLE, span.message, line)
+        return True
+
+    def _jump_block(self, kind: BlockKind, *, backwards: bool) -> None:
+        text = self._document.text
+        blocks = block_starts(text)[kind]
+        position = self._caret_index()
+        if kind is BlockKind.ITEM:
+            blocks = sibling_items(blocks, position)  # the items of the list the caret is in
+        target = previous_block(blocks, position) if backwards else next_block(blocks, position)
+        if target is None:
+            self._say(_BLOCK_MISSING[kind, backwards])
+            return
+        end = text.find("\n", target.start)
+        line = text[target.start : end if end >= 0 else len(text)]
+        self._move(target.start)
+        announce, values = _arrival(kind, target, line)
+        self._say(announce, **values)
+
     def _go_to(self, heading: Heading) -> None:
-        position = to_utf16(self._document.text, heading.start)
+        self._move(heading.start)
+        self._say(
+            Announce.MOVED_HEADING, title=heading.title, level=heading.level, line=heading.title
+        )
+
+    def _move(self, index: int) -> None:
+        """Put the caret at the Python index ``index``."""
+        position = to_utf16(self._document.text, index)
         self.SetInsertionPoint(position)
         self.ShowPosition(position)
         self.report_position()
-        self._say(Announce.HEADING, title=heading.title, level=heading.level, line=heading.title)

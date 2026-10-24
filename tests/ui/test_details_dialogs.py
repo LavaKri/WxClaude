@@ -170,33 +170,18 @@ def test_the_menu_offers_what_the_message_holds(
     _caret_on(view, "| a.txt")
     assert _open_menu(view, monkeypatch) == [
         "Show the &tools used…",
-        "Show the t&able…",
+        "Show the t&able…	Space",
         "Show the &links…",
         "&Copy the message",
         "Copy the &exchange",
-        "&Next heading	T",
-        "&Previous heading	Shift+T",
     ]
-
-
-def test_the_menu_jumps_to_the_next_and_the_previous_heading(
-    view: ConversationView, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    view.SetInsertionPoint(0)
-    labels = _open_menu(view, monkeypatch, choose=2)  # copy, copy, then "Next heading"
-    wx.SafeYield()
-    assert labels[2] == "&Next heading	T"
-    assert view.GetInsertionPoint() == view.text.index("## Answer")
-    _open_menu(view, monkeypatch, choose=-1)  # "Previous heading", the last item
-    wx.SafeYield()
-    assert view.GetInsertionPoint() == 0
 
 
 def test_the_table_is_only_offered_on_its_lines(
     view: ConversationView, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _caret_on(view, "Result:")
-    assert "Show the t&able…" not in _open_menu(view, monkeypatch)
+    assert "Show the t&able…	Space" not in _open_menu(view, monkeypatch)
 
 
 def test_a_prompt_only_offers_to_be_copied(
@@ -256,7 +241,7 @@ def test_shift_f10_opens_our_menu_and_the_native_field_never_sees_the_key(
 
     monkeypatch.setattr(view, "PopupMenu", popup)
     assert _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_F10, shift=True) == []
-    assert labels[0][-4:-2] == ["&Copy the message", "Copy the &exchange"]
+    assert labels[0][-2:] == ["&Copy the message", "Copy the &exchange"]
     assert _key(view, wx.wxEVT_KEY_UP, wx.WXK_F10, shift=True) == []  # no native menu on key up
     assert _key(view, wx.wxEVT_KEY_UP, wx.WXK_WINDOWS_MENU) == []
     assert _key(view, wx.wxEVT_KEY_UP, ord("A")) == [True]  # other keys are left alone
@@ -281,3 +266,28 @@ def test_adopting_details_keeps_the_text_and_gives_the_tools(view: ConversationV
     assert view.document.spans[1].message.tools[0].name == "Bash"
     view.adopt_details([Message("9", Role.USER, "Other text")])  # another text: left alone
     assert view.document.spans[1].message.tools[0].name == "Bash"
+
+
+def test_space_on_a_table_line_shows_the_table(view: ConversationView, actions: _Actions) -> None:
+    _caret_on(view, "| a.txt")
+    assert _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_SPACE) == []  # taken, not passed on
+    wx.SafeYield()
+    ((action, message, line),) = actions.calls
+    assert (action, message.id, line) == (DetailAction.TABLE, "2", 4)
+
+
+def test_space_elsewhere_is_left_to_the_field(view: ConversationView, actions: _Actions) -> None:
+    _caret_on(view, "Result:")
+    assert _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_SPACE) == [True]
+    _key(view, wx.wxEVT_KEY_DOWN, wx.WXK_SPACE, shift=True)
+    wx.SafeYield()
+    assert actions.calls == []
+
+
+def test_the_tools_are_offered_on_the_whole_answer(
+    view: ConversationView, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    view.set_show_tools_summary(False)  # the line that sums the tools up is not there
+    for needle in ("## Answer", "Result:", "| a.txt", "See [docs]"):
+        _caret_on(view, needle)
+        assert "Show the &tools used…" in _open_menu(view, monkeypatch), needle

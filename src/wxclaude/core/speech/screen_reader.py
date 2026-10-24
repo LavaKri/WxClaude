@@ -1,4 +1,4 @@
-"""The ways messages can be sent to a screen reader (Options > Screen reader > Announcements).
+"""The ways messages can be sent to a screen reader (Preferences > Announcements).
 
 An output only names a method and the platforms it works on; the code that really sends the
 message is in ``ui/message_sinks.py``.

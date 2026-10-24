@@ -40,22 +40,40 @@ For each exchange:
 - Only complete messages are appended (no partial text), so the field is never rewritten in the
   middle and the caret and the focus are not disturbed.
 
-## Navigation by headings
+## Navigation by headings, tables, lists
 
-The field is read-only, so letters are free:
+The field is read-only, so letters are free. With Shift the keys go backwards:
 
 | Key | Action |
 |---|---|
-| `T` / `Shift+T` | next / previous heading, any level |
-| `1` to `6` | next heading of that level |
-| `Shift+1` to `Shift+6` | previous heading of that level |
+| `H` / `Shift+H` | next / previous heading, any level |
+| `1` to `6` / `Shift+1` to `Shift+6` | next / previous heading of that level |
+| `T` / `Shift+T` | next / previous table |
+| `L` / `Shift+L` | next / previous list |
+| `I` / `Shift+I` | next / previous item of a list |
 
-The caret moves to the start of the heading. **The screen reader does not read the line when the
-caret is moved by the application**, so the application announces it through UI Automation:
-`<title text>, title <N>` (N = number of `#`), without the `#`. When the user moves with the arrow
-keys the screen reader reads the raw line.
+`L` stops at the lists of level 1 only (a list inside another list has no stop of its own).
+`I` stays in the list the caret is in, at the level of the item it is on: in a list of level 1 it
+skips the nested items, in a nested list it moves among the nested items; outside a list, or at the
+first or last item, it says there is no item (`core/conversation/blocks.py`; ordered and bullet
+lists alike). The caret
+moves to the start of the heading, of the first line of the table (its header row), of the first
+line of the list or of the item. **The screen reader does not read the line when the caret is moved
+by the application**, so the application announces the move (category *Conversation, movement
+done*: nothing, a message, which is the default, or the line). The message depends on the key:
 
-Messages announce the boundaries ("no more heading") the way the other announcements do.
+| Key | Message | *Read the line* says |
+|---|---|---|
+| `H`, `1` to `6` | `<title text>, title <N>` (N = number of `#`) | the title without the `#` |
+| `T` | `Table of 2 columns and 4 rows. <first line>` (rows without the header row) | the first line, raw |
+| `L` | `List of 3 items. <first line>` (items of level 1) | the first line, raw |
+| `I` | the line of the item | the same |
+
+When the user moves with the arrow keys the screen reader reads the raw line.
+
+When there is nothing further in that direction the application says so ("No next table.") in the
+category *Conversation, no further movement possible* (nothing or a message, a message by default).
+The context menu of the view has no item for these jumps.
 
 ## Parser
 
@@ -82,17 +100,23 @@ context menu of the view (Applications key, Shift+F10) works on the message that
 offers, in this order, only what applies, then always *Copy the message* (its Markdown text) and
 *Copy the exchange* (the prompt of the exchange the message belongs to and every answer to it,
 as displayed, titles included; answers shown before any prompt make an exchange of their own;
-nothing is announced, the user asked for it), and last *Next heading* (`T`) and *Previous heading*
-(`Shift+T`), the same jumps as the keys, announced like them (the shortcut shown is the key itself):
+nothing is announced, the user asked for it):
 
-- **Show the tools used…** when the message has tools (an answer gets them from the session file once
-  the turn is over). A dialog lists the tools, one per line (`Bash, git status, failed`: name, what
+- **Show the tools used…** when the message has tools, wherever the caret is in it (title, text, the
+  line that sums the tools up or not, which can be hidden; an answer gets its tools from the session
+  file once the turn is over). A dialog lists the tools, one per line (`Bash, git status, failed`: name, what
   it worked on, and "failed" if it did), and a read-only field gives everything about the selected
   one (each argument, then the result).
-- **Show the table…** when the caret is on a line of a table (`core/conversation/details.py`, the parser with the
-  `table` rule; a table inside a code block is not one). The dialog lists the rows, one per line
-  (`Name: a.txt, Size: 3`, empty cells left out), and *Copy the table* puts its Markdown on the
-  clipboard.
+- **Show the table…** (shortcut `Space`, also pressed in the view itself: the key shows what the caret
+  is on and is meant for other displays later) when the caret is on a line of a table (`core/conversation/details.py`, the parser with the
+  `table` rule; a table inside a code block is not one). The dialog (`ui/table_dialog.py`) has a list
+  of all the rows, the header row first, showing one column; Left and Right change the column
+  (the list is filled again, the selected row stays, its label says "column 2 of 3: Size"), and a
+  read-only field below holds the text of the cell at the selected row and the current column.
+  An empty cell is named "Empty cell" in the list and is empty in the field. *Copy the table* puts
+  its Markdown on the clipboard. The first dialog, one sentence per row
+  (`Name: a.txt, Size: 3`), is still in `ui/details_dialogs.py`: `TABLE_DIALOG` in
+  `ui/message_view.py` chooses between the two.
 - **Show the links…** when the message has a link (`[text](address)` or `<address>`). The dialog
   lists them (`text, address`) with the link of the caret's line selected (else the first);
   *Open in the browser* only hands `http://`, `https://` and `mailto:` addresses to the system (any
@@ -109,7 +133,7 @@ view (`focus.md`).
 ## Progress and usage
 
 - **Progress** goes to the status bar (not focusable) and is announced through UI Automation
-  (category "Progress of Claude" of Preferences > Screen reader); there is no shortcut of ours to read
+  (category "Progress of Claude" of Preferences > Announcements); there is no shortcut of ours to read
   it again, screen readers have their own for the status bar. Three status fields: the first gives the
   position of the caret in the conversation, `Message 3 of 8` (French: `Message 3 sur 8`); only the
   prompts of the user are counted, an answer belongs to the prompt it follows, and the field is empty

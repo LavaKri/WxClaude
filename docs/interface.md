@@ -17,7 +17,7 @@
   window waits for a prompt), then the last announcement. Progress ("Claude is thinking", "Claude
   uses the tool Read", "Claude is answering", "Permission denied for the tool Bash"), the steps, the
   end of a turn ("Claude has answered", "Claude was interrupted") and the other announcements go
-  where the Screen reader page of the Preferences says, per category. A failure ("Claude could not
+  where the Announcements page of the Preferences says, per category. A failure ("Claude could not
   answer: ...") is written in the status bar and opens a dialog with the details; the prompt is
   kept when Claude cannot be started.
 - **Step**: when Claude puts a task of its list in progress (`TaskUpdate` with the status
@@ -242,9 +242,9 @@ effort or the permission mode does not.
   cache notice.
 - **Shortcuts**: list of commands, field to press the new shortcut, restore the default, no
   shortcut. A shortcut is refused if it is invalid, reserved, standard or already used.
-- **Screen reader**: how announcements are sent (none, UI Automation on Windows); the list of the
+- **Announcements**: how announcements are sent (none, UI Automation on Windows); the list of the
   announcement categories with their destination, a list to change the destination of the selected
   category and a button to restore its default (changes apply with OK). Destinations: *No
-  announcement*, *Message*, *Read the line* (headings), *Dialog box* (unsuccessful search), *Message.wav*,
+  announcement*, *Message*, *Read the line* (movement in the conversation, headings), *Dialog box* (unsuccessful search), *Message.wav*,
   *Permission.wav*. Defaults: Message, except
   the end of an answer (Message.wav) and the question of permission (Permission.wav). See `accessibility.md`.

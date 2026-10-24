@@ -93,6 +93,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `messages.py` | `Message`: a prompt or an answer, with its hidden details (tools, thinking, usage). |
+| `blocks.py` | The tables, the lists of level 1 and their items of a Markdown text, and the next / previous one from a position. |
 | `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
@@ -143,7 +144,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `search_presenter.py` | `SearchPresenter`: Find, Find next and Find previous in the conversation; keeps the last search. |
 | `message_presenter.py` | `MessagePresenter`: the details of a message (tools, table, links), copying it or its exchange, the task list, the plans and the usage of Claude with the statistics of the workspace. |
 | `file_presenter.py` | `FilePresenter`: export the conversation, show the workspace folder in the file explorer, the help page, About. |
-| `announcements_presenter.py` | `AnnouncementsPresenter`: the destination of each category of announcements, edited in the Screen reader page until OK. |
+| `announcements_presenter.py` | `AnnouncementsPresenter`: the destination of each category of announcements, edited in the Announcements page until OK. |
 
 ## Modules of `ui/`
 
@@ -156,9 +157,9 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list), `confirm` (Yes / No, No by default) and `read_session` (the error is shown). |
 | `workspace_view.py` | `WxWorkspaceView`: the view of `WorkspacePresenter` (folder dialog, messages). |
 | `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |
-| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, `replace_messages` (rebuild the text, the caret staying on its message), the
+| `conversation_view.py` | The read-only Markdown field: keys for the headings, tables, lists and items, search selection, `focus_last_prompt`, `replace_messages` (rebuild the text, the caret staying on its message), the
 line that sums up the tools, the context menu of a message. |
-| `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
+| `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Announcements), each applying its own values. |
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/config/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
 | `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs, check item); `add_entries` appends and binds them. |
@@ -172,6 +173,7 @@ line that sums up the tools, the context menu of a message. |
 | `search_dialog.py` | The Find dialog (term, match case, whole words). |
 | `conversation_name_dialog.py` | Name of a new, renamed or branched conversation. |
 | `list_dialog.py` | `ListDialog(parent, spec, actions)`: a list of lines (from a `ListSpec`), the details of the selected one, a Close button and optional action buttons; the base of the three next dialogs. |
+| `table_dialog.py` | `TableCellsDialog`: a table shown one column at a time (a list of the rows, Left/Right change the column, a field holds the cell), used by `message_view.TABLE_DIALOG`; the old `TableDialog` of `details_dialogs.py` (one sentence per row) comes back by changing that one line. |
 | `tasks_dialog.py`, `plans_dialog.py`, `details_dialogs.py`, `usage_dialog.py` | Task list; plans; tools used, rows of a table and links of a message; usage of Claude. |
 | `shortcut_keys.py` | wx key events to the shortcut notation. |
 | `message_sinks.py`, `uia_provider.py` | Announcements sent as UI Automation notifications (`ctypes`). |

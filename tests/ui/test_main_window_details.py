@@ -33,7 +33,7 @@ def _capture_dialogs(
         shown.append(dialog)
         states.append(
             {
-                "lines": list(dialog._list.GetStrings()) if hasattr(dialog, "_list") else [],
+                "lines": list(getattr(getattr(dialog, "_list", None), "GetStrings", list)()),
                 "report": dialog.report if hasattr(dialog, "report") else "",
                 "selection": getattr(dialog, "selection", -1),
             }
@@ -183,7 +183,7 @@ def test_the_table_can_be_copied_as_markdown(
     copied: list[str] = []
     monkeypatch.setattr(desktop, "set_clipboard", _accepting(copied))
     conversation._actions.act(DetailAction.TABLE, TABLE_AND_LINKS, 2)
-    assert states[0]["lines"] == ["Name: a.txt, Size: 3"]
+    assert states[0]["lines"] == ["Name", "a.txt"]  # the header row, then the rows
     assert copied == ["| Name | Size |\n|---|---|\n| a.txt | 3 |"]
 
 

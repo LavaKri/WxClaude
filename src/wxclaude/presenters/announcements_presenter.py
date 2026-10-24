@@ -1,4 +1,4 @@
-"""The categories of announcements of the Screen reader page of the Preferences: the destination
+"""The categories of announcements of the Announcements page of the Preferences: the destination
 of each, edited until OK (see ``docs/accessibility.md``)."""
 
 import unicodedata

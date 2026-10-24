@@ -5,7 +5,8 @@ from wxclaude.core.speech.announcements import (
     CATEGORIES,
     END_OF_ANSWER,
     GAUGE,
-    HEADINGS,
+    MOVEMENT,
+    MOVEMENT_BLOCKED,
     PERMISSION_QUESTION,
     PROGRESS,
     SEARCH_FAILED,
@@ -81,9 +82,24 @@ def test_a_sound_is_played_and_no_text_is_returned() -> None:
 
 
 def test_read_line_sends_the_line() -> None:
-    center, sink, _player = _center({HEADINGS: Destination.READ_LINE})
-    center.notify(Announce.HEADING, title="Part", level=2, line="Part")
+    center, sink, _player = _center({MOVEMENT: Destination.READ_LINE})
+    center.notify(Announce.MOVED_HEADING, title="Part", level=2, line="Part")
     assert sink.messages == ["Part"]
+    assert MOVEMENT.default is Destination.MESSAGE
+    assert MOVEMENT.choices == (Destination.NONE, Destination.MESSAGE, Destination.READ_LINE)
+    center, sink, _player = _center()
+    center.notify(Announce.MOVED_HEADING, title="Part", level=2, line="Part")
+    assert sink.messages == ["Part, title 2"]
+    center, sink, _player = _center({MOVEMENT: Destination.NONE})
+    center.notify(Announce.MOVED, line="Part")
+    assert sink.messages == []
+
+
+def test_no_further_movement_is_a_message_by_default() -> None:
+    assert MOVEMENT_BLOCKED.default is Destination.MESSAGE
+    center, sink, _player = _center()
+    center.notify(Announce.NO_NEXT_TABLE)
+    assert sink.messages == ["No next table."]
 
 
 def test_the_dialog_destination_shows_the_text_in_a_dialog_and_nowhere_else() -> None:
@@ -114,8 +130,8 @@ def test_the_navigation_and_dialog_categories_are_kept_out_of_the_status_bar() -
         "end_of_answer",
         "step",
         "permission_question",
-        "headings",
-        "no_more_heading",
+        "movement",
+        "movement_blocked",
         "search",
         "search_failed",
         "gauge",

@@ -13,8 +13,13 @@ from wxclaude.ui import desktop
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.plans_dialog import PlansDialog
+from wxclaude.ui.table_dialog import TableCellsDialog
 from wxclaude.ui.tasks_dialog import TasksDialog
 from wxclaude.ui.usage_dialog import UsageDialog
+
+#: The dialog that shows a table. ``TableDialog`` (one sentence per row) is the other one: set it
+#: here to go back to it.
+TABLE_DIALOG: type[TableDialog | TableCellsDialog] = TableCellsDialog
 
 _LINK_ACTIONS = {wx.ID_OPEN: LinkAction.OPEN, wx.ID_COPY: LinkAction.COPY}
 
@@ -41,7 +46,7 @@ class WxMessageView:
             self._feedback.modal(dialog)
 
     def ask_table(self, table: Table) -> bool:
-        with TableDialog(self._parent, table) as dialog:
+        with TABLE_DIALOG(self._parent, table) as dialog:
             return bool(self._feedback.modal(dialog) == wx.ID_COPY)
 
     def ask_link(self, links: Sequence[Link], selected: int) -> LinkChoice | None:
