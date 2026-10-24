@@ -68,6 +68,8 @@ class MainWindow(wx.Frame):
         self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
         self.Bind(wx.EVT_CLOSE, self._on_close)
         self._conversation.set_show_hidden(not settings.hide_system_messages)
+        self._conversation.set_show_tools_summary(settings.show_tools_summary)
+        self._menu.tools_summary_item.Check(settings.show_tools_summary)
         self._refresh_enabled()
         self._menu.refresh_recent()
         self._workspaces.restore_last_session()
@@ -198,6 +200,7 @@ class MainWindow(wx.Frame):
                 rename_conversation=lambda _event: self._conversations.rename(),
                 new_branch=lambda _event: self._conversations.new_branch(),
                 delete_conversation=lambda _event: self._conversations.delete(),
+                toggle_tools_summary=self._on_toggle_tools_summary,
                 interrupt=self._on_interrupt,
                 update_interrupt=self._on_update_interrupt,
                 choose_agent=lambda _event: self._conversations.choose_agent(),
@@ -253,6 +256,12 @@ class MainWindow(wx.Frame):
     def can_send(self) -> bool:
         """Can a prompt be sent now? It needs a conversation, and Claude must not be answering."""
         return bool(self.conversation_id) and not self._run.busy
+
+    def _on_toggle_tools_summary(self, event: wx.CommandEvent) -> None:
+        """The item of the Conversation menu: show or hide the line under the answers."""
+        self._settings.show_tools_summary = event.IsChecked()
+        self._conversation.set_show_tools_summary(event.IsChecked())
+        self._save_settings()
 
     def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:
         self._conversations.refresh()

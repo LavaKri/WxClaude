@@ -38,9 +38,7 @@ class WxRunView:
         if view.shows(messages):
             view.adopt_details(messages)  # the messages shown live have no tools yet
         else:
-            caret = view.GetInsertionPoint()
-            view.set_messages(messages)
-            view.SetInsertionPoint(min(caret, view.GetLastPosition()))
+            view.replace_messages(messages)
 
     def ask_permission(self, request: PermissionRequest) -> Decision:
         """Show the question; closing the dialog without answering is a denial."""

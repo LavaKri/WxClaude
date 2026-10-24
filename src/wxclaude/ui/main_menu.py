@@ -44,6 +44,7 @@ class MenuHandlers:
     rename_conversation: Handler
     new_branch: Handler
     delete_conversation: Handler
+    toggle_tools_summary: Handler
     interrupt: Handler
     update_interrupt: Callable[[wx.UpdateUIEvent], None]
     choose_agent: Handler
@@ -84,6 +85,7 @@ class MainMenu:
         conversation_menu = wx.Menu()
         kept = add_entries(window, conversation_menu, self._conversation_entries(), registry)
         self.interrupt_item = kept["interrupt"]
+        self.tools_summary_item = kept["tools_summary"]
         window.Bind(wx.EVT_UPDATE_UI, handlers.update_interrupt, self.interrupt_item)
         search_menu = wx.Menu()
         add_entries(window, search_menu, self._search_entries(), registry)
@@ -139,6 +141,12 @@ class MainMenu:
             MenuEntry(_("Ren&ame the conversation"), h.rename_conversation, needs=conversation),
             MenuEntry(_("New conversation &branch"), h.new_branch, needs=conversation),
             MenuEntry(_("&Delete the conversation"), h.delete_conversation, needs=conversation),
+            MenuEntry(
+                _("Summary of the &tools under the answers"),
+                h.toggle_tools_summary,
+                key="tools_summary",
+                checkable=True,
+            ),
             MenuEntry(_("&Interrupt Claude"), h.interrupt, INTERRUPT_COMMAND, key="interrupt"),
             MenuEntry(_("&Modify the agent…"), h.choose_agent, needs=conversation),
         ]

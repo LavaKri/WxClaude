@@ -10,6 +10,7 @@ from bisect import bisect_right
 from dataclasses import dataclass
 
 from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.conversation.tool_summary import summarize_tools
 from wxclaude.i18n import N_, _
 
 PREVIEW_WORDS = 20
@@ -65,16 +66,23 @@ def message_header(message: Message) -> str:
     return f"{'#' * title_level(message)} {message_title(message)}\n"
 
 
-def render_message(message: Message) -> str:
-    """The text a message adds to the document: its title, its text and a blank line."""
-    return f"{message_header(message)}{message.text}\n\n"
+def render_message(message: Message, *, tools_summary: bool = False) -> str:
+    """The text a message adds to the document: its title, its text and a blank line.
+
+    With ``tools_summary`` an answer that used tools has the line that sums them up under its text
+    (it belongs to the document only: it is not part of the text of the message).
+    """
+    summary = summarize_tools(message.tools) if tools_summary and message.model else ""
+    under = f"{summary}\n\n" if summary else ""
+    return f"{message_header(message)}{message.text}\n\n{under}"
 
 
 class ConversationDocument:
     """The messages shown, the text they make, and the span of each in that text."""
 
-    def __init__(self, *, show_hidden: bool = False) -> None:
+    def __init__(self, *, show_hidden: bool = False, tools_summary: bool = False) -> None:
         self.show_hidden = show_hidden
+        self.tools_summary = tools_summary  # a line under each answer that used tools
         self._text = ""
         self._spans: list[MessageSpan] = []
         self._starts: list[int] = []
@@ -96,7 +104,7 @@ class ConversationDocument:
         """Add ``message``; return the text to append to the field ('' if it is not shown)."""
         if message.hidden and not self.show_hidden:
             return ""
-        added = render_message(message)
+        added = render_message(message, tools_summary=self.tools_summary)
         start = len(self._text)
         self._text += added
         self._spans.append(MessageSpan(message, start, len(self._text)))
@@ -122,7 +130,8 @@ class ConversationDocument:
     def exchange_of(self, message_id: str) -> str:
         """The text of the exchange that holds the message: the prompt of the user and every
         answer that follows it, as displayed (titles included). Answers shown before any prompt
-        make an exchange without one. '' if the message is not shown."""
+        make an exchange without one. '' if the message is not shown. The lines that sum up
+        the tools are not part of it."""
         index = next((i for i, s in enumerate(self._spans) if s.message.id == message_id), None)
         if index is None:
             return ""
@@ -132,7 +141,8 @@ class ConversationDocument:
         last = index + 1
         while last < len(self._spans) and self._spans[last].message.role is not Role.USER:
             last += 1
-        return self._text[self._spans[first].start : self._spans[last - 1].end].rstrip("\n")
+        shown = (render_message(span.message) for span in self._spans[first:last])
+        return "".join(shown).rstrip("\n")
 
     def body_line(self, span: MessageSpan, position: int) -> int:
         """The line of the text of the message that holds ``position``; -1 on its title."""

@@ -117,6 +117,24 @@ view (`focus.md`).
   the system messages are shown and an answer opens the conversation). It follows the keyboard, the
   mouse, the jumps by headings and the search, and is not announced. The second field gives the step
   Claude works on (`interface.md`, "Step"), the third holds the last announcement.
+- **Summary of the tools under the answers**: an answer that used tools has one more line under its
+  text, in the block of the answer (under the same title of level 2, which is the only heading):
+
+  ```
+  5 commands run, 2 files modified, 3 files read, 1 other tool used, of which 1 failed
+  ```
+
+  Commands are Bash and PowerShell calls; the files modified are those of Edit, Write and
+  NotebookEdit and the files read those of Read, each file counted once however many times it was
+  used; every other tool (search, web, sub-agent, task list, MCP...) is an "other tool"; the
+  failures are the tools whose result is an error, a denied permission included. What is zero is
+  left out, an answer without tools has no line (`core/conversation/tool_summary.py`). The line is
+  part of the text of the view only: it is found by the search, but it is not in the text of
+  "Copy the message" nor in the one of "Copy the exchange". It appears when the answer ends and the
+  view is rebuilt from the session file (the answers shown live have no tools yet) without moving the
+  focus, and the caret stays on its message at the same place (`focus.md`, rule D). A check item of
+  the Conversation menu, "Summary of the tools under the answers", shows or hides it (on by
+  default, kept in `settings.json`).
 - **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
   field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
   used, resets at 16:00`, from the `rate_limit_event` lines; "at" and the time alone for today,

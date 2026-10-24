@@ -35,7 +35,8 @@
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again; the focus goes to the conversation, the caret to
 the last prompt), Rename (the CLI renames the session), New conversation branch (see "Branch and delete"),
-Delete the conversation (see "Branch and delete"), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
+Delete the conversation (see "Branch and delete"), Summary of the tools under the answers (a
+check item, see the conversation display), Interrupt Claude (Ctrl+Shift+I), Modify the agent, and the
 submenu **Search** (see below).
 
 **Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open

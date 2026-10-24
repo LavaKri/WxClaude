@@ -94,20 +94,34 @@ class ConversationView(wx.TextCtrl):
         """Show or hide the system messages (noise); the caret stays on its message."""
         if show == self._document.show_hidden:
             return
-        span = self.message_at_caret()
         self._document.show_hidden = show
+        self.replace_messages(self._messages)
+
+    def set_show_tools_summary(self, show: bool) -> None:
+        """Show or hide the line under each answer that sums up its tools; the caret stays."""
+        if show == self._document.tools_summary:
+            return
+        self._document.tools_summary = show
+        self.replace_messages(self._messages)
+
+    def replace_messages(self, messages: list[Message]) -> None:
+        """Show ``messages`` again; the caret stays on its message, at the same place in it (or at
+        the end when it was at the end), and the focus is not touched."""
+        text = self._document.text
+        caret = self._caret_index()
+        span = self._document.span_at(caret)
+        offset = caret - span.start if span is not None else 0
+        at_end = caret >= len(text)
+        self._messages = list(messages)
         self.ChangeValue(self._document.rebuild(self._messages))
-        position = 0
-        if span is not None:
-            position = next(
-                (
-                    to_utf16(self._document.text, new.start)
-                    for new in self._document.spans
-                    if new.message.id == span.message.id
-                ),
-                0,
-            )
-        self.SetInsertionPoint(position)
+        new_text = self._document.text
+        position = len(new_text) if at_end else 0
+        new = None
+        if span is not None and not at_end:
+            new = next((s for s in self._document.spans if s.message.id == span.message.id), None)
+        if new is not None:
+            position = new.start + min(offset, max(0, new.end - new.start - 1))
+        self.SetInsertionPoint(to_utf16(new_text, position))
         self.report_position()
 
     def append_message(self, message: Message) -> None:
@@ -158,7 +172,9 @@ class ConversationView(wx.TextCtrl):
 
     def shows(self, messages: list[Message]) -> bool:
         """Would the view show exactly ``messages``? (Compared on the text it would hold.)"""
-        document = ConversationDocument(show_hidden=self._document.show_hidden)
+        document = ConversationDocument(
+            show_hidden=self._document.show_hidden, tools_summary=self._document.tools_summary
+        )
         return document.rebuild(messages) == self._document.text
 
     def adopt_details(self, messages: list[Message]) -> None:

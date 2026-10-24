@@ -32,6 +32,8 @@ Search (Ctrl+F, F3, Shift+F3) selects the occurrence and announces its line; the
 `1` to `6`) move the caret, in a view that already has the focus.
 
 **D. An update the user did not ask for moves neither the focus nor the caret.**
+(When the text has to be rebuilt, as for the summary of the tools under the answers, the
+caret stays on its message, at the same place in it.)
 The end of an answer (the session file is read again and the view rebuilt if it differs) leaves the
 focus where it is, so the user can type the next prompt; changing the option "Hide the system
 messages" rebuilds the text and keeps the caret on its message.

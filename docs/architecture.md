@@ -96,6 +96,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `headings.py`, `conversation_document.py` | The Markdown headings and the navigation between them (UTF-16 positions); the conversation as one Markdown text with the span of each message. |
 | `conversations.py` | Conversation identifiers (UUID, the session id of the CLI) and proposed names. |
 | `search.py` | `SearchOptions`, next / previous occurrence in a text, the line that holds an index (no wrapping). |
+| `tool_summary.py` | `summarize_tools`: the line under an answer that sums up its tools (commands run, files modified and read, other tools, failures). |
 | `details.py` | What a message holds without displaying it: tools, tables, links (Markdown parser) and the actions of its context menu. |
 | `export.py` | Writes the conversation text to a file. |
 
@@ -154,11 +155,12 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list), `confirm` (Yes / No, No by default) and `read_session` (the error is shown). |
 | `workspace_view.py` | `WxWorkspaceView`: the view of `WorkspacePresenter` (folder dialog, messages). |
 | `file_view.py` | `WxFileView`: the view of `FilePresenter` (export dialog, file explorer, browser, About). |
-| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, the context menu of a message. |
+| `conversation_view.py` | The read-only Markdown field: keys for the headings, search selection, `focus_last_prompt`, `replace_messages` (rebuild the text, the caret staying on its message), the
+line that sums up the tools, the context menu of a message. |
 | `preferences_dialog.py`, `preferences_pages.py` | Preferences: the notebook, OK and the validation of the pages; one class per page (General, Claude, Workspace, Agent, Screen reader), each applying its own values. |
 | `shortcuts_page.py` | The page to choose shortcuts, independent of the settings (commands and shortcuts are given to it); it can be copied with `core/config/shortcuts.py`, `shortcut_keys.py` and `fields.py`. |
 | `fields.py` | `read_only_field`: the read-only multi-line field the Tab key reaches. |
-| `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs); `add_entries` appends and binds them. |
+| `menus.py` | Menus described as tables (`MenuEntry`: text, handler, configurable command, what it needs, check item); `add_entries` appends and binds them. |
 | `main_menu.py` | `MainMenu`: the menu bar of the main window (tables, recent workspaces, shortcuts, greying), told what each item does by `MenuHandlers`. |
 | `message_view.py` | `WxMessageView`: the view of `MessagePresenter` (dialogs of the details, tasks, plans and usage; clipboard, browser). |
 | `search_view.py` | `WxSearchView`: the view of `SearchPresenter` (Find dialog, selection in the conversation view). |

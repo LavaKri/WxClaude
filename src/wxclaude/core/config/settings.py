@@ -22,6 +22,7 @@ SETTINGS_FILE_NAME = "settings.json"
 _FLAG_KEYS = (
     "reopen_last",
     "hide_system_messages",
+    "show_tools_summary",
     "local_tools_only",
     "claude_auto_search",
 )
@@ -76,6 +77,7 @@ class Settings:
     screen_reader_output: str = field(default_factory=lambda: default_output().id)
     reopen_last: bool = True  # open the last workspace and conversation at startup
     hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
+    show_tools_summary: bool = True  # a line under each answer that sums up its tools
     announcements: dict[str, str] = field(default_factory=dict)  # category id -> destination
     local_tools_only: bool = False  # never modify the versioned settings of a project
     claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
@@ -203,6 +205,7 @@ class Settings:
             "screen_reader_output": self.screen_reader_output,
             "reopen_last": self.reopen_last,
             "hide_system_messages": self.hide_system_messages,
+            "show_tools_summary": self.show_tools_summary,
             "announcements": self.announcements,
             "local_tools_only": self.local_tools_only,
             "claude_auto_search": self.claude_auto_search,

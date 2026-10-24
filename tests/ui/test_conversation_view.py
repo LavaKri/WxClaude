@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterator
 import pytest
 import wx
 
-from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui.conversation_view import ConversationView
 
@@ -159,3 +159,55 @@ def test_the_position_in_the_prompts_is_reported_when_the_caret_moves(
     assert reported[-1] == (3, 3)  # the caret, at the old end, now starts the new prompt
     view.clear_messages()
     assert reported[-1] == (0, 0)
+
+
+def _with_tools() -> list[Message]:
+    return [
+        Message("1", Role.USER, "Hello"),
+        Message("2", Role.ASSISTANT, "First answer", model="m", tools=[ToolUse("t", "Read", {})]),
+        Message("3", Role.USER, "Again"),
+        Message("4", Role.ASSISTANT, "Second answer", model="m", tools=[ToolUse("u", "Bash", {})]),
+    ]
+
+
+def test_the_line_under_the_answers_can_be_shown_and_hidden_again(
+    view: ConversationView,
+) -> None:
+    view.set_messages(_with_tools())
+    assert "tool" not in view.GetValue()
+    view.set_show_tools_summary(True)
+    assert view.GetValue().count("1 file read") == 1
+    assert view.GetValue().count("1 command run") == 1
+    view.set_show_tools_summary(False)
+    assert "1 file read" not in view.GetValue()
+
+
+def test_showing_the_line_keeps_the_caret_on_its_message_at_the_same_place(
+    view: ConversationView,
+) -> None:
+    view.set_messages(_with_tools())
+    view.SetInsertionPoint(view.text.index("Again") + 2)
+    view.set_show_tools_summary(True)
+    assert view.GetInsertionPoint() == view.text.index("Again") + 2
+    view.SetInsertionPoint(view.text.index("irst answer"))  # in an answer that gains a line
+    view.set_show_tools_summary(False)
+    assert view.GetInsertionPoint() == view.text.index("irst answer")
+    view.set_show_tools_summary(True)
+    assert view.GetInsertionPoint() == view.text.index("irst answer")
+
+
+def test_a_caret_at_the_end_stays_at_the_end_when_the_text_grows(view: ConversationView) -> None:
+    view.set_messages(_with_tools())
+    view.SetInsertionPoint(view.GetLastPosition())
+    view.set_show_tools_summary(True)
+    assert view.GetInsertionPoint() == view.GetLastPosition()
+
+
+def test_the_view_knows_the_line_when_it_compares_the_messages(view: ConversationView) -> None:
+    messages = _with_tools()
+    view.set_messages(messages)
+    assert view.shows(messages)
+    view.set_show_tools_summary(True)
+    assert view.shows(messages)
+    bare = [Message(m.id, m.role, m.text, model=m.model) for m in messages]
+    assert not view.shows(bare)  # without the tools there is no line: another text

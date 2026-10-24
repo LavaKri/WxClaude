@@ -32,6 +32,8 @@ class MenuEntry:
     item_id: int = wx.ID_ANY
     enabled: bool = True
     key: str = ""
+    checkable: bool = False  # an item with a check mark (``checked`` is its first state)
+    checked: bool = False
 
 
 #: An entry that is a separator line.
@@ -59,7 +61,13 @@ def add_entries(
         if entry is None:
             menu.AppendSeparator()
             continue
-        item = menu.Append(entry.item_id, entry.text)
+        item = (
+            menu.AppendCheckItem(entry.item_id, entry.text)
+            if entry.checkable
+            else menu.Append(entry.item_id, entry.text)
+        )
+        if entry.checkable:
+            item.Check(entry.checked)
         if entry.handler is not None:
             window.Bind(wx.EVT_MENU, entry.handler, item)
         if not entry.enabled:

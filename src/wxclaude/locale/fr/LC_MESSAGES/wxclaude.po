@@ -73,6 +73,9 @@ msgstr "Nouvelle &branche de conversation"
 msgid "&Delete the conversation"
 msgstr "&Supprimer la conversation"
 
+msgid "Summary of the &tools under the answers"
+msgstr "Résumé des ou&tils sous les réponses"
+
 msgid "&Modify the agent…"
 msgstr "&Modifier l'agent…"
 
@@ -601,6 +604,31 @@ msgstr "Jetons échangés : {exchanged}, relus depuis le cache : {cached}"
 # The decimal mark: a point in English, a comma in French
 msgid "."
 msgstr ","
+
+# The line under an answer that sums up the tools Claude used
+
+msgid "{count} command run"
+msgid_plural "{count} commands run"
+msgstr[0] "{count} commande exécutée"
+msgstr[1] "{count} commandes exécutées"
+
+msgid "{count} file modified"
+msgid_plural "{count} files modified"
+msgstr[0] "{count} fichier modifié"
+msgstr[1] "{count} fichiers modifiés"
+
+msgid "{count} file read"
+msgid_plural "{count} files read"
+msgstr[0] "{count} fichier lu"
+msgstr[1] "{count} fichiers lus"
+
+msgid "{count} other tool used"
+msgid_plural "{count} other tools used"
+msgstr[0] "{count} autre outil invoqué"
+msgstr[1] "{count} autres outils invoqués"
+
+msgid "of which {count} failed"
+msgstr "dont {count} en échec"
 
 msgid "{value} million"
 msgid_plural "{value} million"

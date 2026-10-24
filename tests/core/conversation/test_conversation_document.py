@@ -4,9 +4,10 @@ from wxclaude.core.conversation.conversation_document import (
     ConversationDocument,
     message_title,
     preview,
+    render_message,
 )
 from wxclaude.core.conversation.headings import parse_headings
-from wxclaude.core.conversation.messages import Message, Role
+from wxclaude.core.conversation.messages import Message, Role, ToolUse
 
 pytestmark = pytest.mark.unit
 
@@ -154,3 +155,52 @@ def test_the_exchange_of_a_message_that_is_not_shown_is_empty() -> None:
     document.append(Message("h", Role.USER, "noise", hidden=True))
     assert document.exchange_of("h") == ""
     assert document.exchange_of("unknown") == ""
+
+
+def _with_tools(text: str = "Done", tools: list[ToolUse] | None = None) -> Message:
+    return Message("a", Role.ASSISTANT, text, model="m", tools=tools or [])
+
+
+READ = ToolUse("t", "Read", {"file_path": "a.py"})
+BASH = ToolUse("u", "Bash", {"command": "ls"}, is_error=True)
+
+
+def test_an_answer_that_used_tools_has_the_line_under_its_text_when_asked() -> None:
+    answer = _with_tools(tools=[READ, BASH])
+    assert render_message(answer) == "## Answer from m\nDone\n\n"
+    assert render_message(answer, tools_summary=True) == (
+        "## Answer from m\nDone\n\n1 command run, 1 file read, of which 1 failed\n\n"
+    )
+
+
+def test_the_line_is_for_answers_that_used_tools_only() -> None:
+    assert render_message(_with_tools(), tools_summary=True) == "## Answer from m\nDone\n\n"
+    prompt = Message("u", Role.USER, "Hi", tools=[READ])
+    assert render_message(prompt, tools_summary=True) == "# You say: Hi\nHi\n\n"
+
+
+def test_the_document_shows_the_line_and_the_line_belongs_to_the_span_of_its_answer() -> None:
+    document = ConversationDocument(tools_summary=True)
+    document.append(_prompt("Hi"))
+    added = document.append(_with_tools(tools=[READ]))
+    assert added.endswith("Done\n\n1 file read\n\n")
+    answer = document.spans[1]
+    assert document.text[answer.start : answer.end] == added
+    assert document.span_at(document.text.index("1 file read")) is answer
+
+
+def test_the_line_does_not_make_a_heading() -> None:
+    document = ConversationDocument(tools_summary=True)
+    document.append(_with_tools(tools=[READ]))
+    assert [h.title for h in parse_headings(document.text)] == ["Answer from m"]
+
+
+def test_the_lines_are_not_in_the_text_of_an_exchange() -> None:
+    document = ConversationDocument(tools_summary=True)
+    document.append(Message("u1", Role.USER, "Q1"))
+    document.append(Message("a1", Role.ASSISTANT, "R1", model="m", tools=[READ]))
+    document.append(Message("a2", Role.ASSISTANT, "S1", model="m", tools=[BASH]))
+    document.append(Message("u2", Role.USER, "Q2"))
+    expected = "# You say: Q1\nQ1\n\n## Answer from m\nR1\n\n## Answer from m\nS1"
+    assert document.exchange_of("a2") == expected
+    assert "1 file read" in document.text

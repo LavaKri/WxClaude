@@ -102,6 +102,19 @@ def test_the_hide_system_messages_option_defaults_to_true_and_round_trips(
     assert Settings.load(store).hide_system_messages is True
 
 
+def test_the_line_that_sums_up_the_tools_defaults_to_shown_and_round_trips(
+    tmp_path: Path,
+) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert settings.show_tools_summary is True
+    settings.show_tools_summary = False
+    settings.save()
+    assert Settings.load(store).show_tools_summary is False
+    store.write_text('{"show_tools_summary": "no"}', encoding="utf-8")
+    assert Settings.load(store).show_tools_summary is True
+
+
 def test_the_destination_of_a_category_defaults_and_only_a_change_is_stored(
     tmp_path: Path,
 ) -> None:
