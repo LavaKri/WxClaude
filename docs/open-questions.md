@@ -51,6 +51,16 @@ the file it belongs to and delete it from this one.
 - **A git-tracked `settings.local.json`.** The documentation says the CLI then treats its allow
   rules as coming from the repository and holds them until the folder is trusted; check what `-p`
   does, and if needed warn in the Workspace settings (detect with `git ls-files`).
+- **Statistics of the workspace.** To check: (1) the files of a branch made in the interactive
+  CLI with `/branch` (only `--fork-session` with `-p` was seen): the import tells a branch by the
+  identifiers of the messages it shares with another session and by having no totals of its own
+  among them; if `/branch` copies the `cost-state` entries, the copied history is counted twice in
+  the first count; (2) the cost and the messages of a message are given to the model the CLI
+  reports at the start (`system/init`), so the work of a subagent on another model is not
+  separated (the import is exact, it reads the models of the totals); (3) an interrupted message is
+  not counted at all (no `result`), nor the tokens it used; (4) the time of work of the import
+  (`totalAPIDuration + totalToolDuration`) and of the new messages (`duration_ms` minus the waits)
+  are two measures of the same thing: compare them on a real conversation.
 - **Subscription use.** Driving `claude -p` from a custom front end with a subscription login may
   be restricted by the usage policy of the provider (an API key is the safe path). Check the current
   terms.

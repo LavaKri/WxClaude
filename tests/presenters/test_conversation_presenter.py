@@ -82,6 +82,9 @@ class FakeScreen:
 
 
 class FakeWorkspaceView:
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+
     def choose_folder(self, default: Path | None) -> Path | None:
         return None
 
@@ -89,7 +92,7 @@ class FakeWorkspaceView:
         return None
 
     def show_error(self, message: str) -> None:
-        raise AssertionError(message)
+        self.errors.append(message)
 
     def show_file_warning(self, details: str) -> None:
         raise AssertionError(details)
@@ -184,6 +187,10 @@ def test_a_session_that_cannot_be_read_is_reported(tmp_path: Path) -> None:
     workspaces.open(tmp_path)
     assert conversations.conversation_id == ""
     assert screen.errors == ["Cannot read the conversation.\nCannot read broken.jsonl"]
+    # It was also left out of the statistics of the workspace, which said so.
+    assert workspaces._view.errors == [  # type: ignore[attr-defined]
+        "1 conversation could not be read and is not in the statistics."
+    ]
 
 
 def test_a_branch_keeps_the_text_and_copies_the_history_with_its_first_message(

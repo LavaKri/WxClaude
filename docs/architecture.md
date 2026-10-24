@@ -70,7 +70,9 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`; the files of a session (what deleting it removes). |
-| `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage. |
+| `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage, the totals of the session and its first time. |
+| `cost_state.py` | `CostState`, `ModelTotals`: the totals the CLI keeps of a session (`cost-state` entries): cost, time of work, tokens and cost of each model. |
+| `stats_import.py` | `import_sessions`: counts the conversations that exist when the statistics of a workspace start; a branch is counted from where it leaves its conversation. |
 | `claude_files.py` | `ClaudeFiles` (Protocol): what the presenters read and write of the files of Claude Code; `DiskClaudeFiles`, the real one, built on the modules above. |
 | `runner.py` | `ClaudeRunner`, `RunRequest`, `build_arguments`: one `claude -p` process per message, its threads; also the rename of a session and the reading of the gauges (`read_usage`, `/usage`, stopped after 15 seconds), which share its single process. |
 | `permission_channel.py` | `PermissionChannel` (Protocol): how the CLI asks a permission and how the answer goes back, one channel per message; `StdioChannel` (control protocol on stdin / stdout), `make_channel` (`stdio` or `hook`). See `claude-cli.md`, "Permission channels". |
@@ -105,6 +107,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `settings.py` | `Settings`: JSON file in the user configuration folder; only invalid or unknown values are dropped. |
 | `jsonstore.py` | Reading and writing the JSON files: atomic write, `.bak` backup, damaged file set aside (`.corrupt`). |
 | `workspace_state.py` | `WorkspaceState`: per workspace, the current conversation and the name and main agent of each conversation (`workspaces/<hash>.json`). |
+| `workspace_stats.py` | `WorkspaceStats`: per workspace, the ledger of what all its conversations used, deleted ones included (`workspaces/<hash>.stats.json`), and the lines that show it. |
 | `shortcuts.py` | Configurable commands, shortcut notation (`Ctrl+Shift+O`), rules and conflicts. |
 | `workspaces.py` | Recent workspaces (missing folders are dropped) and how a workspace is listed. |
 
@@ -121,6 +124,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `labels.py` | `accessible_name`: a label without its access key marker (`&Tools` gives `Tools`), used for the accessible name of the controls. |
+| `numbers.py` | `format_tokens`: a number of tokens written exact up to 999999, then rounded (`1,5 million`, `721 millions`, `12 milliards`), with the decimal mark and the plural of the language. |
 | `list_spec.py` | `ListSpec`: what a list dialog shows (titles, labels, lines, details), data only. |
 | `errors.py` | `WxClaudeError` and its subclasses. |
 | `help.py` | `help_page`: the HTML help page of a language in `wxclaude/help` (English as fallback), opened as it is by the browser. |
@@ -132,9 +136,10 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt) and the reading of the gauges (`refresh_gauges_if_due`, handled like a message: busy, silent), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
 | `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window (the name of a conversation is the one of its session: `--name`, `/rename`); what is remembered in the workspace file (current conversation, main agent). |
-| `workspace_presenter.py` | `WorkspacePresenter`: the current workspace and what is remembered about it; open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
+| `stats_recorder.py` | `StatsRecorder`: adds each finished message to the statistics of the workspace, without the time the user took to answer the permission questions. |
+| `workspace_presenter.py` | `WorkspacePresenter`: the current workspace, what is remembered about it and its statistics (counted from the existing conversations at the first use); open a folder, a Claude project, a recent workspace, the last one at startup. The window does what follows (`WorkspaceLinks`). |
 | `search_presenter.py` | `SearchPresenter`: Find, Find next and Find previous in the conversation; keeps the last search. |
-| `message_presenter.py` | `MessagePresenter`: the details of a message (tools, table, links), copying it or its exchange, the task list, the plans and the usage of Claude. |
+| `message_presenter.py` | `MessagePresenter`: the details of a message (tools, table, links), copying it or its exchange, the task list, the plans and the usage of Claude with the statistics of the workspace. |
 | `file_presenter.py` | `FilePresenter`: export the conversation, show the workspace folder in the file explorer, the help page, About. |
 | `announcements_presenter.py` | `AnnouncementsPresenter`: the destination of each category of announcements, edited in the Screen reader page until OK. |
 

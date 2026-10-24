@@ -26,6 +26,11 @@ def _(message: str) -> str:
     return _Catalog.translation.gettext(message)
 
 
+def ngettext(singular: str, plural: str, count: int) -> str:
+    """Translate ``singular`` or ``plural`` with the active catalog, as ``count`` says."""
+    return _Catalog.translation.ngettext(singular, plural, count)
+
+
 def N_(message: str) -> str:  # noqa: N802 - conventional gettext marker name
     """Mark ``message`` for extraction without translating it now; translate later with ``_``."""
     return message

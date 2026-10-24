@@ -73,6 +73,25 @@ def test_the_delete_item_needs_a_conversation(window: MainWindow, tmp_path: Path
     assert _delete_item(window).IsEnabled()
 
 
+def test_a_deleted_conversation_stays_in_the_statistics_of_the_workspace(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _send(conversation, "hello")
+    monkeypatch.setattr(conversation._feedback, "confirm", lambda _title, _message: True)
+
+    def recycle(paths: list[Path]) -> bool:
+        for path in paths:
+            path.unlink()
+        return True
+
+    monkeypatch.setattr(desktop, "move_to_recycle_bin", recycle)
+    conversation._conversations.delete()
+    assert conversation.conversation_id == ""  # the conversation is gone, its figures stay
+    stats = conversation._workspaces.stats
+    assert stats is not None
+    assert "1 message, in 1 conversation" in stats.lines()
+
+
 def test_deleting_moves_the_conversation_to_the_recycle_bin_and_opens_the_next(
     conversation: MainWindow, claude_config: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

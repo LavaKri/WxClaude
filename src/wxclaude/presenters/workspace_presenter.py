@@ -12,10 +12,14 @@ from pathlib import Path
 from typing import Protocol
 
 from wxclaude.core.claude.claude_files import ClaudeFiles
+from wxclaude.core.claude.session_reader import Session
+from wxclaude.core.claude.stats_import import import_sessions
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.workspace_state import WorkspaceState
+from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.config.workspaces import add_recent, remove_missing, workspace_label
-from wxclaude.i18n import _
+from wxclaude.core.errors import JsonStoreError, SessionReadError
+from wxclaude.i18n import _, ngettext
 
 
 class WorkspaceView(Protocol):
@@ -61,6 +65,7 @@ class WorkspacePresenter:
         self._links = links
         self.workspace: Path | None = None
         self.state: WorkspaceState | None = None  # what is remembered about the workspace
+        self.stats: WorkspaceStats | None = None  # what its conversations used, all of them
 
     def open(self, folder: Path) -> None:
         """Make ``folder`` the working folder; the conversation of another folder is closed."""
@@ -77,11 +82,47 @@ class WorkspacePresenter:
             self.state = WorkspaceState.load(folder, self._settings.workspaces_dir)
             if self.state.warning:
                 self._view.show_file_warning(self.state.warning)
+            self.stats = self._load_stats(folder)
         self.workspace = folder
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
         self._links.changed()
         self._links.save_settings()
+
+    def _load_stats(self, folder: Path) -> WorkspaceStats:
+        """The statistics of ``folder``. The first time, the conversations that already exist are
+        counted once; the ledger is then kept up to date message by message."""
+        stats = WorkspaceStats.load(folder, self._settings.workspaces_dir)
+        if stats.warning:
+            self._view.show_file_warning(stats.warning)
+        if stats.existed:
+            return stats
+        sessions: list[tuple[str, Session]] = []
+        unreadable = 0
+        for info in self._files.list_sessions(folder):
+            try:
+                sessions.append((info.id, self._files.read_session(info.path)))
+            except SessionReadError:
+                unreadable += 1
+        import_sessions(stats, sessions)
+        if unreadable:
+            self._view.show_error(
+                ngettext(
+                    "{count} conversation could not be read and is not in the statistics.",
+                    "{count} conversations could not be read and are not in the statistics.",
+                    unreadable,
+                ).format(count=unreadable)
+            )
+        if stats.messages:
+            try:
+                stats.save()
+            except JsonStoreError as error:
+                self._view.show_error(
+                    _("The statistics of the workspace could not be saved.\n{error}").format(
+                        error=error
+                    )
+                )
+        return stats
 
     def choose_folder(self) -> None:
         """Ask for a folder and open it."""

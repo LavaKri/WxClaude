@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from wxclaude.core.claude.cost_state import CostState, parse_cost_state
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.conversation.messages import Message, Role, ToolUse, Usage
 from wxclaude.core.errors import SessionReadError
@@ -28,6 +29,8 @@ class Session:
     last_permission_mode: str | None = None
     usage: Usage = field(default_factory=Usage)
     total_cost_usd: float | None = None  # what the CLI counted for the whole session
+    cost_states: list[CostState] = field(default_factory=list)  # its totals, as the file gives them
+    started: str = ""  # the time of the first entry (ISO 8601), empty if there is none
 
     @property
     def last_agent(self) -> Agent:
@@ -93,9 +96,10 @@ class _Builder:
         elif kind == "ai-title" and isinstance(entry.get("aiTitle"), str):
             self._ai_title = str(entry["aiTitle"])
         elif kind == "cost-state":
-            total = entry.get("totalCostUSD")
-            if isinstance(total, int | float) and not isinstance(total, bool):
-                self.session.total_cost_usd = float(total)  # the last one is the current total
+            state = parse_cost_state(entry, len(self.session.messages))
+            if state is not None:
+                self.session.cost_states.append(state)
+                self.session.total_cost_usd = state.cost  # the last one is the current total
         elif kind in ("user", "assistant") and not entry.get("isSidechain"):
             message = entry.get("message")
             if isinstance(message, dict):
@@ -106,6 +110,9 @@ class _Builder:
         mode = entry.get("permissionMode")
         if isinstance(mode, str):
             self.session.last_permission_mode = mode
+        stamp = entry.get("timestamp")
+        if not self.session.started and isinstance(stamp, str):
+            self.session.started = stamp
 
     def finish(self) -> Session:
         self._attach_pending_to_last_answer()

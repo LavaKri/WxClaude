@@ -156,6 +156,12 @@ One JSON object per line:
   message is the total it reports minus the total before it: 0 for a session that does not exist
   yet, the `cost-state` of the file for one that is opened, the total of the conversation it
   copies for a branch (`core/claude/usage.py`, `UsageTracker`).
+- **`duration_ms` includes the time the user takes to answer a permission question** (verified
+  2026-10-23, CLI 2.1.286, haiku, effort `low`, stdio protocol: a question answered after 30 s gave
+  `duration_ms` 34.4 s, `duration_api_ms` 3.7 s and, in the session file, `totalDuration` 35.0 s,
+  `totalAPIDuration` 3.7 s, `totalToolDuration` 0.6 s). The time of work is therefore
+  `duration_ms` minus the time the question was open (measured by WxClaude), or
+  `totalAPIDuration + totalToolDuration` in a file; the statistics use that.
 - `prompt_suggestion`: a predicted next prompt, after `result`.
 - The effort is **not** reported by the stream: use the one that was requested.
 - Read stdout and stderr continuously (a full pipe blocks the CLI), lines can be very long, and
@@ -258,8 +264,15 @@ ways to change it, all seen working:
 - The title is written to the file by the CLI, asynchronously; a rename adds a `custom-title`
   entry with `customTitle` (repeated many times in a long session: the last one wins, and it takes
   precedence over a generated title).
+- `cost-state` entries (one per turn, in sessions of `-p` and interactive ones) hold the totals of
+  the whole session so far: `totalCostUSD`, `totalDuration`, `totalAPIDuration`,
+  `totalToolDuration` (milliseconds), `totalLinesAdded`, `totalLinesRemoved`, `startTime` and
+  `modelUsage` (per model: `inputTokens`, `outputTokens`, `thinkingTokens`,
+  `cacheReadInputTokens`, `cacheCreationInputTokens`, `costUSD`). Read by `core/claude/cost_state.py`.
+  Nearly every entry has a `timestamp`. A branch made with `--fork-session` has no `cost-state` of
+  the copied history: its first one already includes the totals of the conversation it copies.
 - Other entry types seen, ignored by `core/claude/session_reader.py`: `attachment`, `queue-operation`,
-  `last-prompt`, `mode`, `cost-state`, `atis-latch`. Entries with `isMeta` or `isSidechain` are
+  `last-prompt`, `mode`, `atis-latch`. Entries with `isMeta` or `isSidechain` are
   not part of the conversation. The `permissionMode` field is on user entries.
 - The reader (`read_session`) skips lines that are not valid JSON (the CLI may be writing one).
 - Tasks of a session (verified on a real folder): `~/.claude/tasks/<session-id>/<id>.json` with

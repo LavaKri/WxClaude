@@ -19,6 +19,7 @@ from wxclaude.core.claude.events import (
     RateLimit,
     RateWindow,
     RunEvent,
+    SessionInit,
     ToolUsed,
     TurnEnded,
     TurnResult,
@@ -30,6 +31,7 @@ from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import started_task_id, step_of
 from wxclaude.core.claude.usage import GaugeAlerts
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.messages import Message, Role
 from wxclaude.core.errors import (
     ClaudeNotFoundError,
@@ -41,6 +43,7 @@ from wxclaude.core.errors import (
 from wxclaude.core.speech.announcements import Announce, AnnouncementCenter
 from wxclaude.i18n import _
 from wxclaude.presenters.shared import Shared
+from wxclaude.presenters.stats_recorder import StatsRecorder
 
 #: The announcement of each gauge that has an alert.
 _GAUGE_ALERTS = {"five_hour": Announce.GAUGE_FIVE_HOUR, "seven_day": Announce.GAUGE_WEEKLY}
@@ -97,6 +100,7 @@ class RunLinks:
     fork_from: Callable[[], str]
     is_closing: Callable[[], bool]
     state_changed: Callable[[], None]
+    stats: Callable[[], WorkspaceStats | None] = lambda: None  # the statistics of the workspace
 
 
 class RunPresenter:
@@ -125,6 +129,9 @@ class RunPresenter:
         self._schedule = GaugeSchedule()  # when the gauges are read again
         self._refreshing = False  # True while the gauges are read (busy too)
         self._local_messages = 0  # messages added by this run, for their identifiers
+        self._stats = StatsRecorder(links.stats, lambda message: self._view.show_error(message))
+        self._turn_model = ""  # the model that really answers the message (SessionInit)
+        self._turn_conversation = ""  # the conversation the message belongs to
 
     @property
     def busy(self) -> bool:
@@ -201,6 +208,9 @@ class RunPresenter:
         self._view.show_step("")
         self._turn_agent = agent
         self._turn_result = None
+        self._turn_model = ""
+        self._turn_conversation = conversation_id
+        self._stats.start_message()
         self._last_progress = ""
         self._turn_allowed = set()
         self._expired = set()
@@ -250,15 +260,30 @@ class RunPresenter:
         elif isinstance(event, RateLimit):
             self._usage.record_rate_limit(event, datetime.now())
             self._alert_gauges(event.windows)
-        elif isinstance(event, TurnResult):
-            self._turn_result = event
-            self._usage.record_result(event)
+        elif isinstance(event, SessionInit | TurnResult):
+            self._on_turn_data(event)
         elif isinstance(event, TurnEnded):
             self._finish_turn(event)
             return
         progress = progress_for(event)
         if progress is not None:
             self._show_progress(progress)
+
+    def _on_turn_data(self, event: SessionInit | TurnResult) -> None:
+        """What the CLI tells about the message: the model that really answers, then its result
+        (the usage and the statistics of the workspace)."""
+        if isinstance(event, SessionInit):
+            self._turn_model = event.model
+            return
+        result = event
+        self._turn_result = result
+        self._usage.record_result(result)
+        self._stats.record(
+            result,
+            conversation_id=self._turn_conversation,
+            model=self._turn_model or self._turn_agent.model or "",
+            cost=self._usage.last_cost,
+        )
 
     def _alert_gauges(self, windows: tuple[RateWindow, ...]) -> None:
         """Announce the gauges that just reached their alert threshold (once per crossing)."""
@@ -294,7 +319,8 @@ class RunPresenter:
             decision = Decision(Choice.ALLOW)
         else:
             self._view.say(Announce.PERMISSION_ASKED, tool=request.tool_name)
-            decision = self._view.ask_permission(request)
+            with self._stats.waiting():
+                decision = self._view.ask_permission(request)
             if request.request_id in self._expired:
                 return  # the CLI stopped waiting while the question was open: nothing to answer
         try:

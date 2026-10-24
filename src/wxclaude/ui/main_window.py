@@ -98,6 +98,7 @@ class MainWindow(wx.Frame):
             lambda: self.conversation_id,
             self._usage,
             self._files_of_claude,
+            lambda: self._workspaces.stats,
         )
 
     def _build_panel(self, runner: ClaudeRunner) -> None:
@@ -121,6 +122,7 @@ class MainWindow(wx.Frame):
                 conversation_id=lambda: self.conversation_id,
                 conversation_name=lambda: self._conversations.name,
                 fork_from=lambda: self._conversations.fork_from,
+                stats=lambda: self._workspaces.stats,
                 is_closing=lambda: self._closing,
                 state_changed=lambda: self._refresh_enabled(),
             ),

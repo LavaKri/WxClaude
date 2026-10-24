@@ -5,6 +5,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 # Main window
 
@@ -569,6 +570,85 @@ msgstr "La conversation n'a pas pu être mise à la Corbeille."
 
 msgid "Conversation \"{name}\" moved to the Recycle Bin."
 msgstr "Conversation « {name} » mise à la Corbeille."
+
+# Statistics of the workspace
+
+msgid "Global statistics of the workspace"
+msgstr "Statistiques globales de l'espace de travail"
+
+msgid "No message counted yet."
+msgstr "Aucun message compté pour l'instant."
+
+msgid "Started on {date}"
+msgstr "Débuté le {date}"
+
+msgid "{messages}, in {conversations}"
+msgstr "{messages}, sur {conversations}"
+
+msgid "{count} message"
+msgid_plural "{count} messages"
+msgstr[0] "{count} message"
+msgstr[1] "{count} messages"
+
+msgid "{count} conversation"
+msgid_plural "{count} conversations"
+msgstr[0] "{count} conversation"
+msgstr[1] "{count} conversations"
+
+msgid "Tokens exchanged: {exchanged}, read from the cache: {cached}"
+msgstr "Jetons échangés : {exchanged}, relus depuis le cache : {cached}"
+
+# The decimal mark: a point in English, a comma in French
+msgid "."
+msgstr ","
+
+msgid "{value} million"
+msgid_plural "{value} million"
+msgstr[0] "{value} million"
+msgstr[1] "{value} millions"
+
+msgid "{value} billion"
+msgid_plural "{value} billion"
+msgstr[0] "{value} milliard"
+msgstr[1] "{value} milliards"
+
+msgid "{duration} of activity (model time + tool time)"
+msgstr "{duration} d'activité (temps du modèle + temps des outils)"
+
+msgid "{hours} h {minutes:02d}"
+msgstr "{hours} h {minutes:02d}"
+
+msgid "{minutes} min"
+msgstr "{minutes} min"
+
+msgid "{seconds} s"
+msgstr "{seconds} s"
+
+msgid "Cost: {cost} dollars at list price"
+msgstr "Coût : {cost} dollars au prix catalogue"
+
+msgid "Cost split: {shares}"
+msgstr "Répartition du coût : {shares}"
+
+msgid "Messages split: {shares}"
+msgstr "Répartition des messages : {shares}"
+
+msgid "{percent} % {model}"
+msgstr "{percent} % {model}"
+
+msgid "less than 1 % {model}"
+msgstr "moins de 1 % {model}"
+
+msgid "The conversations that existed at the first use are counted; those deleted before are not."
+msgstr "Les conversations qui existaient au premier usage sont comptées ; celles supprimées avant ne le sont pas."
+
+msgid "The statistics of the workspace could not be saved.\n{error}"
+msgstr "Les statistiques de l'espace de travail n'ont pas pu être enregistrées.\n{error}"
+
+msgid "{count} conversation could not be read and is not in the statistics."
+msgid_plural "{count} conversations could not be read and are not in the statistics."
+msgstr[0] "{count} conversation n'a pas pu être lue et n'est pas dans les statistiques."
+msgstr[1] "{count} conversations n'ont pas pu être lues et ne sont pas dans les statistiques."
 
 msgid "This conversation has no message yet: there is nothing to branch."
 msgstr "Cette conversation n'a encore aucun message : il n'y a rien à copier dans une branche."

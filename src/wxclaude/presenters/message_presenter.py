@@ -12,6 +12,7 @@ from wxclaude.core.claude.claude_files import ClaudeFiles
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.tasks import TaskList
 from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.details import DetailAction, Link, Table, message_details
 from wxclaude.core.conversation.messages import Message, ToolUse
 from wxclaude.core.errors import PlanReadError, TaskReadError
@@ -90,11 +91,13 @@ class MessagePresenter:
         conversation_id: Callable[[], str],
         usage: UsageTracker,
         files: ClaudeFiles,
+        stats: Callable[[], WorkspaceStats | None] = lambda: None,
     ) -> None:
         self._view = view
         self._files = files
         self._conversation_id = conversation_id
         self._usage = usage
+        self._stats = stats  # the statistics of the current workspace
 
     def show_tasks(self) -> None:
         """The tasks Claude wrote for this conversation (read from its task folder)."""
@@ -115,8 +118,13 @@ class MessagePresenter:
         self._view.show_plans(plans)
 
     def show_usage(self) -> None:
-        """The gauges of the subscription and the tokens spent, as far as the answers told."""
-        self._view.show_usage(self._usage.lines(datetime.now()))
+        """The gauges of the subscription and the tokens spent, as far as the answers told, then
+        the statistics of the whole workspace."""
+        lines = self._usage.lines(datetime.now())
+        stats = self._stats()
+        if stats is not None:
+            lines += stats.lines()
+        self._view.show_usage(lines)
 
     def act(self, action: DetailAction, message: Message, line: int) -> None:
         """An item of the context menu of the conversation view."""

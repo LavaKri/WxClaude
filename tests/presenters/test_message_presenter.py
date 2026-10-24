@@ -9,6 +9,7 @@ from fake_claude_files import FakeClaudeFiles
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.tasks import Task, TaskList
 from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.details import DetailAction, Link, Table
 from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.presenters.message_presenter import LinkAction, LinkChoice, MessagePresenter
@@ -166,6 +167,18 @@ def test_tasks_or_plans_that_cannot_be_read_are_reported(
         "Cannot read the tasks.\nbroken task folder",
         "Cannot read the plans.\nbroken session file",
     ]
+
+
+def test_the_statistics_of_the_workspace_follow_the_usage(
+    view: FakeView, files: FakeClaudeFiles, tmp_path: Path
+) -> None:
+    stats = WorkspaceStats(tmp_path)
+    presenter = MessagePresenter(view, lambda: CONVERSATION, UsageTracker(), files, lambda: stats)
+    presenter.show_usage()
+    (lines,) = view.shown
+    assert isinstance(lines, list)
+    assert lines[-2:] == ["Global statistics of the workspace", "No message counted yet."]
+    assert lines[0].startswith("No subscription usage information yet")
 
 
 def test_the_usage_is_shown_even_before_any_answer(

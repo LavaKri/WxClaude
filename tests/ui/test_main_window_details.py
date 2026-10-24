@@ -2,6 +2,7 @@
 plans."""
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -85,6 +86,28 @@ def test_a_resumed_conversation_counts_only_its_new_message(
     # The same conversation stays open: two messages of 0.0010 (the totals, 0.0010 and 0.0020,
     # added up as before would give 0.0030).
     assert "cost 0.0020 dollars at list price, messages: 2" in report
+
+
+def test_the_report_ends_with_the_statistics_of_the_whole_workspace(
+    conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _send(conversation, "first")
+    _send(conversation, "second")
+    conversation._conversations.start_new("Other")  # the conversation changes, not the workspace
+    _send(conversation, "third")
+    states = _capture_dialogs(conversation, monkeypatch)
+    conversation._actions.show_usage()
+    report = str(states[0]["report"]).splitlines()
+    start = report.index("Global statistics of the workspace")
+    assert report[start + 1 :] == [
+        f"Started on {date.today().isoformat()}",
+        "3 messages, in 2 conversations",
+        "Tokens exchanged: 21, read from the cache: 0",  # 3 messages of 3 in and 4 out
+        "0 s of activity (model time + tool time)",
+        "Cost: 0.0030 dollars at list price",
+        "Cost split: 100 % Opus",
+        "Messages split: 100 % Opus",
+    ]
 
 
 def test_another_conversation_starts_the_spending_again(

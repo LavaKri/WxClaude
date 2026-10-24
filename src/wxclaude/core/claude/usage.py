@@ -9,6 +9,7 @@ from datetime import datetime
 
 from wxclaude.core.claude.events import RateLimit, RateWindow, TurnResult
 from wxclaude.core.conversation.messages import Usage
+from wxclaude.core.numbers import format_tokens
 from wxclaude.i18n import N_, _
 
 _WINDOW_NAMES = {
@@ -225,10 +226,10 @@ def _tokens(usage: Usage) -> str:
     return _(
         "{input} in, {output} out, {read} read from the cache, {written} written to the cache"
     ).format(
-        input=usage.input_tokens,
-        output=usage.output_tokens,
-        read=usage.cache_read_input_tokens,
-        written=usage.cache_creation_input_tokens,
+        input=format_tokens(usage.input_tokens),
+        output=format_tokens(usage.output_tokens),
+        read=format_tokens(usage.cache_read_input_tokens),
+        written=format_tokens(usage.cache_creation_input_tokens),
     )
 
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from wxclaude.core.claude.claude_projects import ClaudeProject, SessionInfo
+from wxclaude.core.claude.cost_state import CostState
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.claude.tasks import Task, TaskList
@@ -43,11 +44,12 @@ class FakeClaudeFiles:
         *prompts: str,
         title: str = "",
         total_cost: float | None = None,
+        cost_states: list[CostState] | None = None,
     ) -> SessionInfo:
         """A conversation of ``workspace`` holding ``prompts``, the most recent one."""
         path = Path(f"{identifier}.jsonl")
         info = SessionInfo(identifier, path, title, float(len(self.contents)))
-        session = Session(title=title, total_cost_usd=total_cost)
+        session = Session(title=title, total_cost_usd=total_cost, cost_states=cost_states or [])
         session.messages = [
             Message(f"{identifier}-{i}", Role.USER, p) for i, p in enumerate(prompts)
         ]

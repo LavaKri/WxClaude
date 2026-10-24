@@ -13,6 +13,7 @@ from wxclaude.core.claude.events import (
     RateLimit,
     RateWindow,
     RunEvent,
+    SessionInit,
     Thinking,
     ToolUsed,
     TurnEnded,
@@ -23,7 +24,8 @@ from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import Task
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.settings import Settings
-from wxclaude.core.conversation.messages import Message
+from wxclaude.core.config.workspace_stats import WorkspaceStats
+from wxclaude.core.conversation.messages import Message, Usage
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.shared import Shared
@@ -99,7 +101,11 @@ class FakeRunner(ClaudeRunner):
 
 
 def _presenter(
-    view: FakeView, workspace: Path, files: FakeClaudeFiles | None = None, fork_from: str = ""
+    view: FakeView,
+    workspace: Path,
+    files: FakeClaudeFiles | None = None,
+    fork_from: str = "",
+    stats: WorkspaceStats | None = None,
 ) -> tuple[RunPresenter, FakeRunner]:
     runner = FakeRunner()
     shared = Shared(Settings.load(None), UsageTracker(), files or FakeClaudeFiles())
@@ -110,6 +116,7 @@ def _presenter(
         fork_from=lambda: fork_from,
         is_closing=lambda: False,
         state_changed=lambda: None,
+        stats=lambda: stats,
     )
     return RunPresenter(view, runner, shared, links), runner
 
@@ -276,3 +283,66 @@ def test_the_first_message_of_a_branch_names_the_conversation_it_comes_from(
         "parent-id",
     )
     assert request.name == "Notes"
+
+
+def _ended(presenter: RunPresenter, duration_ms: int, cost: float | None = None) -> None:
+    result = TurnResult(False, "success", "", Usage(3, 4, 0, 0), duration_ms, cost, 1)
+    presenter.on_event(result)
+    presenter.on_event(TurnEnded(0, False, "", []))
+
+
+def test_a_finished_message_is_counted_in_the_statistics_with_the_model_that_answered(
+    tmp_path: Path,
+) -> None:
+    stats = WorkspaceStats(tmp_path)
+    presenter, _runner = _presenter(FakeView(), tmp_path, stats=stats)
+    assert presenter.start("hello", Settings.load(None).default_agent)
+    presenter.on_event(SessionInit("s", "claude-opus-5-5", "manual"))
+    _ended(presenter, 2500)
+    assert (stats.messages, stats.conversations, stats.activity_ms) == (1, [CONVERSATION], 2500)
+    assert stats.tokens == Usage(3, 4, 0, 0)
+    assert "claude-opus-5-5" in stats.models
+
+
+def test_without_the_model_of_the_cli_the_one_that_was_asked_is_counted(tmp_path: Path) -> None:
+    stats = WorkspaceStats(tmp_path)
+    presenter, _runner = _presenter(FakeView(), tmp_path, stats=stats)
+    agent = Settings.load(None).default_agent
+    presenter.start("hello", agent)
+    _ended(presenter, 100)
+    assert list(stats.models) == [agent.model]
+
+
+def test_the_time_spent_answering_a_permission_question_is_taken_off_the_time_of_work(
+    tmp_path: Path,
+) -> None:
+    class Clock:
+        seconds = 0.0
+
+        def __call__(self) -> float:
+            return self.seconds
+
+    clock = Clock()
+    view = FakeView(Decision(Choice.ALLOW))
+    stats = WorkspaceStats(tmp_path)
+    presenter, _runner = _presenter(view, tmp_path, stats=stats)
+    presenter._stats._clock = clock  # the user takes 30 seconds to answer
+    ask = view.ask_permission
+
+    def slow_ask(request: PermissionRequest) -> Decision:
+        clock.seconds += 30
+        return ask(request)
+
+    view.ask_permission = slow_ask  # type: ignore[method-assign]
+    presenter.start("hello", Settings.load(None).default_agent)
+    presenter.on_event(PermissionRequest("r1", "Bash", "t", {}, "", "", ""))
+    _ended(presenter, 34400)
+    assert stats.activity_ms == 4400
+
+
+def test_an_interrupted_message_has_no_result_and_is_not_counted(tmp_path: Path) -> None:
+    stats = WorkspaceStats(tmp_path)
+    presenter, _runner = _presenter(FakeView(), tmp_path, stats=stats)
+    presenter.start("hello", Settings.load(None).default_agent)
+    presenter.on_event(TurnEnded(1, True, "", []))
+    assert stats.messages == 0

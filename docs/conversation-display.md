@@ -126,6 +126,33 @@ view (`focus.md`).
   since it was opened in WxClaude (sum of the `result` lines received; they start again when another
   conversation becomes current, the gauges belong to the account and stay). A `result` reports the
   total cost of the session, so the cost of a message is that total minus the one before it (a
-  message whose previous total is not known is counted without a cost). Data arrives with the
+  message whose previous total is not known is counted without a cost). After these lines come the
+  statistics of the whole workspace (below).
+
+- **Statistics of the workspace**: the last lines of the usage dialog, one fact per line, kept in a
+  ledger of the workspace (`settings.md`), so they include the conversations that were deleted:
+
+  ```
+  Global statistics of the workspace
+  Started on 2026-10-23
+  100 messages, in 3 conversations
+  Tokens exchanged: 10000, read from the cache: 800000
+  2 h 10 of activity (model time + tool time)
+  Cost: 3.00 dollars at list price
+  Cost split: 70 % Sonnet, 30 % Opus
+  Messages split: 50 % Opus, 50 % Sonnet
+  ```
+
+  Every number of tokens of the dialog is written as it is up to 999999, then rounded:
+  `1,5 million` (1.0 to 9.9 million), `721 millions` (10 to 999), `1,2 milliard` (1.0 to 9.9
+  billions), `12 milliards` (`core/numbers.py`; the decimal mark and the plural follow the
+  language). The tokens exchanged are the input, the output and those written to the cache; the cache read is
+  apart because it dominates (it is the history sent again at each message). The activity is the
+  time of the model and of the tools, without the time the user took to answer permission questions.
+  The cost is the list price in dollars. The splits are by family of models (Opus, Sonnet, Haiku...),
+  the largest first. A message is counted when it ends with a result: an interrupted message is not.
+  The first time, the conversations that exist are counted from their files (a branch from where it
+  leaves its conversation) and a last line says so; those deleted before are lost, so that count is
+  a minimum. Without a message yet the section says so. Data arrives with the
   answers: before the first one the dialog says so. Facts that are unknown are not written.
 - **Errors** are not part of the conversation text: status bar and a dialog.

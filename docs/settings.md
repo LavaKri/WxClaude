@@ -46,6 +46,15 @@ conversation is not kept here: it is the name of its session, kept by the CLI (`
 reading: a file that belongs to another path is ignored and the user is told. When a workspace is
 opened, the conversations whose session file no longer exists are dropped.
 
+`workspaces/<hash>.stats.json`, beside it, is the ledger of the statistics of the workspace (the
+usage dialog shows it). It is a separate file so that nothing but the statistics is lost with it.
+It holds the day of the first message counted, the number of messages, the identifier of every
+conversation that had one (a deleted conversation stays), the tokens (input, output, written to the
+cache, read from the cache), the time of work in milliseconds, the cost in dollars at list price and,
+for each model, its messages and its cost. Each finished message is added to it. The first time a
+workspace is opened (no such file), the conversations that exist are counted once from their session
+files and `includes_past` is set; there is no way to reset it.
+
 ## Settings files of Claude Code
 
 The permission rules (allow / ask / deny) are not kept by WxClaude but in the settings files of

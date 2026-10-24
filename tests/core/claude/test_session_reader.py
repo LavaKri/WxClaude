@@ -148,6 +148,44 @@ def test_the_total_cost_of_the_session_is_the_last_cost_state(tmp_path: Path) ->
     assert read_session(_write(tmp_path / "t.jsonl", [_user("Hello")])).total_cost_usd is None
 
 
+def test_the_totals_of_the_session_are_kept_with_their_place_in_the_history(
+    tmp_path: Path,
+) -> None:
+    first = {"type": "cost-state", "totalCostUSD": 0.04, "totalAPIDuration": 3000}
+    second = {
+        "type": "cost-state",
+        "totalCostUSD": 0.06,
+        "totalAPIDuration": 4000,
+        "totalToolDuration": 500,
+        "modelUsage": {"claude-haiku-4-5": {"inputTokens": 7, "costUSD": 0.06}},
+    }
+    entries: list[object] = [
+        _user("Hello", "u1"),
+        _assistant([_text("Hi")], "a1"),
+        first,
+        _user("Again", "u2"),
+        _assistant([_text("Yes")], "a2"),
+        second,
+    ]
+    session = read_session(_write(tmp_path / "s.jsonl", entries))
+    assert [(s.after_messages, s.cost, s.activity_ms) for s in session.cost_states] == [
+        (2, 0.04, 3000),
+        (4, 0.06, 4500),
+    ]
+    assert session.cost_states[-1].models["claude-haiku-4-5"].input_tokens == 7
+    assert session.total_cost_usd == 0.06
+
+
+def test_the_start_of_the_session_is_its_first_timestamp(tmp_path: Path) -> None:
+    entries: list[object] = [
+        {"type": "custom-title", "customTitle": "No time"},
+        _user("Hello", "u1", timestamp="2026-10-21T08:00:00.000Z"),
+        _user("Later", "u2", timestamp="2026-10-22T09:00:00.000Z"),
+    ]
+    assert read_session(_write(tmp_path / "s.jsonl", entries)).started == "2026-10-21T08:00:00.000Z"
+    assert read_session(_write(tmp_path / "t.jsonl", [_user("Hi")])).started == ""
+
+
 def test_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(SessionReadError):
         read_session(tmp_path / "missing.jsonl")
