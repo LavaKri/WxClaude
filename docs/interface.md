@@ -30,7 +30,7 @@
 ## Menus
 
 **File**: Open workspace (Ctrl+O), Open from Claude projects, Export the conversation, Recent
-(name, then where it is; just above Quit), Quit (Ctrl+Q).
+(name, then where it is), Preferences, Quit (Ctrl+Q); Preferences and Quit are the last two.
 
 **Conversation**: New conversation (Ctrl+N), Resume a conversation (Ctrl+Shift+O), Refresh the
 conversation (F5, reads the session file again; the focus goes to the conversation, the caret to
@@ -41,7 +41,7 @@ submenu **Search** (see below).
 
 **Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open
 the workspace folder (in the file explorer; needs a workspace), Workspace settings (needs a
-workspace), Preferences.
+workspace).
 
 The context menu of the conversation (tools used, table, links, copy) is in
 `conversation-display.md`, with the usage dialog.

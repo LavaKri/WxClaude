@@ -924,8 +924,8 @@ msgstr "La règle n'a pas pu être enregistrée.\n{error}"
 msgid "The settings could not be saved.\n{error}"
 msgstr "Les paramètres n'ont pas pu être enregistrés.\n{error}"
 
-msgid "&Preferences…"
-msgstr "&Préférences…"
+msgid "Pre&ferences…"
+msgstr "Préfére&nces…"
 
 msgid "Preferences"
 msgstr "Préférences"

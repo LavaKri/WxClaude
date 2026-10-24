@@ -79,8 +79,9 @@ class MainMenu:
         add_entries(window, self._file_menu, self._file_entries(), registry)
         self._recent_menu = wx.Menu()
         self.recent_item = self._file_menu.AppendSubMenu(self._recent_menu, _("&Recent"))
+        preferences = MenuEntry(_("Pre&ferences…"), handlers.preferences)
         quit_entry = MenuEntry(_("&Quit\tCtrl+Q"), handlers.quit, item_id=wx.ID_EXIT)
-        add_entries(window, self._file_menu, [quit_entry], registry)
+        add_entries(window, self._file_menu, [preferences, quit_entry], registry)
 
         conversation_menu = wx.Menu()
         kept = add_entries(window, conversation_menu, self._conversation_entries(), registry)
@@ -170,7 +171,6 @@ class MainMenu:
                 _("Open the workspace &folder"), h.open_workspace_folder, needs=Needs.WORKSPACE
             ),
             MenuEntry(_("Workspace &settings…"), h.workspace_settings, needs=Needs.WORKSPACE),
-            MenuEntry(_("&Preferences…"), h.preferences),
         ]
 
     # What changes --------------------------------------------------------------------------------
