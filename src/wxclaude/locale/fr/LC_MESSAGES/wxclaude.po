@@ -1259,3 +1259,21 @@ msgstr "Pas de lien suivant."
 
 msgid "No previous link."
 msgstr "Pas de lien précédent."
+
+msgid "Claude Code not found"
+msgstr "Claude Code introuvable"
+
+msgid ""
+"Claude Code was not found on this computer.\n"
+"\n"
+"Install it, or give its path in File > Preferences > Claude."
+msgstr ""
+"Claude Code est introuvable sur cet ordinateur.\n"
+"\n"
+"Installez-le, ou indiquez son chemin dans Fichier > Préférences > Claude."
+
+msgid "&Open the Preferences"
+msgstr "&Ouvrir les Préférences"
+
+msgid "&Close"
+msgstr "&Fermer"

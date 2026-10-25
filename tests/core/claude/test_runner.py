@@ -226,3 +226,19 @@ def test_a_rename_that_the_cli_refuses_is_reported(
     monkeypatch.setenv("FAKE_CLAUDE", "rename_fails")
     with pytest.raises(RunnerError, match="No such session"):
         _runner().rename_session("s-1", "New name", tmp_path)
+
+
+def test_the_runner_knows_whether_claude_can_be_started(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert ClaudeRunner([sys.executable]).is_available()  # a command given: the tests
+    runner = ClaudeRunner()
+    monkeypatch.setattr("wxclaude.core.claude.runner.shutil.which", lambda _name: None)
+    assert not runner.is_available()  # nothing in the PATH
+    monkeypatch.setattr("wxclaude.core.claude.runner.shutil.which", lambda _name: "/x/claude")
+    assert runner.is_available()
+    runner.claude_path = str(tmp_path / "missing.exe")
+    assert not runner.is_available()  # the file chosen by hand does not exist
+    (tmp_path / "claude.exe").write_text("", encoding="utf-8")
+    runner.claude_path = str(tmp_path / "claude.exe")
+    assert runner.is_available()

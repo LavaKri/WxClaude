@@ -77,6 +77,11 @@ the file it belongs to and delete it from this one.
   not counted at all (no `result`), nor the tokens it used; (4) the time of work of the import
   (`totalAPIDuration + totalToolDuration`) and of the new messages (`duration_ms` minus the waits)
   are two measures of the same thing: compare them on a real conversation.
+- **Claude Code missing, what is left.** The start message and the status bar line exist. Not done: grey the
+  send buttons while Claude Code is missing; a *Try again* button in the message and an item *Tools >
+  Look for Claude Code…* to search again without opening the Preferences; the address and steps of the
+  installation in the message (to read in the official documentation first); a CLI that is there but not
+  logged in (the error comes with the first message).
 - **Subscription use.** Driving `claude -p` from a custom front end with a subscription login may
   be restricted by the usage policy of the provider (an API key is the safe path). Check the current
   terms.

@@ -143,6 +143,16 @@ class ClaudeRunner:
         self._interrupted = False
         self._lock = threading.Lock()
 
+    def is_available(self) -> bool:
+        """Can the CLI be started? (Always, with a ``command`` given: the tests.)"""
+        if self._command is not None:
+            return True
+        try:
+            find_claude(self.claude_path)
+        except ClaudeNotFoundError:
+            return False
+        return True
+
     @property
     def is_running(self) -> bool:
         with self._lock:

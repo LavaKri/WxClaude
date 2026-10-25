@@ -54,6 +54,10 @@ class PreferencesDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON, self._on_ok, id=wx.ID_OK)
         self._notebook.SetFocus()
 
+    def show_claude_page(self) -> None:
+        """Open on the Claude page, with the focus on it."""
+        self._notebook.SetSelection(self._notebook.FindPage(self.claude))
+
     def _on_ok(self, event: wx.CommandEvent) -> None:
         """Refuse OK when a page has a problem: show its page, put the focus on it and say why."""
         for page in self._pages:

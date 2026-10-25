@@ -15,6 +15,13 @@
 - Buttons: *Send*, *Send with the alternative agent* (their labels show the current shortcuts) and
   *Interrupt Claude* (active only while Claude is answering; it also stops the programs Claude
   started). While Claude answers, Send is greyed; the prompt field stays usable.
+- **Claude Code not found**: once the window is up, if `claude` cannot be started (not in the PATH, or
+  the file chosen in Preferences > Claude does not exist) a message says "Claude Code was not found on this
+  computer. Install it, or give its path in File > Preferences > Claude." with the buttons *Open the
+  Preferences* (on the Claude page) and *Close* (the default). It is said once per launch. The message
+  field of the status bar then says "Claude Code not found" instead of "Ready", until it is found: the
+  check runs again when the Preferences are closed with OK, and the "Ready" line comes back. The send
+  buttons are not greyed yet (`open-questions.md`).
 - Status bar, three fields: the position of the caret among your prompts (`Message 3 of 8`), the
   step Claude works on (`Step 2 of 5: Build the module`; empty when there is none and while the
   window waits for a prompt), then the last announcement. Progress ("Claude is thinking", "Claude

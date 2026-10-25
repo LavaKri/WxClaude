@@ -139,6 +139,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
+| `claude_check.py` | `ClaudeCheck`: is Claude Code found? (at the start and when its path changes); `ClaudeCheckView` is what it asks of the interface. |
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt) and the reading of the gauges (`refresh_gauges_if_due`, handled like a message: busy, silent), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
 | `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window (the name of a conversation is the one of its session: `--name`, `/rename`); what is remembered in the workspace file (current conversation, main agent). |
 | `stats_recorder.py` | `StatsRecorder`: adds each finished message to the statistics of the workspace, without the time the user took to answer the permission questions. |
@@ -154,6 +155,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 |---|---|
 | `main_window.py` | The conversation view, the prompt and the buttons, the menus, and the wiring of the presenters and their views. |
 | `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs, the confirmation and the Recycle Bin of a deletion). |
+| `claude_check_view.py` | `WxClaudeCheckView`: the view of `ClaudeCheck` (status bar, the message that offers the Preferences). |
 | `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
 | `gauge_watch.py` | `GaugeWatch`: the one-minute timer that asks whether the gauges are to be read (started by the application, not by the window). |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list), `confirm` (Yes / No, No by default) and `read_session` (the error is shown). |

@@ -125,10 +125,13 @@ class Feedback:
     def show_error(self, message: str) -> None:
         self.message_box(message, _("Error"), wx.ICON_ERROR)
 
-    def confirm(self, title: str, message: str) -> bool:
-        """Ask a Yes / No question, No by default; True for Yes."""
+    def confirm(self, title: str, message: str, yes_label: str = "", no_label: str = "") -> bool:
+        """Ask a Yes / No question, No by default; True for Yes. The buttons may have labels of
+        their own (both or none)."""
         style = wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
         with wx.MessageDialog(self._frame, message, title, style) as dialog:
+            if yes_label and no_label:
+                dialog.SetYesNoLabels(yes_label, no_label)
             return bool(self.modal(dialog) == wx.ID_YES)
 
     def show_info(self, message: str) -> None:

@@ -18,6 +18,7 @@ from wxclaude.core.config.shortcuts import (
 )
 from wxclaude.core.errors import ClaudeSettingsError, SettingsError
 from wxclaude.i18n import _
+from wxclaude.presenters.claude_check import ClaudeCheck
 from wxclaude.presenters.conversation_presenter import ConversationLinks, ConversationPresenter
 from wxclaude.presenters.file_presenter import FilePresenter
 from wxclaude.presenters.message_presenter import MessagePresenter
@@ -25,6 +26,7 @@ from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.search_presenter import SearchPresenter
 from wxclaude.presenters.shared import Shared
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
+from wxclaude.ui.claude_check_view import WxClaudeCheckView
 from wxclaude.ui.conversation_screen import WxConversationScreen
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
@@ -77,6 +79,7 @@ class MainWindow(wx.Frame):
         self._refresh_enabled()
         self._menu.refresh_recent()
         self._workspaces.restore_last_session()
+        wx.CallAfter(self._check_claude_at_start)
         wx.CallAfter(self._focus_main_field)
         if settings.load_warning:
             wx.CallAfter(self._feedback.show_file_warning, settings.load_warning)
@@ -134,6 +137,11 @@ class MainWindow(wx.Frame):
             ),
         )
         self._apply_claude_path()
+        self._claude_check = ClaudeCheck(
+            runner,
+            lambda: self._usage.ready_line(),
+            WxClaudeCheckView(self._feedback, lambda: self._open_preferences(claude_page=True)),
+        )
         prompt_label = wx.StaticText(panel, label=_("&Prompt"))
         self._prompt = PromptField(
             panel,
@@ -282,14 +290,25 @@ class MainWindow(wx.Frame):
         self._conversations.refresh()
 
     def _on_preferences(self, _event: wx.CommandEvent) -> None:
+        self._open_preferences(claude_page=False)
+
+    def _open_preferences(self, *, claude_page: bool) -> None:
         with PreferencesDialog(self, self._settings) as dialog:
+            if claude_page:
+                dialog.show_claude_page()
             if self._feedback.modal(dialog) == wx.ID_OK:
                 dialog.apply(self._settings)
                 self._conversation.set_show_hidden(not self._settings.hide_system_messages)
                 self._apply_shortcuts()
                 self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
                 self._apply_claude_path()
+                self._claude_check.check(offer=False)
                 self._save_settings()
+
+    def _check_claude_at_start(self) -> None:
+        """Once the window is up: Claude Code missing is said now, not at the first message."""
+        if not self._closing:
+            self._claude_check.check(offer=True)
 
     def _focus_main_field(self) -> None:
         """At startup the focus is on the conversation view, at the last prompt if there is one."""

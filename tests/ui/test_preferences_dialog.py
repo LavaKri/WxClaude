@@ -210,3 +210,14 @@ def test_ok_is_refused_for_a_manual_path_that_is_not_a_file(
     dialog.claude.path.SetValue(str(claude))
     dialog._on_ok(event)
     assert skipped == [True]
+
+
+def test_the_dialog_can_open_on_the_claude_page(wx_app: wx.App) -> None:
+    dialog = PreferencesDialog(None, Settings.load(None))
+    try:
+        assert dialog._notebook.GetSelection() == 0
+        dialog.show_claude_page()
+        assert dialog._notebook.GetPageText(dialog._notebook.GetSelection()) == "Claude"
+    finally:
+        dialog.Destroy()
+        wx.SafeYield()
