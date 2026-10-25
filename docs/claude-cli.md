@@ -23,6 +23,18 @@ changes a lot. Only what was tested or read in the documentation is stated here.
 - The permission mode `auto` and `bypassPermissions` do not take effect from project settings,
   only from user settings or the command line.
 
+## State and sign-in (measured)
+
+- `claude --version` prints `2.1.286 (Claude Code)`.
+- `claude auth status` prints JSON and exits 0 when logged in, 1 when not. Logged in: `loggedIn` true,
+  `authMethod` (`claude.ai`), `apiProvider`, `configDirectory`, `projectsDirectory`, `email`, `orgId`,
+  `orgName`, `subscriptionType` (`pro`). Not logged in: `loggedIn` false, `authMethod` `none`. With
+  `--text`: "Not logged in. Run claude auth login to authenticate." It asks nothing and opens nothing.
+  An empty `CLAUDE_CONFIG_DIR` gives the not logged in answer without touching the real sign-in.
+- `claude auth login` (`--email`, `--sso`, `--console`), `logout` and `setup-token` are in the CLI
+  reference. `auth login` was not run (it opens the browser): how it behaves with no terminal is to
+  be tried.
+
 ## Permission modes (from the documentation)
 
 | Mode | Runs without asking |

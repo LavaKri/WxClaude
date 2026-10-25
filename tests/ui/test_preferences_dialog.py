@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 import wx
 
+from wxclaude.core.claude.status import ClaudeStatus
 from wxclaude.core.config.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.shortcuts import INTERRUPT_COMMAND, ShortcutProblem
@@ -218,6 +219,36 @@ def test_the_dialog_can_open_on_the_claude_page(wx_app: wx.App) -> None:
         assert dialog._notebook.GetSelection() == 0
         dialog.show_claude_page()
         assert dialog._notebook.GetPageText(dialog._notebook.GetSelection()) == "Claude"
+    finally:
+        dialog.Destroy()
+        wx.SafeYield()
+
+
+def test_the_state_button_shows_the_state_of_claude_and_gives_it_the_focus(
+    wx_app: wx.App, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    asked: list[str] = []
+
+    def fake_read(path: str = "") -> ClaudeStatus:
+        asked.append(path)
+        return ClaudeStatus(found=True, path="C:/x/claude.exe", version="2.1.286", logged_in=False)
+
+    monkeypatch.setattr("wxclaude.ui.preferences_pages.read_status", fake_read)
+    settings = Settings.load(None)
+    dialog = PreferencesDialog(None, settings)
+    try:
+        page = dialog.claude
+        assert page.status.GetValue() == ""
+        assert not page.status.IsEditable()
+        page.check.Command(wx.CommandEvent(wx.wxEVT_BUTTON, page.check.GetId()))
+        text = page.status.GetValue()
+        assert "Version: 2.1.286" in text
+        assert "Connection: not logged in" in text
+        assert asked == [""]  # the automatic search is on: the PATH is used
+        page.auto_search.SetValue(False)
+        page.path.SetValue("  C:/chosen/claude.exe  ")
+        page.check.Command(wx.CommandEvent(wx.wxEVT_BUTTON, page.check.GetId()))
+        assert asked == ["", "C:/chosen/claude.exe"]  # the path of the page, not the saved one
     finally:
         dialog.Destroy()
         wx.SafeYield()

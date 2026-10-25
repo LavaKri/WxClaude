@@ -29,7 +29,7 @@ of the structured questions of Claude (lists of check boxes, the message when a 
 unanswered), the context menu of the prompt, the Display submenu, and the loss of the status bar by NVDA
 seen once with the executable (`open-questions.md`).
 
-Last work, in order (most recent first): the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
+Last work, in order (most recent first): the button *Claude state* of the Preferences; the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
 `K` / `Shift+K` between the links of the conversation; the Display submenu of the Conversation menu (the summary of
 the tools and *Remove the Markdown formatting*, which takes the marks of bold and italic out of the
 text); the fields of the status bar cut at 200 characters; the context menu of the prompt (Cut, Copy,

@@ -269,7 +269,13 @@ effort or the permission mode does not.
   Claude's permission questions reach WxClaude, applied to the next message (the conversation can
   switch at any time). *Wait for your answer, in minutes (HTTP hook)* (1 to 10, 10 by default) is
   greyed with the stdio protocol. What the HTTP hook cannot do is in `claude-cli.md`,
-  "Permission channels".
+  "Permission channels". The button *Claude state* asks the program chosen on the page (not yet saved)
+  and shows the answer in the read-only field *State of Claude Code* below it, where the focus goes
+  so that a screen reader reads it: found or not (and why), the path, the version and the connection
+  ("logged in (claude.ai, pro)", "not logged in" or unknown). It runs `claude --version` and `claude
+  auth status` (`core/claude/status.py`); the address and the organization that `auth status` also
+  gives are not read. The window waits for the answer (20 seconds at most). Signing in will have a dialog
+  of its own (`open-questions.md`).
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested." or the summary of a compaction, is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).

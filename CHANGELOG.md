@@ -23,6 +23,8 @@ First version: the application works from end to end.
 - Keys of the conversation: `H` for headings (`1` to `6` as before), `T` for tables, `L` for lists
   and `I` for the items of the list the caret is in, with Shift to go backwards; two announcement
   categories for them. `Space` on a line of a table shows the table.
+- A button *Claude state* in the Claude page of the Preferences, with a read-only field: whether Claude
+  Code is found, its path, its version and whether it is logged in.
 - A message at the start when Claude Code is not found, with a way to open the Preferences, and a status
   bar that says so instead of "Ready".
 - The keys `K` and `Shift+K` of the conversation go from link to link and say the text and the address

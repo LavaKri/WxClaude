@@ -69,6 +69,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 
 | Module | Role |
 |---|---|
+| `status.py` | `read_status` / `describe_status`: found or not, version and connection of Claude Code, asked of the program (`--version`, `auth status`). |
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`; the files of a session (what deleting it removes). |
 | `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage, the totals of the session and its first time. |
 | `cost_state.py` | `CostState`, `ModelTotals`: the totals the CLI keeps of a session (`cost-state` entries): cost, time of work, tokens and cost of each model. |

@@ -10,6 +10,7 @@ from pathlib import Path
 import wx
 
 from wxclaude.core.claude.permission_channel import CHANNEL_KINDS, HOOK, STDIO
+from wxclaude.core.claude.status import describe_status, read_status
 from wxclaude.core.config.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
 from wxclaude.core.labels import accessible_name
 from wxclaude.core.speech.screen_reader import available_outputs, default_output, output_named
@@ -95,10 +96,31 @@ class ClaudePage(PreferencesPage):
         sizer.Add(self.auto_search, 0, wx.ALL, 8)
         sizer.Add(path_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(row, 0, wx.EXPAND | wx.ALL, 8)
+        self._add_status_controls(sizer)
         self._add_channel_controls(sizer, settings)
         self.SetSizer(sizer)
         self._update_path()
         self._update_minutes()
+
+    def _add_status_controls(self, sizer: wx.BoxSizer) -> None:
+        """A button that asks Claude Code its state, and the read-only field that shows it."""
+        self.check = wx.Button(self, label=_("Claude stat&e"))
+        self.check.Bind(wx.EVT_BUTTON, lambda _event: self._on_check())
+        status_text = _("State of Claude Code")
+        status_label = wx.StaticText(self, label=status_text)
+        self.status = read_only_field(self, 4, name=accessible_name(status_text))
+        sizer.Add(self.check, 0, wx.LEFT | wx.RIGHT, 8)
+        sizer.Add(status_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        sizer.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
+
+    def _on_check(self) -> None:
+        """Ask the program chosen on this page (not yet saved) and show the answer; the focus goes
+        to the answer so that a screen reader reads it."""
+        path = "" if self.auto_search.GetValue() else self.path.GetValue().strip()
+        with wx.BusyCursor():
+            text = describe_status(read_status(path))
+        self.status.SetValue(text)
+        self.status.SetFocus()
 
     def _add_channel_controls(self, sizer: wx.BoxSizer, settings: Settings) -> None:
         """The type of interface with Claude Code (how its permission questions reach WxClaude)."""

@@ -82,6 +82,12 @@ the file it belongs to and delete it from this one.
   Look for Claude Code…* to search again without opening the Preferences; the address and steps of the
   installation in the message (to read in the official documentation first); a CLI that is there but not
   logged in (the error comes with the first message).
+- **Signing in to Claude Code from WxClaude.** The Claude page of the Preferences shows the state
+  (found, version, logged in or not). Still to do, in a dialog of its own: *Sign in* with `claude auth
+  login` run in the background (the browser opens; to try in an empty `CLAUDE_CONFIG_DIR` whether the
+  CLI also asks for a code in the console), *Sign out*, the options `--console` and `--sso`, and
+  "not logged in" at the start (message and status bar, as for a missing program). Anthropic's rule
+  on third-party sign-in (see *Subscription use*) is to be read again before it is shipped.
 - **Subscription use.** Driving `claude -p` from a custom front end with a subscription login may
   be restricted by the usage policy of the provider (an API key is the safe path). Check the current
   terms.

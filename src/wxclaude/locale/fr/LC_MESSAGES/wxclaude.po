@@ -1277,3 +1277,33 @@ msgstr "&Ouvrir les Préférences"
 
 msgid "&Close"
 msgstr "&Fermer"
+
+msgid "Claude stat&e"
+msgstr "Éta&t de Claude"
+
+msgid "State of Claude Code"
+msgstr "État de Claude Code"
+
+msgid "Claude Code was not found."
+msgstr "Claude Code est introuvable."
+
+msgid "Claude Code found: {path}"
+msgstr "Claude Code trouvé : {path}"
+
+msgid "Version: {version}"
+msgstr "Version : {version}"
+
+msgid "Version: unknown"
+msgstr "Version : inconnue"
+
+msgid "Connection: logged in ({details})"
+msgstr "Connexion : connecté ({details})"
+
+msgid "Connection: logged in"
+msgstr "Connexion : connecté"
+
+msgid "Connection: not logged in"
+msgstr "Connexion : non connecté"
+
+msgid "Connection: unknown"
+msgstr "Connexion : inconnue"
