@@ -1363,12 +1363,17 @@ msgstr "Claude a demandé à quitter le mode Plan : refusé, selon les Préfére
 msgid "&Maximize the window at startup"
 msgstr "&Maximiser la fenêtre au démarrage"
 
-msgid "Never &offer to leave the Plan mode"
-msgstr "Ne jamais &proposer de quitter le mode Plan"
+msgid "Claude's questions were refused in the Plan mode, as set in the Preferences."
+msgstr "Les questions de Claude ont été refusées en mode Plan, selon les Préférences."
+
+msgid "&Refuse the requests of Claude to leave the Plan mode"
+msgstr "&Refuser les demandes de Claude pour sortir du mode plan"
 
 msgid ""
 "{label}: forces Claude to stay in the Plan mode until the user changes the permission mode of "
-"the agent."
+"the agent. Its plan and its structured questions are refused: it must present the plan and ask "
+"its questions in its answer."
 msgstr ""
 "{label} : Force Claude à rester dans le mode de planification, jusqu'à ce que l'utilisateur "
-"change la permission de l'agent."
+"change la permission de l'agent. Son plan et ses questions structurées sont refusés : il doit "
+"présenter le plan et poser ses questions dans sa réponse."

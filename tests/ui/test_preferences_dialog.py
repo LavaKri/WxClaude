@@ -112,10 +112,10 @@ def test_leaving_the_plan_mode_is_refused_by_default_and_the_choice_is_applied(
 ) -> None:
     check = dialog.agent.refuse_plan
     assert check.GetValue()
-    assert check.GetLabel() == "Never &offer to leave the Plan mode"
+    assert check.GetLabel() == "&Refuse the requests of Claude to leave the Plan mode"
     check.SetValue(False)
     dialog.apply(settings)
-    assert not settings.refuse_plan_approval
+    assert not settings.refuse_plan_mode_exit
 
 
 def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(

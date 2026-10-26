@@ -180,6 +180,10 @@ class Announce(enum.Enum):
         PERMISSION_ANSWER,
         N_("Claude asked to leave the Plan mode: refused, as set in the Preferences."),
     )
+    PLAN_QUESTIONS_REFUSED = (
+        PERMISSION_ANSWER,
+        N_("Claude's questions were refused in the Plan mode, as set in the Preferences."),
+    )
     PERMISSION_EXPIRED = (
         PERMISSION_ANSWER,
         N_("The question about the tool {tool} expired: Claude denied the tool."),

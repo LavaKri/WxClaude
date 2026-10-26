@@ -27,7 +27,7 @@ _FLAG_KEYS = (
     "remove_markdown_marks",
     "local_tools_only",
     "claude_auto_search",
-    "refuse_plan_approval",
+    "refuse_plan_mode_exit",
 )
 _TEXT_KEYS = ("claude_path", "last_workspace")
 SUPPORTED_LANGUAGES = ("fr", "en")
@@ -87,7 +87,7 @@ class Settings:
     local_tools_only: bool = False  # never modify the versioned settings of a project
     claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
     claude_path: str = ""  # the claude executable chosen by hand (used without the auto search)
-    refuse_plan_approval: bool = True  # in the mode Plan, never offer to leave it (refused for you)
+    refuse_plan_mode_exit: bool = True  # in the mode Plan, refuse Claude's plan and questions
     permission_channel: str = STDIO  # how Claude's permission questions reach us (CHANNEL_KINDS)
     hook_timeout_minutes: int = DEFAULT_HOOK_TIMEOUT_MINUTES  # the CLI's wait, hook channel
     last_workspace: str = ""
@@ -218,7 +218,7 @@ class Settings:
             "local_tools_only": self.local_tools_only,
             "claude_auto_search": self.claude_auto_search,
             "claude_path": self.claude_path,
-            "refuse_plan_approval": self.refuse_plan_approval,
+            "refuse_plan_mode_exit": self.refuse_plan_mode_exit,
             "permission_channel": self.permission_channel,
             "hook_timeout_minutes": self.hook_timeout_minutes,
             "last_workspace": self.last_workspace,

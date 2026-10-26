@@ -20,11 +20,17 @@ from wxclaude.core.claude.events import (
     TurnEnded,
     TurnResult,
 )
-from wxclaude.core.claude.permissions import PLAN_REFUSAL, Choice, Decision
+from wxclaude.core.claude.permissions import (
+    PLAN_QUESTIONS_REFUSAL,
+    PLAN_REFUSAL,
+    Choice,
+    Decision,
+)
 from wxclaude.core.claude.questions import Question
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
 from wxclaude.core.claude.tasks import Task
 from wxclaude.core.claude.usage import UsageTracker
+from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.messages import Message, Usage
@@ -436,6 +442,49 @@ def test_a_plan_is_refused_for_the_user_by_default_without_a_dialog(tmp_path: Pa
     assert view.announces() == [Announce.PLAN_REFUSED]
 
 
+def _in_plan_mode(presenter: RunPresenter) -> None:
+    presenter._turn_agent = Agent(model="haiku", effort="low", permission_mode="plan")
+
+
+def test_structured_questions_are_refused_in_the_plan_mode_without_a_dialog(
+    tmp_path: Path,
+) -> None:
+    view = FakeView()
+    view.question_answers = {"Which database?": ["SQLite"]}
+    presenter, runner = _presenter(view, tmp_path)
+    _in_plan_mode(presenter)
+    presenter.on_event(PermissionRequest("r1", "AskUserQuestion", "t", QUESTION_INPUT, "", "", ""))
+    assert view.questions == []
+    assert view.asked == []
+    assert runner.answered == []
+    assert runner.answers == [("deny", PLAN_QUESTIONS_REFUSAL)]
+    assert view.announces() == [Announce.PLAN_QUESTIONS_REFUSED]
+
+
+def test_structured_questions_are_asked_outside_the_plan_mode_even_when_refusing(
+    tmp_path: Path,
+) -> None:
+    view = FakeView()
+    view.question_answers = {"Which database?": ["SQLite"]}
+    presenter, runner = _presenter(view, tmp_path)  # the agent is not in the plan mode
+    presenter.on_event(PermissionRequest("r1", "AskUserQuestion", "t", QUESTION_INPUT, "", "", ""))
+    assert len(view.questions) == 1
+    assert runner.answered == [{"Which database?": ["SQLite"]}]
+
+
+def test_structured_questions_are_asked_in_the_plan_mode_when_not_refusing(
+    tmp_path: Path,
+) -> None:
+    view = FakeView()
+    view.question_answers = {"Which database?": ["SQLite"]}
+    presenter, runner = _presenter(view, tmp_path)
+    _in_plan_mode(presenter)
+    presenter._settings.refuse_plan_mode_exit = False
+    presenter.on_event(PermissionRequest("r1", "AskUserQuestion", "t", QUESTION_INPUT, "", "", ""))
+    assert len(view.questions) == 1
+    assert runner.answered == [{"Which database?": ["SQLite"]}]
+
+
 def test_other_requests_are_still_asked_when_plans_are_refused(tmp_path: Path) -> None:
     view = FakeView(Decision(Choice.ALLOW))
     presenter, runner = _presenter(view, tmp_path)
@@ -447,7 +496,7 @@ def test_other_requests_are_still_asked_when_plans_are_refused(tmp_path: Path) -
 def test_a_plan_is_announced_as_a_plan_and_can_be_approved(tmp_path: Path) -> None:
     view = FakeView(Decision(Choice.ALLOW))
     presenter, runner = _presenter(view, tmp_path)
-    presenter._settings.refuse_plan_approval = False
+    presenter._settings.refuse_plan_mode_exit = False
     plan: dict[str, object] = {"plan": "# Plan\n\nStep one"}
     presenter.on_event(PermissionRequest("r1", "ExitPlanMode", "t", plan, "", "", ""))
     assert Announce.PLAN_PROPOSED in view.announces()
@@ -458,7 +507,7 @@ def test_a_plan_is_announced_as_a_plan_and_can_be_approved(tmp_path: Path) -> No
 def test_a_plan_can_be_refused_with_an_explanation(tmp_path: Path) -> None:
     view = FakeView(Decision(Choice.DENY, "Add the tests first"))
     presenter, runner = _presenter(view, tmp_path)
-    presenter._settings.refuse_plan_approval = False
+    presenter._settings.refuse_plan_mode_exit = False
     plan: dict[str, object] = {"plan": "Do it"}
     presenter.on_event(PermissionRequest("r1", "ExitPlanMode", "t", plan, "", "", ""))
     assert runner.answers == [("deny", "Add the tests first")]

@@ -31,9 +31,10 @@ hold is part of this version.
   the address of the page to copy, and takes an optional e-mail address for the page (not remembered).
 - A check box *Maximize the window at startup* in the General page of the Preferences, checked by
   default.
-- A check box *Never offer to leave the Plan mode* in the Agent page of the Preferences, checked by
-  default: in the mode Plan, the request of Claude to leave it is refused for you, with a message
-  to Claude to present its plan in its answer.
+- A check box *Refuse the requests of Claude to leave the Plan mode* in the Agent page of the
+  Preferences, checked by default: in the mode Plan, its request to leave the mode and its structured
+  questions are refused for you, with a message to Claude to present its plan and ask its questions
+  in its answer.
 - A message at the start when Claude Code is not found, with a way to open the Preferences, and a status
   bar that says so instead of "Ready".
 - The keys `K` and `Shift+K` of the conversation go from link to link and say the text and the address

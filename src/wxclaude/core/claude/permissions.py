@@ -19,6 +19,10 @@ PLAN_REFUSAL = (  # what Claude is told when the setting refuses to leave the mo
     "The user does not approve plans through this tool. Stay in plan mode: present the plan in "
     "your answer and wait for the user to change the mode."
 )
+PLAN_QUESTIONS_REFUSAL = (  # the same setting, for the structured questions of the mode plan
+    "The user does not answer structured questions in plan mode. Ask your questions in your "
+    "answer, as plain text, and wait for the reply."
+)
 
 
 class Choice(enum.Enum):

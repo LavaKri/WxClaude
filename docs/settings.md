@@ -16,7 +16,7 @@ invalid values fall back to their default; unknown keys are ignored.
 | `claude_auto_search` | Look for `claude` in the PATH | `true` |
 | `claude_path` | The `claude` executable chosen by hand, used when the automatic search is off | empty |
 | `permission_channel` | How Claude's permission questions reach WxClaude: `stdio` (control protocol) or `hook` (HTTP hook); see `claude-cli.md` | `stdio` |
-| `refuse_plan_approval` | In the mode Plan, the request of Claude to leave it (its plan) is refused for the user, with no dialog, and Claude is told to present the plan in its answer; the user leaves the mode by changing the agent. Only the `stdio` channel has that request | `true` |
+| `refuse_plan_mode_exit` | The requests of Claude that would take the user out of the mode Plan are refused with no dialog: its plan (the request to leave the mode) and, while the agent of the message is in the mode Plan, its structured questions. Claude is told to present the plan and ask its questions in its answer; the user leaves the mode by changing the agent. Only the `stdio` channel has these requests | `true` |
 | `hook_timeout_minutes` | With the `hook` channel, how long the CLI waits for the answer (1 to 10) | `10` |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |

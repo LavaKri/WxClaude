@@ -264,15 +264,17 @@ def test_maximizing_at_start_defaults_to_true_and_round_trips(tmp_path: Path) ->
     assert Settings.load(store).maximize_at_start is True
 
 
-def test_refusing_the_approval_of_plans_defaults_to_true_and_round_trips(tmp_path: Path) -> None:
+def test_refusing_the_exit_of_the_plan_mode_defaults_to_true_and_round_trips(
+    tmp_path: Path,
+) -> None:
     store = tmp_path / "settings.json"
     settings = Settings.load(store)
-    assert settings.refuse_plan_approval is True
-    settings.refuse_plan_approval = False
+    assert settings.refuse_plan_mode_exit is True
+    settings.refuse_plan_mode_exit = False
     settings.save()
-    assert Settings.load(store).refuse_plan_approval is False
-    store.write_text('{"refuse_plan_approval": "no"}', encoding="utf-8")
-    assert Settings.load(store).refuse_plan_approval is True
+    assert Settings.load(store).refuse_plan_mode_exit is False
+    store.write_text('{"refuse_plan_mode_exit": "no"}', encoding="utf-8")
+    assert Settings.load(store).refuse_plan_mode_exit is True
 
 
 def test_the_remove_markdown_marks_option_defaults_to_true_and_round_trips(tmp_path: Path) -> None:

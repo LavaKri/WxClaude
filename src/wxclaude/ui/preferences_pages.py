@@ -235,9 +235,9 @@ class AgentPage(PreferencesPage):
         self.agent_list.Bind(wx.EVT_LISTBOX, self._on_agent_chosen)
         self.agent_panel = AgentPanel(self, self._agents[0], self._unset_labels[0])
 
-        refuse_text = _("Never &offer to leave the Plan mode")
+        refuse_text = _("&Refuse the requests of Claude to leave the Plan mode")
         self.refuse_plan = wx.CheckBox(self, label=refuse_text)
-        self.refuse_plan.SetValue(settings.refuse_plan_approval)
+        self.refuse_plan.SetValue(settings.refuse_plan_mode_exit)
 
         levels_label = wx.StaticText(self, label=_("Implications of the permission &levels"))
         levels = read_only_field(self, 8, wrap=False)
@@ -251,7 +251,8 @@ class AgentPage(PreferencesPage):
             + "\n\n"
             + _(
                 "{label}: forces Claude to stay in the Plan mode until the user changes the "
-                "permission mode of the agent."
+                "permission mode of the agent. Its plan and its structured questions are refused: "
+                "it must present the plan and ask its questions in its answer."
             ).format(label=accessible_name(refuse_text))
         )
 
@@ -275,7 +276,7 @@ class AgentPage(PreferencesPage):
     def apply(self, settings: Settings) -> None:
         self._agents[self._agent_index] = self.agent_panel.agent
         settings.default_agent, settings.alternative_agent = self._agents
-        settings.refuse_plan_approval = self.refuse_plan.GetValue()
+        settings.refuse_plan_mode_exit = self.refuse_plan.GetValue()
 
 
 class ScreenReaderPage(PreferencesPage):

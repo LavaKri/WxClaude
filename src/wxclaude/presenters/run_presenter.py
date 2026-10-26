@@ -27,6 +27,7 @@ from wxclaude.core.claude.events import (
 from wxclaude.core.claude.gauge_schedule import GaugeSchedule
 from wxclaude.core.claude.permission_channel import HOOK
 from wxclaude.core.claude.permissions import (
+    PLAN_QUESTIONS_REFUSAL,
     PLAN_REFUSAL,
     Choice,
     Decision,
@@ -328,10 +329,11 @@ class RunPresenter:
 
     def _on_permission_request(self, request: PermissionRequest) -> None:
         """Claude asks before running a tool: a rule allowed earlier in this message, else ask.
-        Its structured questions have a dialog of their own. A plan is refused for the user when
-        the setting says so: the mode Plan is left only by the user (``refuse_plan_approval``)."""
-        if is_plan_request(request) and self._settings.refuse_plan_approval:
-            self._refuse_plan(request)
+        Its structured questions have a dialog of their own. In the mode Plan the plan and the
+        questions are refused for the user when the setting says so (``refuse_plan_mode_exit``)."""
+        refusal = self._plan_mode_refusal(request)
+        if refusal is not None:
+            self._refuse(request, *refusal)
             return
         if is_question(request):
             questions = parse_questions(request)
@@ -362,14 +364,26 @@ class RunPresenter:
         except RunnerError as error:
             self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
 
-    def _refuse_plan(self, request: PermissionRequest) -> None:
-        """Tell Claude to stay in the mode Plan and the user that this was done."""
+    def _plan_mode_refusal(self, request: PermissionRequest) -> tuple[str, Announce] | None:
+        """What Claude is told and what the user hears when the setting refuses this request: its
+        plan (it asks to leave the mode Plan), or its structured questions while the agent of the
+        message is in the mode Plan. None when the request is not refused."""
+        if not self._settings.refuse_plan_mode_exit:
+            return None
+        if is_plan_request(request):
+            return PLAN_REFUSAL, Announce.PLAN_REFUSED
+        if is_question(request) and self._turn_agent.permission_mode == "plan":
+            return PLAN_QUESTIONS_REFUSAL, Announce.PLAN_QUESTIONS_REFUSED
+        return None
+
+    def _refuse(self, request: PermissionRequest, message: str, announce: Announce) -> None:
+        """Tell Claude why the request is refused, and the user that it was."""
         try:
-            self.runner.deny(request, PLAN_REFUSAL)
+            self.runner.deny(request, message)
         except RunnerError as error:
             self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
             return
-        self._view.say(Announce.PLAN_REFUSED)
+        self._view.say(announce)
 
     def _on_questions(self, request: PermissionRequest, questions: list[Question]) -> None:
         """Claude has questions: ask them, give the answers back (or refuse to answer)."""
