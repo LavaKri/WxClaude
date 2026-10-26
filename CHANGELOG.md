@@ -63,4 +63,7 @@ hold is part of this version.
   session, the original is left as it is. Delete a conversation: what Claude Code keeps of it
   goes to the Recycle Bin, after a confirmation.
 - French and English interface, configurable shortcuts, help page opened in the browser.
+- Published under the GNU General Public License version 3 only (`LICENSE`), with a `README.md`
+  and a `CONTRIBUTING.md` (no contributions are accepted). The packaged folder and zip carry
+  `LICENSE` and `THIRD-PARTY-NOTICES.txt`, the licenses of the software they contain.
 - Not yet checked by hand with NVDA and JAWS.

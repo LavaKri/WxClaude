@@ -174,7 +174,9 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
     `show_tools_summary`). *Preferences* is in the File menu, above Quit.
 12. **Log file** (`core/diagnostics.py`): `wxclaude.log` with a start-up report, the uncaught errors
     of every thread, a crash file apart; the level is set by the `.bat` shipped with the zip. **Packaging**: `build.bat` makes `dist\WxClaude` (PyInstaller, one
-    folder, no console) and `dist\WxClaude-<version>.zip`.
+    folder, no console) and `dist\WxClaude-<version>.zip`, with `LICENSE` and a
+    `THIRD-PARTY-NOTICES.txt` made by `packaging/make_notices.py` from `pyproject.toml` and the
+    installed packages (the license of each, and its text where it ships one).
 13. **Navigation of the conversation**: `H` headings, `1`-`6` levels, `T` tables, `L` lists of level 1,
     `I` items of the list the caret is in (`core/conversation/blocks.py`), `Space` shows the table
     at the caret; the announcements of the moves are two categories (*movement done*, *no further

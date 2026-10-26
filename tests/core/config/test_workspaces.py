@@ -34,12 +34,12 @@ def test_remove_missing_drops_deleted_folders(tmp_path: Path) -> None:
 
 
 def test_workspace_label_gives_the_name_then_where_it_is() -> None:
-    folder = Path("C:/Users/Example/Dev/WxClaude")
-    expected = "WxClaude, from " + str(Path("C:/Users/Example/Dev")) + os.sep
+    folder = Path("C:/Work/WxClaude")
+    expected = "WxClaude, from " + str(Path("C:/Work")) + os.sep
     assert workspace_label(str(folder)) == expected
 
 
 def test_describe_gives_name_and_parent() -> None:
-    name, parent = describe(str(Path("C:/Users/Example/Dev/WxClaude")))
+    name, parent = describe(str(Path("C:/Work/WxClaude")))
     assert name == "WxClaude"
-    assert parent == str(Path("C:/Users/Example/Dev")) + os.sep
+    assert parent == str(Path("C:/Work")) + os.sep

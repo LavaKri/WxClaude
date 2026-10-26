@@ -10,3 +10,4 @@ dist/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.claude/settings.local.json
