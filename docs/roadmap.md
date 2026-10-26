@@ -187,7 +187,9 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 
 
 7. **Packaging**: done for the build and the zip (item 12). Left: the icon, the tests with the real
-   zip on another machine, and the manual checks with NVDA and JAWS.
+   zip on another machine, and the manual checks with NVDA and JAWS. The unpacked zip was started on
+   another Windows 11 machine without Claude Code: the application starts. Not tried yet on a machine
+   with Claude Code signed in, nor with a screen reader.
 8. **Signing in to Claude Code from WxClaude**: done for the subscription (*Tools > Sign in to Claude…*,
    `core/claude/auth.py`, `presenters/login_presenter.py`, `ui/login_dialog.py`; measured with the real
    CLI in an empty `CLAUDE_CONFIG_DIR`). Left, in `open-questions.md`: sign out, `--sso` and `--console`,
