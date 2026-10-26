@@ -1356,3 +1356,19 @@ msgid "The sign-in failed.\n{details}"
 msgstr ""
 "La connexion a échoué.\n"
 "{details}"
+
+msgid "Claude asked to leave the Plan mode: refused, as set in the Preferences."
+msgstr "Claude a demandé à quitter le mode Plan : refusé, selon les Préférences."
+
+msgid "&Maximize the window at startup"
+msgstr "&Maximiser la fenêtre au démarrage"
+
+msgid "Never &offer to leave the Plan mode"
+msgstr "Ne jamais &proposer de quitter le mode Plan"
+
+msgid ""
+"{label}: forces Claude to stay in the Plan mode until the user changes the permission mode of "
+"the agent."
+msgstr ""
+"{label} : Force Claude à rester dans le mode de planification, jusqu'à ce que l'utilisateur "
+"change la permission de l'agent."

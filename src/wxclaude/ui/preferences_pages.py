@@ -62,6 +62,8 @@ class GeneralPage(PreferencesPage):
         note = wx.StaticText(self, label=_("The language change applies at the next start."))
         self.reopen_last = wx.CheckBox(self, label=_("At startup, &open the last workspace"))
         self.reopen_last.SetValue(settings.reopen_last)
+        self.maximize = wx.CheckBox(self, label=_("&Maximize the window at startup"))
+        self.maximize.SetValue(settings.maximize_at_start)
         row = wx.BoxSizer(wx.HORIZONTAL)
         row.Add(label, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 6)
         row.Add(self.language, 0)
@@ -69,11 +71,13 @@ class GeneralPage(PreferencesPage):
         sizer.Add(row, 0, wx.ALL, 6)
         sizer.Add(note, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 6)
         sizer.Add(self.reopen_last, 0, wx.ALL, 6)
+        sizer.Add(self.maximize, 0, wx.ALL, 6)
         self.SetSizer(sizer)
 
     def apply(self, settings: Settings) -> None:
         settings.language = SUPPORTED_LANGUAGES[self.language.GetSelection()]
         settings.reopen_last = self.reopen_last.GetValue()
+        settings.maximize_at_start = self.maximize.GetValue()
 
 
 class ClaudePage(PreferencesPage):
@@ -231,6 +235,10 @@ class AgentPage(PreferencesPage):
         self.agent_list.Bind(wx.EVT_LISTBOX, self._on_agent_chosen)
         self.agent_panel = AgentPanel(self, self._agents[0], self._unset_labels[0])
 
+        refuse_text = _("Never &offer to leave the Plan mode")
+        self.refuse_plan = wx.CheckBox(self, label=refuse_text)
+        self.refuse_plan.SetValue(settings.refuse_plan_approval)
+
         levels_label = wx.StaticText(self, label=_("Implications of the permission &levels"))
         levels = read_only_field(self, 8, wrap=False)
         levels.SetValue(
@@ -240,12 +248,18 @@ class AgentPage(PreferencesPage):
                 "Cache: when the alternative agent changes the model, the conversation cache is "
                 "lost and the next message is slower and costs more."
             )
+            + "\n\n"
+            + _(
+                "{label}: forces Claude to stay in the Plan mode until the user changes the "
+                "permission mode of the agent."
+            ).format(label=accessible_name(refuse_text))
         )
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(list_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(self.agent_list, 0, wx.EXPAND | wx.ALL, 8)
         sizer.Add(self.agent_panel, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 2)
+        sizer.Add(self.refuse_plan, 0, wx.ALL, 8)
         sizer.Add(levels_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         sizer.Add(levels, 1, wx.EXPAND | wx.ALL, 8)
         self.SetSizer(sizer)
@@ -261,6 +275,7 @@ class AgentPage(PreferencesPage):
     def apply(self, settings: Settings) -> None:
         self._agents[self._agent_index] = self.agent_panel.agent
         settings.default_agent, settings.alternative_agent = self._agents
+        settings.refuse_plan_approval = self.refuse_plan.GetValue()
 
 
 class ScreenReaderPage(PreferencesPage):

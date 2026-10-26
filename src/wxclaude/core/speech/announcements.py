@@ -176,6 +176,10 @@ class Announce(enum.Enum):
     QUESTION_ANSWERED = (PERMISSION_ANSWER, N_("Your answers were sent to Claude."))
     PERMISSION_GRANTED = (PERMISSION_ANSWER, N_("Permission granted for the tool {tool}."))
     PERMISSION_REFUSED = (PERMISSION_ANSWER, N_("Permission refused for the tool {tool}."))
+    PLAN_REFUSED = (
+        PERMISSION_ANSWER,
+        N_("Claude asked to leave the Plan mode: refused, as set in the Preferences."),
+    )
     PERMISSION_EXPIRED = (
         PERMISSION_ANSWER,
         N_("The question about the tool {tool} expired: Claude denied the tool."),

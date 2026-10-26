@@ -290,7 +290,8 @@ effort or the permission mode does not.
 
 ## Preferences
 
-- **General**: language (applies at the next start); at startup, open the last workspace.
+- **General**: language (applies at the next start); at startup, open the last workspace; *Maximize
+  the window at startup* (checked by default; applies at the next start).
 - **Claude** (after General): *Automatic search for claude-p* (checked by default: `claude` is looked
   for in the PATH); *Path of claude-p* and *Select…* (file dialog), both greyed while the search is
   automatic. OK is refused, with the focus on the path, if the search is off and the path is empty
@@ -308,8 +309,15 @@ effort or the permission mode does not.
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested." or the summary of a compaction, is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).
-- **Agent**: list of the two agents, their fields, the implication of each permission level and the
-  cache notice.
+- **Agent**: list of the two agents, their fields, the check box *Never offer to leave the Plan mode*
+  (checked by default) and the read-only field that gives the implication of each permission level,
+  the cache notice and, last, a paragraph that explains the check box (a screen reader reads a field,
+  not a note under a check box). Checked, the request of Claude to leave the mode Plan (its plan, see the permission
+  dialog) is refused at once: no dialog, Claude is told to stay in the mode Plan and to present its
+  plan in its answer, and the status bar and the announcement (category *permission answer*) say
+  "Claude asked to leave the Plan mode: refused, as set in the Preferences." The plan can still be
+  read with *Tools > Plan…*, and the user leaves the mode by changing the agent. Unchecked, the plan
+  is asked in the permission dialog as before. Only the stdio protocol sends that request.
 - **Shortcuts**: list of commands, field to press the new shortcut, restore the default, no
   shortcut. A shortcut is refused if it is invalid, reserved, standard or already used.
 - **Announcements**: how announcements are sent (none, UI Automation on Windows); the list of the

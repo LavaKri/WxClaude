@@ -96,6 +96,28 @@ def test_agent_edits_survive_switching_between_the_two_agents(
     assert settings.alternative_agent == Agent(effort="low")
 
 
+def test_maximizing_at_start_is_checked_by_default_and_the_choice_is_applied(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
+    check = dialog.general.maximize
+    assert check.GetValue()
+    assert check.GetLabel() == "&Maximize the window at startup"
+    check.SetValue(False)
+    dialog.apply(settings)
+    assert not settings.maximize_at_start
+
+
+def test_leaving_the_plan_mode_is_refused_by_default_and_the_choice_is_applied(
+    dialog: PreferencesDialog, settings: Settings
+) -> None:
+    check = dialog.agent.refuse_plan
+    assert check.GetValue()
+    assert check.GetLabel() == "Never &offer to leave the Plan mode"
+    check.SetValue(False)
+    dialog.apply(settings)
+    assert not settings.refuse_plan_approval
+
+
 def test_the_agent_of_a_conversation_has_no_unset_entry_but_the_alternative_has(
     dialog: PreferencesDialog,
 ) -> None:

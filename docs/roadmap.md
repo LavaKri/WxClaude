@@ -26,8 +26,7 @@ the answers with its check item, *Preferences* now in the File menu, the dialog 
 rows, Left/Right change the column, a field gives the cell), the keys `H`, `T`, `L`, `I`, `K` and `Space` of
 the conversation and their announcements, the tab *Announcements* of the Preferences, the dialog
 of the structured questions of Claude (lists of check boxes, the message when a question is left
-unanswered), the context menu of the prompt, the Display submenu, and the loss of the status bar by NVDA
-seen once with the executable (`open-questions.md`), the button *Claude state* and its read-only field in
+unanswered), the context menu of the prompt, the Display submenu, the button *Claude state* and its read-only field in
 Preferences > Claude, the message at the start when Claude Code is not found, the plan dialog of the
 mode Plan, and the key `K`; the *Sign in to Claude…* dialog (the focus on the progress while it waits,
 the message at the end, the optional e-mail field).
@@ -62,7 +61,7 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 
 - **Versions**: `MAJOR.MINOR.PATCH`, the number is `__version__` in `src/wxclaude/__init__.py`
   (read by `pyproject.toml`), a tag `vX.Y.Z` marks each release and `CHANGELOG.md` says what it holds
-  (`versions.md`). The current number is `0.1.0`, not tagged yet: it waits for the checks with NVDA and
+  (`versions.md`). The current number is `0.2.0` (`0.1.0` was never released), not tagged yet: it waits for the checks with NVDA and
   JAWS and for the packaging.
 - **Model-View-Presenter, adopted progressively.** The folders stay `core/` (model) and `ui/`
   (views); `presenters/` is added. One screen at a time moves its logic into a presenter without

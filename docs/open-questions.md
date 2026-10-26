@@ -52,19 +52,6 @@ the file it belongs to and delete it from this one.
   differently, the status bar message with NVDA and JAWS (JAWS may read it by itself), and that a
   reading never takes the focus away from a send button (rule of `focus.md`). The status bar error
   of a failed answer is replaced by "Ready" at the next reading.
-- **The status bar lost for NVDA (seen once, with the executable).** After a few exchanges, NVDA+End
-  said there was no status bar information, and Alt+Tab, refreshing and opening WxClaude windows did
-  not bring it back. Not reproduced: the logs hold no error for that session, and a simulation of 120
-  exchanges (announcements, status texts, rebuilds of the conversation) kept the status bar with its three
-  fields (MSAA role 23). Ruled out: a status bar rebuilt (it is created once and only fed with text), and
-  the "Windows fatal exception" lines of `wxclaude-crash.log` (codes `0x8001010d`, `0x80010108` and
-  access violations: `faulthandler` logs the first-chance exceptions that Windows handles itself, they also
-  appear without the UI Automation announcements and with NVDA only watching). Long texts are cut at
-  200 characters since. Still suspected: the UI Automation provider of the announcements
-  (`ui/uia_provider.py`, hand-written with `ctypes`) or a state of NVDA. Next time: NVDA log
-  (NVDA menu, Tools, View log) around the moment, does NVDA+End work in Notepad then, and does it
-  happen from source (`wxclaude.bat`) too. A test: Preferences > Announcements > screen reader
-  output "None". The crash log mixes real crashes and this noise; filtering it is not done.
 - **Title entry of a generated title**: the reader expects an `ai-title` entry with an `aiTitle`
   field; only `custom-title` / `customTitle` was seen in real files.
 - **Effort in the session files**: only `low` and `medium` were seen. Are `xhigh` and `max` written

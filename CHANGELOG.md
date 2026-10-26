@@ -3,9 +3,10 @@
 Every version of WxClaude and what changed in it, newest first. The rules for versions are in
 `docs/versions.md`. Format: one line per change, no jargon.
 
-## 0.1.0 (not released yet)
+## 0.2.0 (2026-10-26)
 
-First version: the application works from end to end.
+The application works from end to end. The number 0.1.0 was never released: what it was meant to
+hold is part of this version.
 
 - Send messages to Claude Code (`claude -p`) and read the answers in a read-only conversation view
   with headings; the session file of the CLI is the history.
@@ -28,6 +29,11 @@ First version: the application works from end to end.
 - *Tools > Sign in to Claude…*: a dialog that signs in to Claude Code with `claude auth login` without a
   terminal. The browser opens by itself; the dialog waits, says the result, can be cancelled, shows
   the address of the page to copy, and takes an optional e-mail address for the page (not remembered).
+- A check box *Maximize the window at startup* in the General page of the Preferences, checked by
+  default.
+- A check box *Never offer to leave the Plan mode* in the Agent page of the Preferences, checked by
+  default: in the mode Plan, the request of Claude to leave it is refused for you, with a message
+  to Claude to present its plan in its answer.
 - A message at the start when Claude Code is not found, with a way to open the Preferences, and a status
   bar that says so instead of "Ready".
 - The keys `K` and `Shift+K` of the conversation go from link to link and say the text and the address

@@ -12,9 +12,11 @@ invalid values fall back to their default; unknown keys are ignored.
 | `shortcuts` | Only the shortcuts that differ from the default, by command id; `""` is no shortcut | empty |
 | `screen_reader_output` | `none` or `uia` | `uia` on Windows |
 | `reopen_last` | At startup, open the last workspace | `true` |
+| `maximize_at_start` | The main window starts maximized | `true` |
 | `claude_auto_search` | Look for `claude` in the PATH | `true` |
 | `claude_path` | The `claude` executable chosen by hand, used when the automatic search is off | empty |
 | `permission_channel` | How Claude's permission questions reach WxClaude: `stdio` (control protocol) or `hook` (HTTP hook); see `claude-cli.md` | `stdio` |
+| `refuse_plan_approval` | In the mode Plan, the request of Claude to leave it (its plan) is refused for the user, with no dialog, and Claude is told to present the plan in its answer; the user leaves the mode by changing the agent. Only the `stdio` channel has that request | `true` |
 | `hook_timeout_minutes` | With the `hook` channel, how long the CLI waits for the answer (1 to 10) | `10` |
 | `last_workspace` | Folder to reopen | empty |
 | `hide_system_messages` | Do not display the noise the CLI writes in a session | `true` |

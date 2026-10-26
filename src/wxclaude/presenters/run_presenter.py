@@ -26,7 +26,13 @@ from wxclaude.core.claude.events import (
 )
 from wxclaude.core.claude.gauge_schedule import GaugeSchedule
 from wxclaude.core.claude.permission_channel import HOOK
-from wxclaude.core.claude.permissions import Choice, Decision, hook_wait_text, is_plan_request
+from wxclaude.core.claude.permissions import (
+    PLAN_REFUSAL,
+    Choice,
+    Decision,
+    hook_wait_text,
+    is_plan_request,
+)
 from wxclaude.core.claude.progress import Outcome, Progress, progress_for, turn_outcome
 from wxclaude.core.claude.questions import Question, is_question, parse_questions
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
@@ -322,7 +328,11 @@ class RunPresenter:
 
     def _on_permission_request(self, request: PermissionRequest) -> None:
         """Claude asks before running a tool: a rule allowed earlier in this message, else ask.
-        Its structured questions have a dialog of their own."""
+        Its structured questions have a dialog of their own. A plan is refused for the user when
+        the setting says so: the mode Plan is left only by the user (``refuse_plan_approval``)."""
+        if is_plan_request(request) and self._settings.refuse_plan_approval:
+            self._refuse_plan(request)
+            return
         if is_question(request):
             questions = parse_questions(request)
             if questions:
@@ -351,6 +361,15 @@ class RunPresenter:
             self._view.say(Announce.PERMISSION_GRANTED, tool=request.tool_name)
         except RunnerError as error:
             self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
+
+    def _refuse_plan(self, request: PermissionRequest) -> None:
+        """Tell Claude to stay in the mode Plan and the user that this was done."""
+        try:
+            self.runner.deny(request, PLAN_REFUSAL)
+        except RunnerError as error:
+            self._view.show_error(_("Claude could not be answered.\n{error}").format(error=error))
+            return
+        self._view.say(Announce.PLAN_REFUSED)
 
     def _on_questions(self, request: PermissionRequest, questions: list[Question]) -> None:
         """Claude has questions: ask them, give the answers back (or refuse to answer)."""

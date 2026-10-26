@@ -21,11 +21,13 @@ from wxclaude.core.speech.screen_reader import default_output, output_named
 SETTINGS_FILE_NAME = "settings.json"
 _FLAG_KEYS = (
     "reopen_last",
+    "maximize_at_start",
     "hide_system_messages",
     "show_tools_summary",
     "remove_markdown_marks",
     "local_tools_only",
     "claude_auto_search",
+    "refuse_plan_approval",
 )
 _TEXT_KEYS = ("claude_path", "last_workspace")
 SUPPORTED_LANGUAGES = ("fr", "en")
@@ -77,6 +79,7 @@ class Settings:
     shortcuts: dict[str, str] = field(default_factory=dict)  # only the changed ones
     screen_reader_output: str = field(default_factory=lambda: default_output().id)
     reopen_last: bool = True  # open the last workspace and conversation at startup
+    maximize_at_start: bool = True  # the main window starts maximized
     hide_system_messages: bool = True  # do not show the noise the CLI writes in a session
     show_tools_summary: bool = True  # a line under each answer that sums up its tools
     remove_markdown_marks: bool = True  # no ** or * of bold and italic in the conversation
@@ -84,6 +87,7 @@ class Settings:
     local_tools_only: bool = False  # never modify the versioned settings of a project
     claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
     claude_path: str = ""  # the claude executable chosen by hand (used without the auto search)
+    refuse_plan_approval: bool = True  # in the mode Plan, never offer to leave it (refused for you)
     permission_channel: str = STDIO  # how Claude's permission questions reach us (CHANNEL_KINDS)
     hook_timeout_minutes: int = DEFAULT_HOOK_TIMEOUT_MINUTES  # the CLI's wait, hook channel
     last_workspace: str = ""
@@ -206,6 +210,7 @@ class Settings:
             "shortcuts": self.shortcuts,
             "screen_reader_output": self.screen_reader_output,
             "reopen_last": self.reopen_last,
+            "maximize_at_start": self.maximize_at_start,
             "hide_system_messages": self.hide_system_messages,
             "show_tools_summary": self.show_tools_summary,
             "remove_markdown_marks": self.remove_markdown_marks,
@@ -213,6 +218,7 @@ class Settings:
             "local_tools_only": self.local_tools_only,
             "claude_auto_search": self.claude_auto_search,
             "claude_path": self.claude_path,
+            "refuse_plan_approval": self.refuse_plan_approval,
             "permission_channel": self.permission_channel,
             "hook_timeout_minutes": self.hook_timeout_minutes,
             "last_workspace": self.last_workspace,

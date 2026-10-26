@@ -34,5 +34,5 @@ How the version of WxClaude is numbered, kept and released. What each version ho
 
 Between two versions `CHANGELOG.md` keeps a section "Unreleased" on top, that is filled as the work
 goes; at the release it becomes the section of the new number (the test of the version expects that
-section to exist when the number is changed). While the first version is not released, its section
-`0.1.0 (not released yet)` plays that role.
+section to exist when the number is changed). The section of the current number (now `0.2.0`) is
+the one that is filled until the version is tagged; after that a section "Unreleased" is added on top.

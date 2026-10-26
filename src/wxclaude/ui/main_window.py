@@ -74,6 +74,8 @@ class MainWindow(wx.Frame):
         self._feedback.set_status(_("Ready"))
         self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
         self.Bind(wx.EVT_CLOSE, self._on_close)
+        if settings.maximize_at_start:
+            self.Maximize()
         self._conversation.set_show_hidden(not settings.hide_system_messages)
         self._conversation.set_show_tools_summary(settings.show_tools_summary)
         self._menu.tools_summary_item.Check(settings.show_tools_summary)

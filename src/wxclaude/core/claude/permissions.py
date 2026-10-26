@@ -15,6 +15,10 @@ from wxclaude.i18n import _
 
 DEFAULT_DENIAL = "The user denied this action."
 PLAN_TOOL = "ExitPlanMode"  # in the mode plan, Claude submits its plan by asking to leave it
+PLAN_REFUSAL = (  # what Claude is told when the setting refuses to leave the mode plan for the user
+    "The user does not approve plans through this tool. Stay in plan mode: present the plan in "
+    "your answer and wait for the user to change the mode."
+)
 
 
 class Choice(enum.Enum):
