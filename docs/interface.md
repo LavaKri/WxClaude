@@ -51,12 +51,41 @@ Delete the conversation (see "Branch and delete"), Interrupt Claude (Ctrl+Shift+
 *Remove the Markdown formatting* and *Summary of the tools under the answers*, see the conversation
 display) and the submenu **Search** (see below).
 
-**Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Open
-the workspace folder (in the file explorer; needs a workspace), Workspace settings (needs a
-workspace).
+**Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Sign
+in to Claude (no shortcut; needs nothing, not even a workspace), Open the workspace folder (in the
+file explorer; needs a workspace), Workspace settings (needs a workspace).
 
 The context menu of the conversation (tools used, table, links, copy) is in
 `conversation-display.md`, with the usage dialog.
+
+## Sign in
+
+*Tools > Sign in to Claude…* (`ui/login_dialog.py`, `presenters/login_presenter.py`,
+`core/claude/auth.py`) signs in to Claude Code without a terminal, for the program chosen in the
+Preferences. Only the subscription sign-in exists (`claude auth login --claudeai`); signing out and
+the SSO and Console sign-ins are not offered.
+
+- Fields, in the order of the Tab key: the read-only *State of Claude Code* (the focus when the dialog
+  opens, so a screen reader reads it; same text as the *Claude state* button of the Preferences);
+  *E-mail address (optional, not remembered)*, passed to the sign-in page with `--email` when it is
+  filled in and never stored; the read-only *Sign-in progress*; the read-only *Address of the
+  sign-in page*. Buttons: *Sign in* (the default one), *Copy the address* (active once the CLI has
+  printed the address), *Cancel the sign-in* (active while it runs), *Close*.
+- *Sign in* starts the command with no console and its input closed. The CLI opens the browser by
+  itself; the user finishes in the page (e-mail, code sent by e-mail, or the account already signed in
+  there, then *Authorize*). No code is typed in WxClaude: the browser comes back to a port the CLI
+  listens on. The command must stay alive until then (`claude-cli.md`, "State and sign-in").
+- While it runs, only *Cancel the sign-in* and *Close* work and the focus is on the progress
+  ("Finish the sign-in in the browser. Waiting for it to end."). Closing the dialog (Escape, Close)
+  stops the command first.
+- When it ends, the state is read again. If `auth status` says logged in, a message says
+  "You are signed in to Claude Code." and the focus is back on the state; if the command ended well but
+  the state does not say so, or if it failed, an error shows what the command printed. A
+  cancellation is said in the progress field, where the focus goes, without a message box.
+- The question of the working folder that the interactive `claude` asks is not asked by this
+  command (see `claude-cli.md`) and is not handled here.
+- An expired session during a conversation ("Failed to authenticate: OAuth session expired and could
+  not be refreshed") is left in the conversation as any other answer; the dialog is opened by hand.
 
 ## Task list
 
@@ -274,8 +303,8 @@ effort or the permission mode does not.
   so that a screen reader reads it: found or not (and why), the path, the version and the connection
   ("logged in (claude.ai, pro)", "not logged in" or unknown). It runs `claude --version` and `claude
   auth status` (`core/claude/status.py`); the address and the organization that `auth status` also
-  gives are not read. The window waits for the answer (20 seconds at most). Signing in will have a dialog
-  of its own (`open-questions.md`).
+  gives are not read. The window waits for the answer (20 seconds at most). Signing in has a dialog
+  of its own, *Tools > Sign in to Claude…* (see "Sign in" above); the Preferences have no button for it.
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested." or the summary of a compaction, is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).

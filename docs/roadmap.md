@@ -13,7 +13,7 @@ Claude are asked to the user (two channels, chosen in Preferences > Claude: the 
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
 shown in dialogs; a conversation can be branched and deleted; the usage dialog ends with the
-statistics of the whole workspace, and a line under each answer sums up its tools. 810 tests
+statistics of the whole workspace, and a line under each answer sums up its tools. 854 tests
 pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
@@ -27,9 +27,12 @@ rows, Left/Right change the column, a field gives the cell), the keys `H`, `T`, 
 the conversation and their announcements, the tab *Announcements* of the Preferences, the dialog
 of the structured questions of Claude (lists of check boxes, the message when a question is left
 unanswered), the context menu of the prompt, the Display submenu, and the loss of the status bar by NVDA
-seen once with the executable (`open-questions.md`).
+seen once with the executable (`open-questions.md`), the button *Claude state* and its read-only field in
+Preferences > Claude, the message at the start when Claude Code is not found, the plan dialog of the
+mode Plan, and the key `K`; the *Sign in to Claude…* dialog (the focus on the progress while it waits,
+the message at the end, the optional e-mail field).
 
-Last work, in order (most recent first): the button *Claude state* of the Preferences; the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
+Last work, in order (most recent first): the *Sign in to Claude…* dialog of the Tools menu; the button *Claude state* of the Preferences; the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
 `K` / `Shift+K` between the links of the conversation; the Display submenu of the Conversation menu (the summary of
 the tools and *Remove the Markdown formatting*, which takes the marks of bold and italic out of the
 text); the fields of the status bar cut at 200 characters; the context menu of the prompt (Cut, Copy,
@@ -184,7 +187,14 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 
 7. **Packaging**: done for the build and the zip (item 12). Left: the icon, the tests with the real
    zip on another machine, and the manual checks with NVDA and JAWS.
-8. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
+8. **Signing in to Claude Code from WxClaude**: done for the subscription (*Tools > Sign in to Claude…*,
+   `core/claude/auth.py`, `presenters/login_presenter.py`, `ui/login_dialog.py`; measured with the real
+   CLI in an empty `CLAUDE_CONFIG_DIR`). Left, in `open-questions.md`: sign out, `--sso` and `--console`,
+   the check at the start, the checks with NVDA and JAWS.
+9. **Spelling dialog** for the prompt (a shortcut, a check list of corrections, an editable list of
+   other choices), after choosing the spell checker.
+10. **Claude Code missing**, the rest: grey the send buttons, try again, the install address.
+11. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
    settings, the tools announced by the CLI added to the list, and the other settings of the
    `.claude` files.
 

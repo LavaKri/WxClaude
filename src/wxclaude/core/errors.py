@@ -49,5 +49,9 @@ class RunnerError(WxClaudeError):
     """Claude cannot be started, or a request cannot be turned into a command."""
 
 
+class ClaudeLoginError(WxClaudeError):
+    """The sign-in of Claude Code cannot be started, or one is already running."""
+
+
 class StreamParseError(WxClaudeError):
     """A line of the ``stream-json`` output is not valid JSON."""

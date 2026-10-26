@@ -25,6 +25,9 @@ First version: the application works from end to end.
   categories for them. `Space` on a line of a table shows the table.
 - A button *Claude state* in the Claude page of the Preferences, with a read-only field: whether Claude
   Code is found, its path, its version and whether it is logged in.
+- *Tools > Sign in to Claude…*: a dialog that signs in to Claude Code with `claude auth login` without a
+  terminal. The browser opens by itself; the dialog waits, says the result, can be cancelled, shows
+  the address of the page to copy, and takes an optional e-mail address for the page (not remembered).
 - A message at the start when Claude Code is not found, with a way to open the Preferences, and a status
   bar that says so instead of "Ready".
 - The keys `K` and `Shift+K` of the conversation go from link to link and say the text and the address

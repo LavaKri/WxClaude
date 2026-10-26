@@ -297,7 +297,7 @@ class ClaudeRunner:
         try:
             stdout, _stderr = process.communicate(timeout=_USAGE_WAIT_SECONDS)
         except subprocess.TimeoutExpired:
-            _kill_tree(process)
+            kill_tree(process)
             process.communicate()
         else:
             reply = _last_json_object(stdout)
@@ -338,7 +338,7 @@ class ClaudeRunner:
             if process is None:
                 return
             self._interrupted = True
-        _kill_tree(process)
+        kill_tree(process)
 
     @staticmethod
     def _read_stdout(
@@ -394,7 +394,7 @@ def _last_json_object(text: str) -> dict[str, object]:
     return {}
 
 
-def _kill_tree(process: subprocess.Popen[str]) -> None:
+def kill_tree(process: subprocess.Popen[str]) -> None:
     """End the process and the processes it started."""
     if sys.platform == "win32":
         try:

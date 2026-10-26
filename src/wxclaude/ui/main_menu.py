@@ -56,6 +56,7 @@ class MenuHandlers:
     tasks: Handler
     plans: Handler
     usage: Handler
+    sign_in: Handler
     open_workspace_folder: Handler
     workspace_settings: Handler
     preferences: Handler
@@ -181,6 +182,7 @@ class MainMenu:
             MenuEntry(_("Task &list…"), h.tasks, TASKS_COMMAND, Needs.CONVERSATION),
             MenuEntry(_("Pla&n…"), h.plans, needs=Needs.CONVERSATION),
             MenuEntry(_("Claude &usage…"), h.usage, USAGE_COMMAND, key="usage"),
+            MenuEntry(_("Sign &in to Claude…"), h.sign_in),
             MenuEntry(
                 _("Open the workspace &folder"), h.open_workspace_folder, needs=Needs.WORKSPACE
             ),

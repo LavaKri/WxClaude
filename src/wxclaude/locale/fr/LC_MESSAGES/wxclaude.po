@@ -1307,3 +1307,52 @@ msgstr "Connexion : non connecté"
 
 msgid "Connection: unknown"
 msgstr "Connexion : inconnue"
+
+msgid "Sign &in to Claude…"
+msgstr "Se &connecter à Claude…"
+
+msgid "Sign in to Claude Code"
+msgstr "Connexion à Claude Code"
+
+msgid "&E-mail address (optional, not remembered)"
+msgstr "Adresse &e-mail (facultative, non mémorisée)"
+
+msgid "Sign-in progress"
+msgstr "Progression de la connexion"
+
+msgid "Address of the sign-in page"
+msgstr "Adresse de la page de connexion"
+
+msgid "&Sign in"
+msgstr "&Se connecter"
+
+msgid "Copy the &address"
+msgstr "Copier l'&adresse"
+
+msgid "&Cancel the sign-in"
+msgstr "Annuler la &connexion"
+
+msgid "The address could not be copied."
+msgstr "L'adresse n'a pas pu être copiée."
+
+msgid "The sign-in cannot be started.\n{error}"
+msgstr ""
+"La connexion ne peut pas démarrer.\n"
+"{error}"
+
+msgid "Finish the sign-in in the browser. Waiting for it to end."
+msgstr "Terminez la connexion dans le navigateur. En attente de la fin."
+
+msgid "The sign-in was cancelled."
+msgstr "La connexion a été annulée."
+
+msgid "You are signed in to Claude Code."
+msgstr "Vous êtes connecté à Claude Code."
+
+msgid "The sign-in ended, but Claude Code does not say that you are signed in."
+msgstr "La connexion s'est terminée, mais Claude Code ne dit pas que vous êtes connecté."
+
+msgid "The sign-in failed.\n{details}"
+msgstr ""
+"La connexion a échoué.\n"
+"{details}"

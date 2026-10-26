@@ -4,9 +4,11 @@ from pathlib import Path
 
 import wx
 
+from wxclaude.core.claude.auth import ClaudeLogin
 from wxclaude.core.claude.claude_files import DiskClaudeFiles
 from wxclaude.core.claude.claude_settings import ToolSettings
 from wxclaude.core.claude.runner import ClaudeRunner
+from wxclaude.core.claude.status import read_status
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
@@ -32,6 +34,7 @@ from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.file_view import WxFileView
 from wxclaude.ui.gauge_watch import GaugeWatch
+from wxclaude.ui.login_dialog import LoginDialog
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_view import WxMessageView
 from wxclaude.ui.preferences_dialog import PreferencesDialog
@@ -227,6 +230,7 @@ class MainWindow(wx.Frame):
                 tasks=lambda _event: self._actions.show_tasks(),
                 plans=lambda _event: self._actions.show_plans(),
                 usage=lambda _event: self._actions.show_usage(),
+                sign_in=self._on_sign_in,
                 open_workspace_folder=lambda _event: self._files.open_folder(
                     self._workspaces.workspace
                 ),
@@ -345,6 +349,12 @@ class MainWindow(wx.Frame):
             self._feedback.show_error(
                 _("The settings could not be saved.\n{error}").format(error=error)
             )
+
+    def _on_sign_in(self, _event: wx.CommandEvent) -> None:
+        """The sign-in dialog, for the claude program chosen in the Preferences."""
+        path = self._run.runner.claude_path
+        with LoginDialog(self, ClaudeLogin(claude_path=path), lambda: read_status(path)) as dialog:
+            self._feedback.modal(dialog)
 
     def _on_interrupt(self, _event: wx.CommandEvent) -> None:
         self._run.interrupt()

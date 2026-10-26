@@ -13,6 +13,14 @@ the file it belongs to and delete it from this one.
   ...) may hinder the reading of the labels with a screen reader. To check, and if so, remove them
   from the Preferences (the accessible name already comes without the `&`, see `core/labels.py`).
 
+- **The name and Anthropic's branding.** The Agent SDK page allows "Claude Agent" or "{YourName}
+  powered by Claude" and forbids "Claude Code" and anything that looks like Claude Code; it says the
+  product must keep its own identity. "WxClaude" is not forbidden by name but is
+  not covered either (a grey zone). The same page says that,
+  unless approved before, a third party must not offer the claude.ai sign-in or its rate limits in
+  its products. For a personal use the risk is low; before any distribution, ask Anthropic (the page
+  gives the sales team contact) and consider a name of the form "X for Claude Code". Not legal advice.
+
 ## To verify
 
 - **Plans.** *Tools > Plan…* finds the plans as the `Write` calls of the session file to
@@ -82,12 +90,31 @@ the file it belongs to and delete it from this one.
   Look for Claude Code…* to search again without opening the Preferences; the address and steps of the
   installation in the message (to read in the official documentation first); a CLI that is there but not
   logged in (the error comes with the first message).
-- **Signing in to Claude Code from WxClaude.** The Claude page of the Preferences shows the state
-  (found, version, logged in or not). Still to do, in a dialog of its own: *Sign in* with `claude auth
-  login` run in the background (the browser opens; to try in an empty `CLAUDE_CONFIG_DIR` whether the
-  CLI also asks for a code in the console), *Sign out*, the options `--console` and `--sso`, and
-  "not logged in" at the start (message and status bar, as for a missing program). Anthropic's rule
+- **Signing in to Claude Code from WxClaude, what is left.** *Tools > Sign in to Claude…* exists
+  for the subscription (`interface.md`, "Sign in"; the CLI needs no code, `claude-cli.md`). Not done:
+  *Sign out* (`claude auth logout`); the other kinds of sign-in of `auth login`: `--sso` (the
+  identity provider of an organization, Team or Enterprise offers; with `--email` to pre-fill the work
+  address) and `--console` (Anthropic Console, API billing), the user being on a personal Pro account;
+  "not logged in" at the start (message and status bar, as for a missing program; `auth status`
+  would have to be read outside the interface thread); a way in from an expired session (the error
+  "Failed to authenticate: OAuth session expired…" stays in the conversation, the user opens the
+  dialog). To check: `--email` together with `--claudeai` on the real sign-in page; the exit code of
+  `auth login`; the question of the working folder that a user saw before the browser opened (not
+  reproduced with the output redirected: if it comes back, the dialog has to show it). Anthropic's rule
   on third-party sign-in (see *Subscription use*) is to be read again before it is shipped.
+- **Moving or renaming the folder of a workspace** (measured with the real CLI, haiku): no command of
+  Claude Code does it; `/cd` exists in the interactive mode only and is refused with `-p` ("/cd isn't
+  available in this environment"). `--resume <id>` finds a session by its identifier from any folder
+  and keeps writing in the folder of sessions of the old path; `--continue` and the project memory
+  (`memory` next to the sessions) follow the name of the folder of sessions under
+  `~/.claude/projects`, so after a rename they only come back once that folder is renamed by hand
+  (a new empty one made for the new path must be removed first). The `cwd` written in old transcripts
+  stays; new lines carry the new path. WxClaude lists the conversations of a workspace by the `cwd` of
+  the first lines of each folder (`claude_projects.list_sessions`), so after a rename it would not
+  show them for the new path, and its own files (current conversation, agents, statistics) are named
+  after a hash of the path. A "Rename the workspace" function would rename the folder, move the folder
+  of sessions with its memory, migrate the files of WxClaude and fix that list. Not done; the user said
+  to forget the files of WxClaude for now.
 - **Subscription use.** Driving `claude -p` from a custom front end with a subscription login may
   be restricted by the usage policy of the provider (an API key is the safe path). Check the current
   terms.

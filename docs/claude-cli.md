@@ -31,9 +31,29 @@ changes a lot. Only what was tested or read in the documentation is stated here.
   `orgName`, `subscriptionType` (`pro`). Not logged in: `loggedIn` false, `authMethod` `none`. With
   `--text`: "Not logged in. Run claude auth login to authenticate." It asks nothing and opens nothing.
   An empty `CLAUDE_CONFIG_DIR` gives the not logged in answer without touching the real sign-in.
-- `claude auth login` (`--email`, `--sso`, `--console`), `logout` and `setup-token` are in the CLI
-  reference. `auth login` was not run (it opens the browser): how it behaves with no terminal is to
-  be tried.
+- `claude auth login` has `--claudeai` (the subscription, the default), `--console` (Anthropic
+  Console, API billing), `--sso` and `--email <email>` (pre-fills the address on the sign-in page);
+  `logout` and `setup-token` are in the CLI reference.
+- **`claude auth login --claudeai` with no terminal** (measured three times, in an empty
+  `CLAUDE_CONFIG_DIR`, once from a folder never used before; input from `/dev/null`, output to a file):
+  it prints `Opening browser to sign in…`, a line `If the browser didn't open, visit: https://claude.com/cai/oauth/authorize?...`
+  and `Paste code here if prompted > ` (no line break), opens the browser by itself, then, once the
+  user has pressed *Authorize*, prints `Login successful.` and ends by itself; `auth status` then says
+  logged in (`claude.ai`, `pro`) in that folder, and `auth logout` there (`Successfully logged out
+  from your Anthropic account.`) brings back `loggedIn` false (exit 1). No code was ever needed:
+  the browser comes back to a local port the CLI listens on. **The process must stay alive until the
+  user has authorized**: killed before (twice, when it was started in the background of a tool call that
+  ended), the browser ends on "localhost refused the connection" / `ERR_CONNECTION_REFUSED`.
+- No question was asked on the output, neither about the e-mail address (typed in the browser page) nor
+  about the working folder. A user remembers being asked to trust the folder before the browser
+  opened, after running `claude auth login`; that was not reproduced with the output redirected, so
+  it may be a screen the CLI draws only in a real terminal. The exit code of `auth login` was not
+  read. `--email` with `--claudeai` was not tried.
+- An expired login in a conversation: the CLI writes, in `-p` mode, a synthetic assistant message
+  (`model` `<synthetic>`, no token used) with the text `Failed to authenticate: OAuth session expired
+  and could not be refreshed`, `isApiErrorMessage` true and `"error": "authentication_failed"`, for
+  every message sent, until the user signs in again (read in a session file). WxClaude shows it in
+  the conversation like any answer.
 
 ## Permission modes (from the documentation)
 

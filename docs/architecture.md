@@ -70,6 +70,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `status.py` | `read_status` / `describe_status`: found or not, version and connection of Claude Code, asked of the program (`--version`, `auth status`). |
+| `auth.py` | `ClaudeLogin`: `claude auth login --claudeai` with no console and its input closed, in a thread; the events `LoginUrl` (the address the CLI prints) and `LoginEnded` (success, cancelled, what it printed); `cancel` ends the process and its children. |
 | `claude_projects.py` | The folders Claude Code has worked in, read from `<config>/projects`; the files of a session (what deleting it removes). |
 | `session_reader.py` | The reader of the session files of the CLI: the messages, the last agent, the usage, the totals of the session and its first time. |
 | `cost_state.py` | `CostState`, `ModelTotals`: the totals the CLI keeps of a session (`cost-state` entries): cost, time of work, tokens and cost of each model. |
@@ -141,6 +142,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 |---|---|
 | `shared.py` | `Shared`: what the presenters of the window work on together (settings, usage of Claude, `ClaudeFiles`). |
 | `claude_check.py` | `ClaudeCheck`: is Claude Code found? (at the start and when its path changes); `ClaudeCheckView` is what it asks of the interface. |
+| `login_presenter.py` | `LoginPresenter`: the sign-in to Claude Code (start with an optional e-mail address, cancel, close; the state read again at the end); `LoginView` is what it asks of the dialog. |
 | `run_presenter.py` | `RunPresenter`: a message sent to Claude (start, events, permission questions, progress, steps, end, interrupt) and the reading of the gauges (`refresh_gauges_if_due`, handled like a message: busy, silent), linked to the window by `RunLinks`; `RunView` is what it asks of the interface. |
 | `conversation_presenter.py` | `ConversationPresenter`: the current conversation (identifier, name, main agent) and the commands of the Conversation menu (new, resume, refresh, rename, branch, agent); the title of the window (the name of a conversation is the one of its session: `--name`, `/rename`); what is remembered in the workspace file (current conversation, main agent). |
 | `stats_recorder.py` | `StatsRecorder`: adds each finished message to the statistics of the workspace, without the time the user took to answer the permission questions. |
@@ -157,6 +159,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | `main_window.py` | The conversation view, the prompt and the buttons, the menus, and the wiring of the presenters and their views. |
 | `conversation_screen.py` | `WxConversationScreen`: the view of `ConversationPresenter` (conversation view, prompt, title, name and agent dialogs, the confirmation and the Recycle Bin of a deletion). |
 | `claude_check_view.py` | `WxClaudeCheckView`: the view of `ClaudeCheck` (status bar, the message that offers the Preferences). |
+| `login_dialog.py` | `LoginDialog`: the sign-in dialog, the view of `LoginPresenter` (it is the view itself: `wx.CallAfter`, its own message boxes). |
 | `run_view.py` | `WxRunView`: the view of `RunPresenter` (conversation view, status bar, permission dialog, `wx.CallAfter`). |
 | `gauge_watch.py` | `GaugeWatch`: the one-minute timer that asks whether the gauges are to be read (started by the application, not by the window). |
 | `feedback.py` | `Feedback`: the status bar (position, messages), the announcements, and every dialog of the window through `modal`, which puts the focus back (`focus.md`); also `choose` (pick in a list), `confirm` (Yes / No, No by default) and `read_session` (the error is shown). |
