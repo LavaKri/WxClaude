@@ -80,3 +80,6 @@ packaged application (`build.bat`, a folder and a zip) carries them, with the ru
 its native libraries (OpenSSL, libffi, Expat, the Microsoft Visual C++ runtime): the file
 `THIRD-PARTY-NOTICES.txt` in the folder gives the license of each and the text of the ones that
 ship one. The development tools (ruff, mypy, pytest, Babel, PyInstaller) are not distributed.
+
+The two sounds of the announcements are made by `packaging/make_sounds.py` and belong to the
+project, under the same license.

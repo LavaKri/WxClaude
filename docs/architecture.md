@@ -122,7 +122,7 @@ Grouped by subject (`working-rules.md`: split by subject, not by technical kind)
 | Module | Role |
 |---|---|
 | `announcements.py` | `Announce` messages, their `Category` and the `Destination` chosen per category, `AnnouncementCenter`, the message sinks and the sound players. |
-| `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). |
+| `sounds.py` | `WinsoundPlayer`: plays the two WAV files of `wxclaude/sounds` (Message.wav, Permission.wav). They are made by synthesis, so they belong to the project: `packaging/make_sounds.py <folder>` writes the candidates to listen to, `--install` writes the chosen ones (`CHOSEN`) into the package. |
 | `screen_reader.py` | The outputs available for announcements (none, UI Automation). |
 
 ### `core/`: shared by all

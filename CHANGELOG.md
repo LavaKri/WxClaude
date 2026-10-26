@@ -64,6 +64,8 @@ hold is part of this version.
   session, the original is left as it is. Delete a conversation: what Claude Code keeps of it
   goes to the Recycle Bin, after a confirmation.
 - French and English interface, configurable shortcuts, help page opened in the browser.
+- The two sounds of the announcements are new: made by synthesis by `packaging/make_sounds.py`, so
+  they belong to the project (the Windows sounds used before could not be published).
 - Published under the GNU General Public License version 3 only (`LICENSE`), with a `README.md`
   and a `CONTRIBUTING.md` (no contributions are accepted). The packaged folder and zip carry
   `LICENSE` and `THIRD-PARTY-NOTICES.txt`, the licenses of the software they contain.
