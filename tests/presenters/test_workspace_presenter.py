@@ -7,6 +7,7 @@ from fake_claude_files import FakeClaudeFiles
 
 from wxclaude.core.claude.claude_projects import ClaudeProject
 from wxclaude.core.claude.cost_state import CostState, ModelTotals
+from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.workspaces import workspace_label
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
@@ -69,6 +70,40 @@ def _folder(tmp_path: Path, name: str) -> Path:
     folder = tmp_path / name
     folder.mkdir()
     return folder
+
+
+def test_a_new_workspace_gets_the_alternative_agent_of_the_preferences(tmp_path: Path) -> None:
+    settings = Settings.load(tmp_path / "config" / "settings.json")
+    settings.default_agent = Agent(
+        provider="claude", model="opus", effort="high", permission_mode="plan"
+    )
+    settings.alternative_agent = Agent(provider="deepseek", model="flash", effort="low")
+    presenter, _window = _presenter(FakeView(), settings)
+    presenter.open(_folder(tmp_path, "work"))
+    assert presenter.state is not None
+    # A field left on "same as the conversation" takes the value of a new conversation.
+    assert presenter.state.alternative_agent == Agent(
+        provider="deepseek", model="flash", effort="low", permission_mode="plan"
+    )
+
+
+def test_the_alternative_agent_of_a_workspace_no_longer_follows_the_preferences(
+    tmp_path: Path,
+) -> None:
+    settings = Settings.load(tmp_path / "config" / "settings.json")
+    settings.alternative_agent = Agent(model="haiku", effort="low")
+    work = _folder(tmp_path, "work")
+    presenter, _window = _presenter(FakeView(), settings)
+    presenter.open(work)
+    assert presenter.state is not None
+    presenter.state.save()
+    settings.alternative_agent = Agent(provider="deepseek", model="flash", effort="max")
+    other, _other_window = _presenter(FakeView(), settings)
+    other.open(work)
+    assert other.state is not None
+    assert other.state.alternative_agent.model == "haiku"
+    assert other.state.alternative_agent.effort == "low"
+    assert other.state.alternative_agent.provider == "claude"
 
 
 def test_opening_a_folder_closes_the_conversation_and_selects_one_of_the_new_folder(

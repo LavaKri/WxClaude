@@ -6,43 +6,51 @@ import wx
 
 from wxclaude.core.claude.auth import ClaudeLogin
 from wxclaude.core.claude.claude_files import DiskClaudeFiles
-from wxclaude.core.claude.claude_settings import ToolSettings
 from wxclaude.core.claude.runner import ClaudeRunner
 from wxclaude.core.claude.status import read_status
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.core.config.settings import Settings
-from wxclaude.core.config.shortcuts import (
-    AGENT_COMMAND,
-    SEND_ALTERNATIVE_COMMAND,
-    SEND_COMMAND,
-    ConfigurableCommand,
-)
-from wxclaude.core.errors import ClaudeSettingsError, SettingsError
+from wxclaude.core.errors import RemoteError, SettingsError
+from wxclaude.core.security.key_relay import KeyRelay
+from wxclaude.core.security.vault import DpapiVault
 from wxclaude.i18n import _
 from wxclaude.presenters.claude_check import ClaudeCheck
 from wxclaude.presenters.conversation_presenter import ConversationLinks, ConversationPresenter
 from wxclaude.presenters.file_presenter import FilePresenter
 from wxclaude.presenters.message_presenter import MessagePresenter
+from wxclaude.presenters.remote_presenter import RemoteLinks
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.search_presenter import SearchPresenter
+from wxclaude.presenters.security_presenter import SecurityPresenter
 from wxclaude.presenters.shared import Shared
+from wxclaude.presenters.usage_presenter import UsagePresenter
 from wxclaude.presenters.workspace_presenter import WorkspaceLinks, WorkspacePresenter
+from wxclaude.presenters.workspace_settings_presenter import (
+    WorkspaceSettingsLinks,
+    WorkspaceSettingsPresenter,
+)
 from wxclaude.ui.claude_check_view import WxClaudeCheckView
 from wxclaude.ui.conversation_screen import WxConversationScreen
 from wxclaude.ui.conversation_view import ConversationView
+from wxclaude.ui.display_options import DisplayOptions
 from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.file_view import WxFileView
+from wxclaude.ui.focus_keeper import FocusKeeper
 from wxclaude.ui.gauge_watch import GaugeWatch
+from wxclaude.ui.history_dialog import show_history
 from wxclaude.ui.login_dialog import LoginDialog
 from wxclaude.ui.main_menu import MainMenu, MenuHandlers
 from wxclaude.ui.message_view import WxMessageView
 from wxclaude.ui.preferences_dialog import PreferencesDialog
-from wxclaude.ui.prompt_field import PromptField
+from wxclaude.ui.prompt_area import PromptActions, PromptArea
+from wxclaude.ui.remote_control import RemoteControl
 from wxclaude.ui.run_view import WxRunView
 from wxclaude.ui.search_view import WxSearchView
-from wxclaude.ui.shortcut_keys import shortcut_from_event
-from wxclaude.ui.workspace_settings_dialog import WorkspaceSettingsDialog
+from wxclaude.ui.security_view import WxSecurityView
+from wxclaude.ui.usage_view import WxUsageView
+from wxclaude.ui.workspace_settings_view import WxWorkspaceSettingsView
 from wxclaude.ui.workspace_view import WxWorkspaceView
 
 _POSITION_WIDTH = 150
@@ -52,10 +60,17 @@ _STEP_WIDTH = 260
 class MainWindow(wx.Frame):
     """Top-level window: the conversation, the prompt, the menus, and what links them."""
 
-    def __init__(self, settings: Settings, runner: ClaudeRunner | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        runner: ClaudeRunner | None = None,
+        remote_pipe: str | None = None,
+    ) -> None:
+        """``remote_pipe`` is the name of the pipe of the remote control, None when it is off."""
         super().__init__(None, title=_("WxClaude"), size=wx.Size(900, 650))
         self._settings = settings
         self._closing = False
+        self._remote: RemoteControl | None = None
         # Reads the gauges now and every minute once started (by the application, not the tests).
         self.gauge_watch = GaugeWatch(
             self, lambda now: self._run.refresh_gauges_if_due(now), lambda: self._closing
@@ -64,7 +79,6 @@ class MainWindow(wx.Frame):
         runner = runner or ClaudeRunner()
         # Sessions, tasks, plans, rules of Claude Code (a session is renamed through the runner).
         self._files_of_claude = DiskClaudeFiles(runner)
-        self._shared = Shared(settings, self._usage, self._files_of_claude)
         self._create_helpers()
         self._build_panel(runner)
         self._build_menu_bar()
@@ -72,27 +86,45 @@ class MainWindow(wx.Frame):
         status_bar = self.CreateStatusBar(3)
         status_bar.SetStatusWidths([_POSITION_WIDTH, _STEP_WIDTH, -1])
         self._feedback.set_status(_("Ready"))
-        self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
         self.Bind(wx.EVT_CLOSE, self._on_close)
+        self._focus_keeper = FocusKeeper(  # Alt+Tab away and back
+            self, lambda: self._closing, self._default_focus
+        )
         if settings.maximize_at_start:
             self.Maximize()
-        self._conversation.set_show_hidden(not settings.hide_system_messages)
-        self._conversation.set_show_tools_summary(settings.show_tools_summary)
-        self._menu.tools_summary_item.Check(settings.show_tools_summary)
-        self._conversation.set_without_marks(settings.remove_markdown_marks)
-        self._menu.marks_item.Check(settings.remove_markdown_marks)
+        self._display = DisplayOptions(
+            self._conversation, self._menu, self._settings, lambda: self._save_settings()
+        )
+        self._apply_settings()
         self._refresh_enabled()
         self._menu.refresh_recent()
+        self._start_remote(remote_pipe)
         self._workspaces.restore_last_session()
         wx.CallAfter(self._check_claude_at_start)
         wx.CallAfter(self._focus_main_field)
         if settings.load_warning:
             wx.CallAfter(self._feedback.show_file_warning, settings.load_warning)
+        if self.providers.warning:
+            wx.CallAfter(self._feedback.show_file_warning, self.providers.warning)
 
     def _create_helpers(self) -> None:
         """The objects that do the work for the window. The window's own methods are looked up at
         each call, so that they can be replaced."""
         self._feedback = Feedback(self, lambda: self._closing, self._settings.destination_for)
+        self._security = SecurityPresenter(WxSecurityView(self, self._feedback))
+        self.providers = ProviderStore.load(self._settings.providers_path, DpapiVault())
+        self._relay = KeyRelay(  # holds the keys of the providers for the transmission Relayed
+            idle_seconds=self._settings.relay_idle_minutes * 60,
+            timeout=self._settings.relay_timeout_seconds,
+        )
+        self._shared = Shared(
+            self._settings,
+            self._usage,
+            self._files_of_claude,
+            self._security,
+            self.providers,
+            self._relay,
+        )
         self._files = FilePresenter(WxFileView(self, self._feedback))
         self._workspaces = WorkspacePresenter(
             WxWorkspaceView(self, self._feedback),
@@ -102,17 +134,36 @@ class MainWindow(wx.Frame):
                 select_conversation=lambda folder: self._conversations.select_in_workspace(folder),
                 changed=lambda: self._workspace_changed(),
                 save_settings=lambda: self._save_settings(),
+                opened=lambda: wx.CallAfter(self._greet_folder),  # once the window shows
+                entered=lambda name: self._feedback.note_workspace(name),
             ),
             self._files_of_claude,
+            self._security,
+        )
+        self._workspace_settings = WorkspaceSettingsPresenter(
+            WxWorkspaceSettingsView(self, self._feedback, self._security, self.providers),
+            self._settings,
+            self._security,
+            WorkspaceSettingsLinks(
+                workspace=lambda: self._workspaces.workspace,
+                alternative_agent=lambda: self._conversations.workspace_alternative_agent,
+                set_alternative_agent=lambda agent: (
+                    self._conversations.set_workspace_alternative_agent(agent)
+                ),
+            ),
         )
         self._actions = MessagePresenter(
             WxMessageView(
                 self, self._feedback, lambda message: self._conversation.exchange_of(message)
             ),
             lambda: self.conversation_id,
-            self._usage,
             self._files_of_claude,
+        )
+        self._usage_dialogs = UsagePresenter(
+            WxUsageView(self, self._feedback),
+            self._usage,
             lambda: self._workspaces.stats,
+            self.providers,
         )
 
     def _build_panel(self, runner: ClaudeRunner) -> None:
@@ -141,50 +192,48 @@ class MainWindow(wx.Frame):
                 state_changed=lambda: self._refresh_enabled(),
             ),
         )
-        self._apply_claude_path()
         self._claude_check = ClaudeCheck(
             runner,
             lambda: self._usage.ready_line(),
-            WxClaudeCheckView(self._feedback, lambda: self._open_preferences(claude_page=True)),
+            WxClaudeCheckView(
+                self._feedback,
+                lambda: self._open_preferences(claude_page=True),
+                self._open_sign_in,
+                lambda: not self._closing and bool(self),  # bool: False once wx deleted it
+            ),
+            # The login of Claude only matters when the messages go to Claude itself.
+            lambda: self.providers.get(self._settings.default_agent.provider).is_builtin,
         )
-        prompt_label = wx.StaticText(panel, label=_("&Prompt"))
-        self._prompt = PromptField(
+        self._prompt_area = PromptArea(
             panel,
-            on_agent=lambda: self._conversations.choose_agent(),
-            agent_shortcut=lambda: self._settings.shortcut_for(AGENT_COMMAND),
+            PromptActions(
+                send=lambda alternative: self.send_prompt(alternative=alternative),
+                interrupt=lambda: self._run.interrupt(),
+                choose_agent=lambda: self._conversations.choose_agent(),
+                can_send=lambda: self.can_send,
+                can_interrupt=lambda: self._run.busy,
+            ),
+            self._settings.shortcut_for,
         )
-        self._prompt.Bind(wx.EVT_KEY_DOWN, self._on_prompt_key)
-
-        self._send_button = wx.Button(panel)  # the labels come from the shortcuts, see
-        self._alternative_button = wx.Button(panel)  # _apply_shortcuts
-        self._interrupt_button = wx.Button(panel, label=_("&Interrupt Claude"))
-        self._send_button.Bind(wx.EVT_BUTTON, lambda _event: self.send_prompt(alternative=False))
-        self._alternative_button.Bind(
-            wx.EVT_BUTTON, lambda _event: self.send_prompt(alternative=True)
-        )
-        self._send_button.Bind(wx.EVT_UPDATE_UI, self._on_update_send)
-        self._alternative_button.Bind(wx.EVT_UPDATE_UI, self._on_update_send)
-        self._interrupt_button.Bind(wx.EVT_UPDATE_UI, self._on_update_interrupt)
-        self._interrupt_button.Bind(wx.EVT_BUTTON, self._on_interrupt)
-
-        buttons = wx.BoxSizer(wx.HORIZONTAL)
-        buttons.Add(self._send_button, 0, wx.RIGHT, 6)
-        buttons.Add(self._alternative_button, 0, wx.RIGHT, 6)
-        buttons.Add(self._interrupt_button, 0)
+        self._prompt = self._prompt_area.field
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(conversation_label, 0, wx.LEFT | wx.TOP, 6)
         sizer.Add(self._conversation, 3, wx.EXPAND | wx.ALL, 6)
-        sizer.Add(prompt_label, 0, wx.LEFT, 6)
-        sizer.Add(self._prompt, 1, wx.EXPAND | wx.ALL, 6)
-        sizer.Add(buttons, 0, wx.ALL, 6)
+        self._prompt_area.add_to(sizer)
         panel.SetSizer(sizer)
         self._conversations = ConversationPresenter(
-            WxConversationScreen(self, self._conversation, self._prompt, self._feedback),
+            WxConversationScreen(
+                self, self._conversation, self._prompt, self._feedback, self.providers
+            ),
             self._shared,
             self._workspaces,
             ConversationLinks(
-                state_changed=lambda: self._refresh_enabled(), is_busy=lambda: self._run.busy
+                state_changed=lambda: self._refresh_enabled(),
+                is_busy=lambda: self._run.busy,
+                start=lambda text, agent: self._run.start(text, agent),
+                entered=lambda name: self._feedback.note_conversation(name),
+                remote=lambda: self._remote is not None,
             ),
         )
 
@@ -221,8 +270,10 @@ class MainWindow(wx.Frame):
                 rename_conversation=lambda _event: self._conversations.rename(),
                 new_branch=lambda _event: self._conversations.new_branch(),
                 delete_conversation=lambda _event: self._conversations.delete(),
-                toggle_tools_summary=self._on_toggle_tools_summary,
-                toggle_marks=self._on_toggle_marks,
+                toggle_tools_summary=lambda event: self._display.set_tools_summary(
+                    event.IsChecked()
+                ),
+                toggle_marks=lambda event: self._display.set_without_marks(event.IsChecked()),
                 interrupt=self._on_interrupt,
                 update_interrupt=self._on_update_interrupt,
                 choose_agent=lambda _event: self._conversations.choose_agent(),
@@ -231,7 +282,8 @@ class MainWindow(wx.Frame):
                 find_previous=lambda _event: search.find_previous(),
                 tasks=lambda _event: self._actions.show_tasks(),
                 plans=lambda _event: self._actions.show_plans(),
-                usage=lambda _event: self._actions.show_usage(),
+                usage=lambda _event: self._usage_dialogs.show_gauges(),
+                statistics=lambda _event: self._usage_dialogs.show_statistics(),
                 sign_in=self._on_sign_in,
                 open_workspace_folder=lambda _event: self._files.open_folder(
                     self._workspaces.workspace
@@ -240,33 +292,29 @@ class MainWindow(wx.Frame):
                 preferences=self._on_preferences,
                 show_help=lambda _event: self._files.show_help(self._settings.language),
                 about=lambda _event: self._files.about(),
+                history=lambda _event: show_history(self, self._feedback),
+                open_log_folder=lambda _event: self._files.open_folder(self._settings.log_dir),
                 recent_workspaces=lambda: self._workspaces.recent(),
                 open_recent=lambda folder: self._workspaces.open_recent(folder),
             ),
         )
-        self._apply_shortcuts()
 
-    def _apply_shortcuts(self) -> None:
-        """Show (and activate) the shortcuts in the menus and in the labels of the send buttons."""
+    def _apply_settings(self) -> None:
+        """Bring the window in line with the settings: at the start, and after the Preferences.
+        The shortcuts are shown (and activated) in the menus and in the labels of the send
+        buttons."""
+        self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
+        self._display.apply()
         self._menu.apply_shortcuts(self._settings.shortcut_for)
-        self._send_button.SetLabel(self._send_label(SEND_COMMAND))
-        self._alternative_button.SetLabel(self._send_label(SEND_ALTERNATIVE_COMMAND))
-
-    def _send_label(self, command: ConfigurableCommand) -> str:
-        """Label of a send button: its action, then its shortcut (the screen reader says it)."""
-        shortcut = self._settings.shortcut_for(command)
-        if command is SEND_COMMAND:
-            return _("&Send ({shortcut})").format(shortcut=shortcut) if shortcut else _("&Send")
-        if shortcut:
-            return _("Send with the &alternative agent ({shortcut})").format(shortcut=shortcut)
-        return _("Send with the &alternative agent")
+        self._prompt_area.apply_shortcuts()
+        self._apply_claude_path()
 
     # Conversation ----------------------------------------------------------------------------
 
     def _refresh_enabled(self) -> None:
         """Grey out what needs a workspace or a conversation that is not there."""
         has_workspace = self._workspaces.workspace is not None
-        has_conversation = bool(self.conversation_id)
+        has_conversation = self._conversations.has_conversation
         self._menu.refresh_enabled(
             has_workspace=has_workspace,
             has_conversation=has_conversation,
@@ -278,19 +326,7 @@ class MainWindow(wx.Frame):
     @property
     def can_send(self) -> bool:
         """Can a prompt be sent now? It needs a conversation, and Claude must not be answering."""
-        return bool(self.conversation_id) and not self._run.busy
-
-    def _on_toggle_tools_summary(self, event: wx.CommandEvent) -> None:
-        """The item of the Conversation menu: show or hide the line under the answers."""
-        self._settings.show_tools_summary = event.IsChecked()
-        self._conversation.set_show_tools_summary(event.IsChecked())
-        self._save_settings()
-
-    def _on_toggle_marks(self, event: wx.CommandEvent) -> None:
-        """The item of the Display menu: remove or show the marks of bold and italic."""
-        self._settings.remove_markdown_marks = event.IsChecked()
-        self._conversation.set_without_marks(event.IsChecked())
-        self._save_settings()
+        return self._conversations.can_send
 
     def _on_refresh_conversation(self, _event: wx.CommandEvent) -> None:
         self._conversations.refresh()
@@ -299,15 +335,12 @@ class MainWindow(wx.Frame):
         self._open_preferences(claude_page=False)
 
     def _open_preferences(self, *, claude_page: bool) -> None:
-        with PreferencesDialog(self, self._settings) as dialog:
+        with PreferencesDialog(self, self._settings, self.providers) as dialog:
             if claude_page:
                 dialog.show_claude_page()
             if self._feedback.modal(dialog) == wx.ID_OK:
                 dialog.apply(self._settings)
-                self._conversation.set_show_hidden(not self._settings.hide_system_messages)
-                self._apply_shortcuts()
-                self._feedback.apply_screen_reader_output(self._settings.screen_reader_output)
-                self._apply_claude_path()
+                self._apply_settings()
                 self._claude_check.check(offer=False)
                 self._save_settings()
 
@@ -315,6 +348,11 @@ class MainWindow(wx.Frame):
         """Once the window is up: Claude Code missing is said now, not at the first message."""
         if not self._closing:
             self._claude_check.check(offer=True)
+
+    def _default_focus(self) -> wx.Window:
+        """Where the focus goes when the control it was on cannot take it again (focus.md, rule E):
+        the prompt when it can be typed in, else the conversation view."""
+        return self._prompt if self._prompt.IsEnabled() else self._conversation
 
     def _focus_main_field(self) -> None:
         """At startup the focus is on the conversation view, at the last prompt if there is one."""
@@ -328,52 +366,56 @@ class MainWindow(wx.Frame):
 
     def send_prompt(self, *, alternative: bool) -> None:
         """Send the prompt with the conversation's agent, or with the alternative agent."""
-        text = self._prompt.GetValue().strip()
-        if not text or not self.can_send:
+        self._conversations.send(self._prompt.GetValue(), alternative=alternative)
+
+    def _start_remote(self, pipe: str | None) -> None:
+        """The remote control (``--remote``): create the pipe, and the title says it is on. If the
+        pipe cannot be created the application goes on without it, and says so."""
+        if pipe is None:
             return
-        if self._run.start(text, self.agent_for(alternative=alternative)):
-            self._prompt.Clear()
-            self._conversation.focus_last_prompt()  # the prompt that was just sent
+        control = RemoteControl(
+            pipe,
+            RemoteLinks(
+                has_conversation=lambda: self._conversations.has_conversation,
+                busy=lambda: self._run.busy,
+                answering=lambda: self._run.answering,
+                interrupt=lambda: self._run.interrupt(),
+                send=lambda text: self._run.start(text, self.agent_for(alternative=False)),
+                messages=lambda: self._conversation.messages,
+                announcements=lambda: self._feedback.announcements.history.lines(),
+            ),
+        )
+        try:
+            control.start()
+        except RemoteError as error:
+            message = _("The remote control cannot start.\n{error}").format(error=error)
+            wx.CallAfter(self._feedback.show_error, message)
+            return
+        self._remote = control
+        self._conversations.update_title()
 
     def _on_workspace_settings(self, _event: wx.CommandEvent) -> None:
-        """The permission rules of the workspace, in the settings files of Claude Code."""
-        if self._workspaces.workspace is None:
-            return
-        tool_settings = ToolSettings.load(self._workspaces.workspace)
-        with WorkspaceSettingsDialog(
-            self, tool_settings, local_only=self._settings.local_tools_only
-        ) as dialog:
-            if self._feedback.modal(dialog) != wx.ID_OK:
-                return
-        try:
-            tool_settings.save()
-        except ClaudeSettingsError as error:
-            self._feedback.show_error(
-                _("The settings could not be saved.\n{error}").format(error=error)
-            )
+        self._workspace_settings.edit()
+
+    def _greet_folder(self) -> None:
+        """The workspace opened: offer to approve it, or say what changed in it. The folder is
+        restricted until then, so a message sent meanwhile is safe."""
+        if not self._closing:
+            self._security.greet()
 
     def _on_sign_in(self, _event: wx.CommandEvent) -> None:
-        """The sign-in dialog, for the claude program chosen in the Preferences."""
-        path = self._run.runner.claude_path
+        self._open_sign_in()
+
+    def _open_sign_in(self) -> None:
+        """The sign-in dialog, for the claude program chosen in the Preferences. Once it is
+        closed the state of the login is asked again (the status bar follows)."""
+        path = self._run.claude_path
         with LoginDialog(self, ClaudeLogin(claude_path=path), lambda: read_status(path)) as dialog:
             self._feedback.modal(dialog)
+        self._claude_check.check(offer=False)
 
     def _on_interrupt(self, _event: wx.CommandEvent) -> None:
         self._run.interrupt()
-
-    def _on_prompt_key(self, event: wx.KeyEvent) -> None:
-        shortcut = shortcut_from_event(event)
-        if shortcut:
-            if shortcut == self._settings.shortcut_for(SEND_COMMAND):
-                self.send_prompt(alternative=False)
-                return
-            if shortcut == self._settings.shortcut_for(SEND_ALTERNATIVE_COMMAND):
-                self.send_prompt(alternative=True)
-                return
-        event.Skip()  # a plain Enter adds a line break
-
-    def _on_update_send(self, event: wx.UpdateUIEvent) -> None:
-        event.Enable(self.can_send)
 
     def _on_update_interrupt(self, event: wx.UpdateUIEvent) -> None:
         event.Enable(self._run.busy)
@@ -383,7 +425,7 @@ class MainWindow(wx.Frame):
     def _apply_claude_path(self) -> None:
         """Tell the runner which claude executable to start: the chosen file, or the PATH."""
         settings = self._settings
-        self._run.runner.claude_path = "" if settings.claude_auto_search else settings.claude_path
+        self._run.claude_path = "" if settings.claude_auto_search else settings.claude_path
 
     def _save_settings(self) -> None:
         try:
@@ -394,6 +436,9 @@ class MainWindow(wx.Frame):
     def _on_close(self, event: wx.CloseEvent) -> None:
         self._closing = True
         self.gauge_watch.stop()
-        self._run.runner.interrupt()
+        self._run.stop()
+        if self._remote is not None:
+            self._remote.stop()  # the pipe is freed
+        self._relay.stop()  # the port is closed and the tokens are forgotten
         self._save_settings()
         event.Skip()

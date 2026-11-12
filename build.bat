@@ -3,7 +3,10 @@ rem Build the packaged application into dist\WxClaude and zip it as dist\WxClaud
 cd /d "%~dp0"
 ".venv\Scripts\python.exe" -m PyInstaller packaging\WxClaude.spec --noconfirm --distpath dist --workpath build\pyinstaller
 if errorlevel 1 exit /b 1
-copy /y packaging\WxClaude-debug.bat dist\WxClaude\ >nul
+rem The launchers (debug log, remote control) and the description of the remote control go in tools.
+if not exist dist\WxClaude\tools mkdir dist\WxClaude\tools
+copy /y tools\*.bat dist\WxClaude\tools\ >nul
+copy /y docs\remote.md dist\WxClaude\tools\ >nul
 rem The license of WxClaude and the notices of the software it carries go in the folder (and the zip).
 copy /y LICENSE dist\WxClaude\ >nul
 ".venv\Scripts\python.exe" packaging\make_notices.py dist\WxClaude\THIRD-PARTY-NOTICES.txt

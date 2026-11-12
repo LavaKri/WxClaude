@@ -8,6 +8,7 @@ from platformdirs import user_config_dir
 from wxclaude.core.claude.permission_channel import CHANNEL_KINDS, STDIO
 from wxclaude.core.config.agents import DEFAULT_AGENT, Agent
 from wxclaude.core.config.jsonstore import read_json, write_json
+from wxclaude.core.config.key_transmission import CHOICES, DEFAULT, from_legacy_scrub
 from wxclaude.core.config.shortcuts import (
     CONFIGURABLE_COMMANDS,
     ConfigurableCommand,
@@ -33,6 +34,10 @@ _TEXT_KEYS = ("claude_path", "last_workspace")
 SUPPORTED_LANGUAGES = ("fr", "en")
 HOOK_TIMEOUT_MINUTES = range(1, 11)  # how long the CLI waits for an answer, with the hook channel
 DEFAULT_HOOK_TIMEOUT_MINUTES = 10  # the 600 seconds of the CLI for its hooks
+RELAY_IDLE_MINUTES = range(1, 121)  # a relay without a request for that long stops
+DEFAULT_RELAY_IDLE_MINUTES = 10
+RELAY_TIMEOUT_SECONDS = range(30, 3601)  # how long the relay waits for the provider
+DEFAULT_RELAY_TIMEOUT_SECONDS = 600
 
 
 def _destination_named(name: str) -> Destination | None:
@@ -56,6 +61,13 @@ def _load_announcements(raw: object) -> dict[str, str]:
         ):
             chosen[category_id] = destination.value
     return chosen
+
+
+def _whole_number(value: object, allowed: range) -> int | None:
+    """``value`` if it is a whole number (not a boolean) inside ``allowed``, else None."""
+    if isinstance(value, int) and not isinstance(value, bool) and value in allowed:
+        return value
+    return None
 
 
 def workspace_key(folder: Path) -> str:
@@ -86,10 +98,13 @@ class Settings:
     announcements: dict[str, str] = field(default_factory=dict)  # category id -> destination
     local_tools_only: bool = False  # never modify the versioned settings of a project
     claude_auto_search: bool = True  # look for claude in the PATH instead of using claude_path
+    key_transmission: str = DEFAULT  # how the key of a provider reaches the CLI (CHOICES)
     claude_path: str = ""  # the claude executable chosen by hand (used without the auto search)
     refuse_plan_mode_exit: bool = True  # in the mode Plan, refuse Claude's plan and questions
     permission_channel: str = STDIO  # how Claude's permission questions reach us (CHANNEL_KINDS)
     hook_timeout_minutes: int = DEFAULT_HOOK_TIMEOUT_MINUTES  # the CLI's wait, hook channel
+    relay_idle_minutes: int = DEFAULT_RELAY_IDLE_MINUTES  # no interface: set in the file
+    relay_timeout_seconds: int = DEFAULT_RELAY_TIMEOUT_SECONDS  # no interface: set in the file
     last_workspace: str = ""
     conversation_counter: int = 1  # the number of the next "Conversation x" proposed
     store: Path | None = None
@@ -99,6 +114,17 @@ class Settings:
     def workspaces_dir(self) -> Path | None:
         """The folder of the per-workspace files (None: settings kept in memory only)."""
         return None if self.store is None else self.store.parent / "workspaces"
+
+    @property
+    def log_dir(self) -> Path | None:
+        """The folder of the log files (``wxclaude.log``, ``wxclaude-crash.log``), which is the
+        one of the settings (None: settings kept in memory only)."""
+        return None if self.store is None else self.store.parent
+
+    @property
+    def providers_path(self) -> Path | None:
+        """The file of the AI providers and their keys, beside the settings (None: in memory)."""
+        return None if self.store is None else self.store.parent / "providers.json"
 
     def shortcut_for(self, command: ConfigurableCommand) -> str:
         """The shortcut of ``command`` (empty: none)."""
@@ -165,6 +191,17 @@ class Settings:
         output = data.get("screen_reader_output")
         if isinstance(output, str) and output_named(output) is not None:
             self.screen_reader_output = output
+        self._apply_key_transmission(data)
+
+    def _apply_key_transmission(self, data: dict[str, object]) -> None:
+        """The way the key reaches the CLI; a file from before the choice has the old yes or no
+        ``scrub_credentials`` (yes: Masked, no: Shared)."""
+        transmission = data.get("key_transmission")
+        legacy = data.get("scrub_credentials")
+        if isinstance(transmission, str) and transmission in CHOICES:
+            self.key_transmission = transmission
+        elif isinstance(legacy, bool):
+            self.key_transmission = from_legacy_scrub(legacy)
 
     def _apply_permission_channel(self, data: dict[str, object]) -> None:
         """The way the permission questions travel and the CLI's waiting time (hook channel)."""
@@ -178,6 +215,17 @@ class Settings:
             and minutes in HOOK_TIMEOUT_MINUTES
         ):
             self.hook_timeout_minutes = minutes
+        self._apply_relay(data)
+
+    def _apply_relay(self, data: dict[str, object]) -> None:
+        """The two settings of the relay of the key, which have no interface; a value that is not
+        a whole number in its range is ignored."""
+        idle = _whole_number(data.get("relay_idle_minutes"), RELAY_IDLE_MINUTES)
+        timeout = _whole_number(data.get("relay_timeout_seconds"), RELAY_TIMEOUT_SECONDS)
+        if idle is not None:
+            self.relay_idle_minutes = idle
+        if timeout is not None:
+            self.relay_timeout_seconds = timeout
 
     def _apply_agents(self, data: dict[str, object]) -> None:
         if "default_agent" in data:
@@ -217,10 +265,13 @@ class Settings:
             "announcements": self.announcements,
             "local_tools_only": self.local_tools_only,
             "claude_auto_search": self.claude_auto_search,
+            "key_transmission": self.key_transmission,
             "claude_path": self.claude_path,
             "refuse_plan_mode_exit": self.refuse_plan_mode_exit,
             "permission_channel": self.permission_channel,
             "hook_timeout_minutes": self.hook_timeout_minutes,
+            "relay_idle_minutes": self.relay_idle_minutes,
+            "relay_timeout_seconds": self.relay_timeout_seconds,
             "last_workspace": self.last_workspace,
             "conversation_counter": self.conversation_counter,
         }

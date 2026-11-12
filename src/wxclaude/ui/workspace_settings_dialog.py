@@ -11,14 +11,23 @@ from wxclaude.core.claude.claude_settings import (
     ToolSettings,
     approval_label,
 )
+from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.core.errors import ClaudeSettingsError
 from wxclaude.core.labels import accessible_name
 from wxclaude.i18n import _
+from wxclaude.presenters.security_presenter import SecurityPresenter
+from wxclaude.ui.agent_panel import AgentPanel
+from wxclaude.ui.env_vars_page import EnvVarsPage
 from wxclaude.ui.fields import read_only_field
+from wxclaude.ui.security_page import SecurityPage
 
 
 class WorkspaceSettingsDialog(wx.Dialog):
-    """Edit the permission rules of the workspace; the caller saves ``tool_settings`` on OK.
+    """Edit the permission rules and the environment variables of the workspace (the caller saves
+    ``tool_settings`` on OK), with ``security`` the trust of the folder (applied at once) and with
+    ``alternative_agent`` the alternative agent of the workspace, every field set (the caller reads
+    ``alternative_agent`` on OK).
 
     ``local_only`` limits the target file to the personal one (``settings.local.json``), so the
     versioned file shared with the other developers of the project is never modified.
@@ -30,6 +39,10 @@ class WorkspaceSettingsDialog(wx.Dialog):
         tool_settings: ToolSettings,
         *,
         local_only: bool,
+        security: SecurityPresenter | None = None,
+        workspace: Path | None = None,
+        alternative_agent: Agent | None = None,
+        providers: ProviderStore | None = None,
     ) -> None:
         super().__init__(
             parent,
@@ -40,8 +53,20 @@ class WorkspaceSettingsDialog(wx.Dialog):
         self._targets = [Source.LOCAL] if local_only else [Source.SETTINGS, Source.LOCAL]
         self._tool_names: list[str] = []
         self._rules: list[Rule] = []
-        notebook = wx.Notebook(self, name=_("Workspace settings"))
+        notebook = self._notebook = wx.Notebook(self, name=_("Workspace settings"))
         notebook.AddPage(self._tools_page(notebook), _("Tools"))
+        notebook.AddPage(
+            EnvVarsPage(notebook, tool_settings, local_only=local_only), _("Environment variables")
+        )
+        if security is not None and workspace is not None:
+            notebook.AddPage(SecurityPage(notebook, security, workspace), _("Security"))
+        self._alternative: AgentPanel | None = None
+        if alternative_agent is not None:
+            # No access keys: those of the other tabs are not meant to be shared with these.
+            self._alternative = AgentPanel(
+                notebook, alternative_agent, None, mnemonics=False, providers=providers
+            )
+            notebook.AddPage(self._alternative, _("Alternative agent"))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(notebook, 1, wx.EXPAND | wx.ALL, 6)
@@ -49,7 +74,12 @@ class WorkspaceSettingsDialog(wx.Dialog):
         self.SetSizerAndFit(sizer)
         self.SetSize(wx.Size(760, 700))
         self._refresh()
-        self._tools.SetFocus()
+        notebook.SetFocus()  # the first tab, so that the screen reader says where the user is
+
+    @property
+    def alternative_agent(self) -> Agent | None:
+        """The alternative agent set in the tab (None without that tab)."""
+        return None if self._alternative is None else self._alternative.agent
 
     # Tools -----------------------------------------------------------------------------------
 

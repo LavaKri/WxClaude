@@ -7,7 +7,10 @@
 import json
 
 from wxclaude.core.claude.events import (
+    ApiRetry,
     AssistantText,
+    Compacted,
+    McpServer,
     PermissionDenied,
     PermissionRequest,
     RateLimit,
@@ -46,6 +49,15 @@ def _usage(raw: object) -> Usage | None:
     )
 
 
+def _mcp_servers(raw: object) -> tuple[McpServer, ...]:
+    """The servers of the ``init`` line; an entry that is not well formed is left out."""
+    return tuple(
+        McpServer(_text(server.get("name")), _text(server.get("status")))
+        for server in (raw if isinstance(raw, list) else [])
+        if isinstance(server, dict) and _text(server.get("name"))
+    )
+
+
 def _system(entry: dict[str, object]) -> list[RunEvent]:
     subtype = entry.get("subtype")
     if subtype == "init":
@@ -54,10 +66,30 @@ def _system(entry: dict[str, object]) -> list[RunEvent]:
                 _text(entry.get("session_id")),
                 _text(entry.get("model")),
                 _text(entry.get("permissionMode")),
+                _mcp_servers(entry.get("mcp_servers")),
             )
         ]
     if subtype == "thinking_tokens":
         return [Thinking(_int(entry.get("estimated_tokens")))]
+    if subtype == "api_retry":
+        return [
+            ApiRetry(
+                _int(entry.get("attempt")) or 0,
+                _int(entry.get("max_retries")) or 0,
+                _int(entry.get("error_status")),
+                _text(entry.get("error")),
+            )
+        ]
+    if subtype == "compact_boundary":
+        raw = entry.get("compact_metadata")
+        info = raw if isinstance(raw, dict) else {}
+        return [
+            Compacted(
+                _text(info.get("trigger")),
+                _int(info.get("pre_tokens")),
+                _int(info.get("post_tokens")),
+            )
+        ]
     if subtype == "permission_denied":
         return [
             PermissionDenied(

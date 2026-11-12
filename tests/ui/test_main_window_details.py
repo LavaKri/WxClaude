@@ -34,7 +34,7 @@ def _capture_dialogs(
         states.append(
             {
                 "lines": list(getattr(getattr(dialog, "_list", None), "GetStrings", list)()),
-                "report": dialog.report if hasattr(dialog, "report") else "",
+                "report": dialog.text if hasattr(dialog, "text") else "",
                 "selection": getattr(dialog, "selection", -1),
             }
         )
@@ -44,27 +44,38 @@ def _capture_dialogs(
     return states
 
 
-def test_the_usage_item_is_available_without_a_workspace(window: MainWindow) -> None:
+def test_the_usage_gauge_item_is_available_without_a_workspace(window: MainWindow) -> None:
     labels = [item.GetItemLabel() for _command, item, _text in window._menu.command_items]
-    assert "Claude &usage…\tCtrl+Shift+U" in labels
+    assert "Usage &gauge…\tCtrl+Shift+U" in labels
 
 
-def test_the_usage_report_says_nothing_is_known_before_the_first_answer(
+def test_the_statistics_item_needs_a_workspace(window: MainWindow) -> None:
+    help_menu = window.GetMenuBar().GetMenu(3)
+    labels = [item.GetItemLabel() for item in help_menu.GetMenuItems()]
+    assert "&Statistics…" in labels
+    item = help_menu.FindItemByPosition(labels.index("&Statistics…"))
+    assert not item.IsEnabled()
+
+
+def test_the_gauge_says_nothing_is_known_before_the_first_answer(
     window: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     states = _capture_dialogs(window, monkeypatch)
-    window._actions.show_usage()
+    window._usage_dialogs.show_gauges()
     assert states[0]["report"].startswith("No subscription usage information yet")  # type: ignore[attr-defined]
 
 
-def test_an_answer_feeds_the_usage_report(
+def test_an_answer_feeds_the_gauge_and_the_statistics(
     conversation: MainWindow, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _send(conversation, "hello")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._actions.show_usage()
-    report = str(states[0]["report"]).splitlines()
-    assert report[0].startswith("5-hour window, 50 % used")
+    conversation._usage_dialogs.show_gauges()
+    conversation._usage_dialogs.show_statistics()
+    gauges = str(states[0]["report"]).splitlines()
+    report = str(states[1]["report"]).splitlines()
+    assert gauges[0].startswith("5-hour window, 50 % used")
+    assert not any("Last message" in line for line in gauges)  # the gauges only
     tokens = "3 in, 4 out, 0 read from the cache, 0 written to the cache"
     assert f"Last message, tokens: {tokens}." in report
     conversation_line = "Conversation since it was opened here: cost 0.0010"
@@ -80,7 +91,7 @@ def test_a_resumed_conversation_counts_only_its_new_message(
     conversation._conversations.resume()  # opens the session file again, with its total
     _send(conversation, "again")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._actions.show_usage()
+    conversation._usage_dialogs.show_statistics()
     report = str(states[0]["report"])
     assert "Last message: cost 0.0010 dollars" in report  # the total reported is 0.0020
     # The same conversation stays open: two messages of 0.0010 (the totals, 0.0010 and 0.0020,
@@ -96,7 +107,7 @@ def test_the_report_ends_with_the_statistics_of_the_whole_workspace(
     conversation._conversations.start_new("Other")  # the conversation changes, not the workspace
     _send(conversation, "third")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._actions.show_usage()
+    conversation._usage_dialogs.show_statistics()
     report = str(states[0]["report"]).splitlines()
     start = report.index("Global statistics of the workspace")
     assert report[start + 1 :] == [
@@ -116,10 +127,10 @@ def test_another_conversation_starts_the_spending_again(
     _send(conversation, "hello")
     conversation._conversations.start_new("Other")
     states = _capture_dialogs(conversation, monkeypatch)
-    conversation._actions.show_usage()
-    report = str(states[0]["report"])
-    assert "5-hour window" in report  # the gauges belong to the account
-    assert "No message sent yet" in report
+    conversation._usage_dialogs.show_gauges()
+    conversation._usage_dialogs.show_statistics()
+    assert "5-hour window" in str(states[0]["report"])  # the gauges belong to the account
+    assert "No message sent yet" in str(states[1]["report"])
 
 
 def test_the_answer_shown_live_gets_its_tools_from_the_session_file(

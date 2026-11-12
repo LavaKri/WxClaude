@@ -1,5 +1,6 @@
 """The presenter of the current conversation, with a fake window: no wx, no window."""
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from fake_claude_files import FakeClaudeFiles
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.config.settings import Settings
+from wxclaude.core.config.workspace_state import WorkspaceState
 from wxclaude.core.conversation.messages import Message
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.presenters.conversation_presenter import ConversationLinks, ConversationPresenter
@@ -26,6 +28,7 @@ class FakeScreen:
         self.index: int | None = None
         self.messages: list[Message] = []
         self.title = ""
+        self.status = ""
         self.said: list[Announce] = []
         self.errors: list[str] = []
         self.calls: list[str] = []
@@ -68,6 +71,9 @@ class FakeScreen:
     def say(self, announce: Announce, **values: object) -> None:
         self.said.append(announce)
 
+    def set_status(self, text: str) -> None:
+        self.status = text
+
     def show_error(self, message: str) -> None:
         self.errors.append(message)
 
@@ -99,24 +105,65 @@ class FakeWorkspaceView:
 
 
 def _presenters(
-    tmp_path: Path, files: FakeClaudeFiles | None = None, busy: list[bool] | None = None
+    tmp_path: Path,
+    files: FakeClaudeFiles | None = None,
+    busy: list[bool] | None = None,
+    entered: list[str] | None = None,
+    start: Callable[[str, Agent], bool] = lambda text, agent: True,
 ) -> tuple[ConversationPresenter, FakeScreen, WorkspacePresenter, Settings]:
+    """``entered`` collects the workspaces and conversations that became the current one;
+    ``start`` is what starting Claude on a message does."""
     files = files or FakeClaudeFiles()
     settings = Settings.load(tmp_path / "config" / "settings.json")
     screen = FakeScreen()
     holder: list[ConversationPresenter] = []
+    log = entered if entered is not None else []
     links = WorkspaceLinks(
         close_conversation=lambda: holder[0].close(),
         select_conversation=lambda folder: holder[0].select_in_workspace(folder),
         changed=lambda: holder[0].update_title(),
         save_settings=lambda: None,
+        entered=lambda name: log.append(f"workspace {name}"),
     )
     workspaces = WorkspacePresenter(FakeWorkspaceView(), settings, links, files)
     shared = Shared(settings, UsageTracker(), files)
-    window = ConversationLinks(state_changed=lambda: None, is_busy=lambda: bool(busy))
+    window = ConversationLinks(
+        state_changed=lambda: None,
+        is_busy=lambda: bool(busy),
+        start=start,
+        entered=lambda name: log.append(f"conversation {name}"),
+    )
     conversations = ConversationPresenter(screen, shared, workspaces, window)
     holder.append(conversations)
     return conversations, screen, workspaces, settings
+
+
+def test_a_new_workspace_then_its_conversation_are_told_in_that_order(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="Fix")
+    entered: list[str] = []
+    _conversations, _screen, workspaces, _settings = _presenters(tmp_path, files, entered=entered)
+    workspaces.open(tmp_path)
+    assert entered == [f"workspace {tmp_path.name}", "conversation Fix"]
+
+
+def test_the_same_workspace_or_conversation_again_is_not_a_change(tmp_path: Path) -> None:
+    files = FakeClaudeFiles()
+    files.add_session(tmp_path, "one", "Hello", title="Fix")
+    entered: list[str] = []
+    conversations, _screen, workspaces, _settings = _presenters(tmp_path, files, entered=entered)
+    workspaces.open(tmp_path)
+    workspaces.open(tmp_path)  # already the current one
+    conversations.refresh()  # the same conversation read again
+    assert entered == [f"workspace {tmp_path.name}", "conversation Fix"]
+
+
+def test_a_new_conversation_is_told(tmp_path: Path) -> None:
+    entered: list[str] = []
+    conversations, _screen, workspaces, _settings = _presenters(tmp_path, entered=entered)
+    workspaces.open(tmp_path)
+    conversations.start_new("Notes")
+    assert entered[-1] == "conversation Notes"
 
 
 def test_a_workspace_without_conversation_says_so_and_creates_none(tmp_path: Path) -> None:
@@ -329,8 +376,10 @@ def test_a_conversation_is_not_deleted_while_claude_answers(tmp_path: Path) -> N
     assert conversations.conversation_id == "one"
 
 
-def test_the_agent_is_remembered_and_the_alternative_one_goes_over_it(tmp_path: Path) -> None:
-    conversations, screen, workspaces, settings = _presenters(tmp_path)
+def test_the_agent_of_a_conversation_is_remembered_and_not_the_alternative_one(
+    tmp_path: Path,
+) -> None:
+    conversations, screen, workspaces, _settings = _presenters(tmp_path)
     workspaces.open(tmp_path)
     conversations.start_new("Notes")
     screen.agent = Agent(model="haiku", effort="low", permission_mode="plan")
@@ -338,9 +387,25 @@ def test_the_agent_is_remembered_and_the_alternative_one_goes_over_it(tmp_path: 
     assert workspaces.state is not None
     record = workspaces.state.conversations[conversations.conversation_id]
     assert record.agent == screen.agent
-    settings.alternative_agent = Agent(effort="max")
-    assert conversations.agent_for(alternative=True).effort == "max"
-    assert conversations.agent_for(alternative=True).model == "haiku"
+    assert conversations.agent_for(alternative=False) == screen.agent
+    assert conversations.agent_for(alternative=True) == workspaces.state.alternative_agent
+
+
+def test_the_alternative_agent_of_the_workspace_is_the_one_used_and_is_remembered(
+    tmp_path: Path,
+) -> None:
+    conversations, _screen, workspaces, settings = _presenters(tmp_path)
+    settings.alternative_agent = Agent(provider="claude", effort="low", model="haiku")
+    workspaces.open(tmp_path)
+    conversations.start_new("Notes")
+    assert conversations.workspace_alternative_agent.model == "haiku"  # taken at its creation
+    chosen = Agent(provider="deepseek", model="flash", effort="max", permission_mode="plan")
+    conversations.set_workspace_alternative_agent(chosen)
+    settings.alternative_agent = Agent(effort="medium")  # the Preferences change: no effect
+    assert conversations.agent_for(alternative=True) == chosen
+    assert conversations.agent_for(alternative=False) == conversations.agent
+    reloaded = WorkspaceState.load(tmp_path, settings.workspaces_dir)
+    assert reloaded.alternative_agent == chosen
 
 
 def test_the_name_of_a_conversation_is_the_title_of_its_session(tmp_path: Path) -> None:
@@ -416,3 +481,103 @@ def test_refreshing_takes_a_name_given_elsewhere(tmp_path: Path) -> None:
     files.contents[info.path].title = "Renamed in the CLI"
     conversations.refresh()
     assert conversations.name == "Renamed in the CLI"
+
+
+def _sending(
+    tmp_path: Path, *, busy: bool = False, started: bool = True
+) -> tuple[ConversationPresenter, FakeScreen, list[tuple[str, Agent]]]:
+    """A presenter with a conversation, and the messages that Claude was started on."""
+    sent: list[tuple[str, Agent]] = []
+
+    def start(text: str, agent: Agent) -> bool:
+        sent.append((text, agent))
+        return started
+
+    conversations, screen, _workspaces, _settings = _presenters(
+        tmp_path, busy=[True] if busy else None, start=start
+    )
+    conversations.start_new("Notes")
+    screen.calls.clear()
+    return conversations, screen, sent
+
+
+def test_a_message_can_be_sent_with_a_conversation_when_claude_is_not_answering(
+    tmp_path: Path,
+) -> None:
+    conversations, _screen, _workspaces, _settings = _presenters(tmp_path)
+    assert not conversations.can_send  # no conversation yet
+    conversations.start_new("Notes")
+    assert conversations.can_send
+    busy, _screen, _workspaces, _settings = _presenters(tmp_path, busy=[True])
+    busy.start_new("Notes")
+    assert not busy.can_send
+
+
+def test_the_text_is_trimmed_and_sent_with_the_agent_of_the_conversation(tmp_path: Path) -> None:
+    conversations, _screen, sent = _sending(tmp_path)
+    conversations.send("  Hello there \n", alternative=False)
+    assert sent == [("Hello there", conversations.agent_for(alternative=False))]
+
+
+def test_the_alternative_agent_is_used_when_asked(tmp_path: Path) -> None:
+    conversations, _screen, sent = _sending(tmp_path)
+    conversations.send("Hello", alternative=True)
+    ((_text, agent),) = sent
+    assert agent == conversations.agent_for(alternative=True)
+    assert agent != conversations.agent_for(alternative=False)
+
+
+def test_once_claude_is_started_the_prompt_is_emptied_and_the_sent_message_focused(
+    tmp_path: Path,
+) -> None:
+    conversations, screen, _sent = _sending(tmp_path)
+    conversations.send("Hello", alternative=False)
+    assert screen.calls == ["clear prompt", "focus view"]
+
+
+@pytest.mark.parametrize("text", ["", "   ", "\n\t"])
+def test_a_blank_text_is_not_sent(tmp_path: Path, text: str) -> None:
+    conversations, screen, sent = _sending(tmp_path)
+    conversations.send(text, alternative=False)
+    assert sent == []
+    assert screen.calls == []
+
+
+def test_nothing_is_sent_while_claude_answers_and_the_prompt_keeps_its_text(
+    tmp_path: Path,
+) -> None:
+    conversations, screen, sent = _sending(tmp_path, busy=True)
+    conversations.send("Hello", alternative=False)
+    assert sent == []
+    assert screen.calls == []
+
+
+def test_nothing_is_sent_without_a_conversation(tmp_path: Path) -> None:
+    sent: list[tuple[str, Agent]] = []
+
+    def start(text: str, agent: Agent) -> bool:
+        sent.append((text, agent))
+        return True
+
+    conversations, screen, _workspaces, _settings = _presenters(tmp_path, start=start)
+    conversations.send("Hello", alternative=False)
+    assert sent == []
+    assert screen.calls == []
+
+
+def test_a_message_that_could_not_be_started_keeps_the_prompt(tmp_path: Path) -> None:
+    conversations, screen, sent = _sending(tmp_path, started=False)
+    conversations.send("Hello", alternative=False)
+    assert len(sent) == 1  # it was tried
+    assert screen.calls == []  # but the text stays where it is, to be sent again
+
+
+def test_there_is_a_conversation_once_one_is_started_and_no_more_once_it_is_closed(
+    tmp_path: Path,
+) -> None:
+    conversations, _screen, _workspaces, _settings = _presenters(tmp_path)
+    assert not conversations.has_conversation
+    conversations.start_new("Notes")
+    assert conversations.has_conversation
+    conversations.close()
+    assert not conversations.has_conversation

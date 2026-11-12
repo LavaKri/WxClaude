@@ -13,10 +13,11 @@ import json
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
+from typing import Protocol
 
 from wxclaude.core.claude.claude_projects import claude_config_dir
 from wxclaude.core.config.jsonstore import write_json
-from wxclaude.core.errors import ClaudeSettingsError, JsonStoreError
+from wxclaude.core.errors import ClaudeSettingsError, JsonStoreError, WatchError
 from wxclaude.i18n import N_, _
 
 
@@ -198,14 +199,34 @@ def known_tools() -> list[str]:
     ]
 
 
-class ToolSettings:
-    """The three settings files of a workspace, edited in memory, written by ``save``."""
+class FileGuard(Protocol):
+    """The one door for writing a file of the workspace (``WatchedFiles``): it refuses to write
+    over a change made from outside and records what it writes."""
 
-    def __init__(self, files: dict[Source, SettingsFile]) -> None:
+    def verify(self, path: Path) -> None:
+        """Raise ``ClaudeSettingsError`` if ``path`` was changed from outside."""
+        ...
+
+    def write_json(self, path: Path, data: dict[str, object]) -> None:
+        """Verify, then write ``path`` atomically and record the result."""
+        ...
+
+
+class ToolSettings:
+    """The three settings files of a workspace, edited in memory, written by ``save``.
+
+    With a ``guard`` the files are written through it; without one (tests, a workspace that is
+    only in memory) they are written directly.
+    """
+
+    def __init__(self, files: dict[Source, SettingsFile], guard: FileGuard | None = None) -> None:
         self.files = files
+        self._guard = guard
 
     @classmethod
-    def load(cls, workspace: Path, config_dir: Path | None = None) -> ToolSettings:
+    def load(
+        cls, workspace: Path, config_dir: Path | None = None, guard: FileGuard | None = None
+    ) -> ToolSettings:
         """Read the files of ``workspace`` (``config_dir``: the folder of the general file)."""
         folder = workspace / ".claude"
         paths = {
@@ -213,7 +234,8 @@ class ToolSettings:
             Source.SETTINGS: folder / "settings.json",
             Source.LOCAL: folder / "settings.local.json",
         }
-        return cls({source: SettingsFile.load(source, path) for source, path in paths.items()})
+        files = {source: SettingsFile.load(source, path) for source, path in paths.items()}
+        return cls(files, guard)
 
     def rules(self, source: Source) -> list[Rule]:
         """The rules of a file, sorted by tool, then by approval."""
@@ -279,23 +301,39 @@ class ToolSettings:
         return [file for file in self.files.values() if file.changed]
 
     def save(self) -> list[Path]:
-        """Write the files that changed (atomically, no backup file); return their paths."""
+        """Write the files that changed (atomically, no backup file); return their paths.
+
+        With a guard, every file is verified before the first one is written, so that a change
+        from outside stops the save as a whole (``ExternalChangeError``).
+        """
         written: list[Path] = []
-        for file in self.changed_files():
+        changed = self.changed_files()
+        if self._guard is not None:
+            for file in changed:
+                self._guard.verify(file.path)
+        for file in changed:
             try:
-                write_json(file.path, file.data, backup=False)
-            except JsonStoreError as error:
+                if self._guard is None:
+                    write_json(file.path, file.data, backup=False)
+                else:
+                    self._guard.write_json(file.path, file.data)
+            except (JsonStoreError, WatchError) as error:
                 raise ClaudeSettingsError(str(error)) from error
             file.changed = False
             written.append(file.path)
         return written
 
 
-def allow_always(workspace: Path, pattern: str, config_dir: Path | None = None) -> None:
+def allow_always(
+    workspace: Path,
+    pattern: str,
+    config_dir: Path | None = None,
+    guard: FileGuard | None = None,
+) -> None:
     """Add an *allow* rule to the personal file of ``workspace`` (what the CLI itself does).
 
     Raises ``ClaudeSettingsError`` if the file cannot be modified.
     """
-    settings = ToolSettings.load(workspace, config_dir)
+    settings = ToolSettings.load(workspace, config_dir, guard)
     settings.add_rule(Source.LOCAL, Rule(Approval.ALLOW, pattern))
     settings.save()

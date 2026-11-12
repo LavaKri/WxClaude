@@ -18,6 +18,8 @@ comes from the environment variable ``FAKE_CLAUDE`` (default ``ok``):
 - ``garbage``: a line that is not JSON, then like ``ok``;
 - ``slow``: init, then waits (to be interrupted);
 - ``rename_fails``: ``/rename`` answers with an error (``-p "/rename <name>"``, no stdin).
+- ``auth status`` answers like the CLI (JSON, exit code 1 when not logged in): ``FAKE_CLAUDE_LOGIN``
+  is ``in`` (default), ``out``, ``garbage`` or ``slow``.
 - ``/usage`` (``-p "/usage"``, no stdin) answers the gauges as text; ``usage_fails`` answers with an
   error, ``usage_garbage`` with a text without gauges, ``usage_slow`` waits 60 seconds.
 
@@ -354,13 +356,29 @@ def usage() -> int:
 
 
 def local_command() -> int | None:
-    """Run the command given as the prompt (``/rename``, ``/usage``), else None."""
+    """Run ``auth status`` or the command given as the prompt (``/rename``, ``/usage``)."""
+    if sys.argv[1:3] == ["auth", "status"]:
+        return auth_status()
     renamed = rename_command()
     if renamed is not None:
         return rename(renamed)
     if prompt_argument() == "/usage":
         return usage()
     return None
+
+
+def auth_status() -> int:
+    """Answer ``auth status`` like the CLI (measured 2.1.286): JSON, exit 0 when logged in and 1
+    when not. ``FAKE_CLAUDE_LOGIN``: ``in`` (default), ``out``, ``garbage`` (not JSON), ``slow``."""
+    state = os.environ.get("FAKE_CLAUDE_LOGIN", "in")
+    if state == "slow":
+        time.sleep(60)
+    if state == "garbage":
+        print("Not logged in. Run claude auth login to authenticate.")
+        return 1
+    logged_in = state != "out"
+    print(json.dumps({"loggedIn": logged_in, "authMethod": "claude.ai" if logged_in else "none"}))
+    return 0 if logged_in else 1
 
 
 def main() -> int:
@@ -372,10 +390,18 @@ def main() -> int:
     scenario = os.environ.get("FAKE_CLAUDE", "ok")
     log = os.environ.get("FAKE_CLAUDE_LOG")
     if log:
-        Path(log).write_text(
-            json.dumps({"arguments": sys.argv[1:], "prompt": prompt, "cwd": str(Path.cwd())}),
-            encoding="utf-8",
-        )
+        report = {
+            "arguments": sys.argv[1:],
+            "prompt": prompt,
+            "cwd": str(Path.cwd()),
+            # What a launch with a provider sets or removes (the key is in this environment only).
+            "environment": {
+                name: value
+                for name, value in os.environ.items()
+                if name.upper().startswith(("ANTHROPIC_", "CLAUDE_CODE_", "DISABLE_"))
+            },
+        }
+        Path(log).write_text(json.dumps(report), encoding="utf-8")
     session_id = prepare_session()
     model = "claude-" + option("--model") + "-fake"
     if scenario == "crash":

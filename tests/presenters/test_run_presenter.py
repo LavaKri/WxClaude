@@ -6,8 +6,10 @@ from pathlib import Path
 
 import pytest
 from fake_claude_files import FakeClaudeFiles
+from fake_vault import FakeVault
 
 from wxclaude.core.claude.events import (
+    ApiRetry,
     AssistantText,
     PermissionExpired,
     PermissionRequest,
@@ -28,13 +30,16 @@ from wxclaude.core.claude.permissions import (
 )
 from wxclaude.core.claude.questions import Question
 from wxclaude.core.claude.runner import ClaudeRunner, RunRequest
+from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.claude.tasks import Task
 from wxclaude.core.claude.usage import UsageTracker
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.providers import Provider, ProviderStore
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.messages import Message, Usage
-from wxclaude.core.speech.announcements import Announce
+from wxclaude.core.errors import SessionReadError
+from wxclaude.core.speech.announcements import Announce, AnnouncementCenter
 from wxclaude.presenters.run_presenter import RunLinks, RunPresenter
 from wxclaude.presenters.shared import Shared
 
@@ -106,9 +111,13 @@ class FakeRunner(ClaudeRunner):
         self.answers: list[tuple[str, str]] = []
         self.requests: list[RunRequest] = []
         self.answered: list[dict[str, list[str]]] = []  # answers to structured questions
+        self.interrupts = 0
 
     def start(self, request: RunRequest, on_event: Callable[[RunEvent], None]) -> None:
         self.requests.append(request)
+
+    def interrupt(self) -> None:
+        self.interrupts += 1
 
     def allow(self, request: PermissionRequest) -> None:
         self.answers.append(("allow", request.request_id))
@@ -270,7 +279,7 @@ def test_a_step_put_in_progress_replaces_the_tool_progress(tmp_path: Path) -> No
     assert view.steps == ["Step 1 of 1: Alpha"]
     assert view.said == [(Announce.STEP_STARTED, {"number": 1, "total": 1, "subject": "Alpha"})]
     presenter.on_event(ToolUsed("t2", "Read", {}))
-    assert view.said[-1] == (Announce.CLAUDE_USING_TOOL, {"tool": "Read"})
+    assert view.said[-1] == (Announce.CLAUDE_USING_TOOL, {"name": "Claude", "tool": "Read"})
 
 
 def test_nothing_is_started_without_a_workspace() -> None:
@@ -366,6 +375,42 @@ def test_an_interrupted_message_has_no_result_and_is_not_counted(tmp_path: Path)
     presenter.start("hello", Settings.load(None).default_agent)
     presenter.on_event(TurnEnded(1, True, "", []))
     assert stats.messages == 0
+
+
+def test_a_refusal_of_the_credentials_stops_the_run_and_says_why(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, runner = _presenter(view, tmp_path)
+    presenter.start("hello", Settings.load(None).default_agent)
+    presenter.on_event(ApiRetry(1, 10, 401, "authentication_failed"))
+    presenter.on_event(ApiRetry(2, 10, 401, "authentication_failed"))
+    assert runner.interrupts == 1  # stopped at the first, not at each
+    presenter.on_event(TurnEnded(1, True, "", []))  # the process was killed
+    (error,) = view.errors
+    assert "refused the credentials (error 401)" in error
+    assert "Claude could not answer" in error
+    assert "refused the credentials" in view.status[-1]
+
+
+def test_another_error_of_the_server_is_left_to_the_retries_of_the_cli(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, runner = _presenter(view, tmp_path)
+    presenter.start("hello", Settings.load(None).default_agent)
+    presenter.on_event(ApiRetry(1, 10, 529, "overloaded"))
+    assert runner.interrupts == 0
+    presenter.on_event(TurnEnded(1, True, "", []))
+    assert view.errors == []  # an interruption, not a failure
+
+
+def test_a_refusal_does_not_carry_over_to_the_next_message(tmp_path: Path) -> None:
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path)
+    agent = Settings.load(None).default_agent
+    presenter.start("one", agent)
+    presenter.on_event(ApiRetry(1, 10, 403, "forbidden"))
+    presenter.on_event(TurnEnded(1, True, "", []))
+    presenter.start("two", agent)
+    presenter.on_event(TurnEnded(1, True, "", []))
+    assert len(view.errors) == 1
 
 
 def test_a_question_comes_with_no_waiting_time_through_stdio(tmp_path: Path) -> None:
@@ -511,3 +556,51 @@ def test_a_plan_can_be_refused_with_an_explanation(tmp_path: Path) -> None:
     plan: dict[str, object] = {"plan": "Do it"}
     presenter.on_event(PermissionRequest("r1", "ExitPlanMode", "t", plan, "", "", ""))
     assert runner.answers == [("deny", "Add the tests first")]
+
+
+def test_the_announcements_name_the_provider_that_answers(tmp_path: Path) -> None:
+    store = ProviderStore(FakeVault())
+    store.add(Provider(id="deepseek", name="DeepSeek", base_url="http://x", tiers=["m"]))
+    store.set_key("deepseek", "sk-1")
+    view = FakeView()
+    runner = FakeRunner()
+    shared = Shared(Settings.load(None), UsageTracker(), FakeClaudeFiles(), None, store)
+    links = RunLinks(
+        workspace=lambda: tmp_path,
+        conversation_id=lambda: CONVERSATION,
+        conversation_name=lambda: "Notes",
+        fork_from=lambda: "",
+        is_closing=lambda: False,
+        state_changed=lambda: None,
+    )
+    presenter = RunPresenter(view, runner, shared, links)
+    agent = Agent("m", "low", "manual", "deepseek")
+    assert presenter.start("hello", agent)
+    assert view.said[-1] == (Announce.CLAUDE_THINKING, {"name": "DeepSeek"})
+    presenter.on_event(ToolUsed("t", "Read", {}))
+    assert view.said[-1] == (Announce.CLAUDE_USING_TOOL, {"name": "DeepSeek", "tool": "Read"})
+    presenter.on_event(TurnEnded(0, True, "", []))
+    assert view.said[-1] == (Announce.CLAUDE_INTERRUPTED, {"name": "DeepSeek"})
+    assert (
+        AnnouncementCenter.text(Announce.CLAUDE_THINKING, name="DeepSeek")
+        == "DeepSeek is thinking."
+    )
+    assert AnnouncementCenter.text(Announce.CLAUDE_THINKING) == "Claude is thinking."
+
+
+class _UnreadableFiles(FakeClaudeFiles):
+    """The session file is there, but it cannot be read."""
+
+    def read_session(self, path: Path) -> Session:
+        raise SessionReadError(f"Cannot read {path}")
+
+
+def test_a_session_file_that_cannot_be_read_at_the_end_is_reported(tmp_path: Path) -> None:
+    files = _UnreadableFiles()
+    files.add_session(tmp_path, CONVERSATION, "Hello")
+    view = FakeView()
+    presenter, _runner = _presenter(view, tmp_path, files)
+    presenter.on_event(SUCCESS)
+    presenter.on_event(TurnEnded(0, False, "", []))
+    assert view.errors == [f"Cannot read the conversation.\nCannot read {CONVERSATION}.jsonl"]
+    assert view.sessions == []  # the view is left as it is

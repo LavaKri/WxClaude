@@ -8,6 +8,12 @@ from wxclaude.core.conversation.messages import Usage
 
 pytestmark = pytest.mark.unit
 
+
+def report(tracker: UsageTracker, now: datetime) -> list[str]:
+    """The gauges, then the spending: the two parts the dialogs show apart."""
+    return [*tracker.gauge_lines(now), *tracker.statistics_lines()]
+
+
 NOW = datetime(2026, 10, 21, 14, 30)
 LATER = datetime(2026, 10, 21, 16, 0)
 TOMORROW = datetime(2026, 10, 22, 8, 0)
@@ -22,7 +28,7 @@ def _rate(*windows: RateWindow, status: str = "allowed") -> RateLimit:
 
 
 def test_nothing_is_known_at_first() -> None:
-    assert UsageTracker().lines(NOW) == [
+    assert report(UsageTracker(), NOW) == [
         "No subscription usage information yet: it arrives with the next answer.",
         "No message sent yet in this conversation since it was opened here.",
     ]
@@ -37,7 +43,7 @@ def test_the_gauges_say_how_full_they_are_and_when_they_reset() -> None:
         ),
         NOW,
     )
-    assert tracker.lines(NOW)[:3] == [
+    assert report(tracker, NOW)[:3] == [
         "5-hour window, 74 % used, resets at 16:00.",
         "weekly window, 24 % used, resets on 2026-10-22 08:00.",
         "Gauges updated at 14:30.",
@@ -49,19 +55,19 @@ def test_a_window_missing_from_a_later_event_keeps_its_last_value() -> None:
     both = _rate(RateWindow("five_hour", 0.1, None), RateWindow("seven_day", 0.2, None))
     tracker.record_rate_limit(both, NOW)
     tracker.record_rate_limit(_rate(RateWindow("five_hour", 0.3, None)), LATER)
-    assert tracker.lines(LATER)[:2] == ["5-hour window, 30 % used.", "weekly window, 20 % used."]
+    assert report(tracker, LATER)[:2] == ["5-hour window, 30 % used.", "weekly window, 20 % used."]
 
 
 def test_the_limit_status_is_only_given_when_it_is_not_allowed() -> None:
     tracker = UsageTracker()
     tracker.record_rate_limit(_rate(RateWindow("five_hour", 1.0, None), status="rejected"), NOW)
-    assert "Limit status: rejected." in tracker.lines(NOW)
+    assert "Limit status: rejected." in report(tracker, NOW)
 
 
 def test_an_unknown_window_is_named_as_it_comes() -> None:
     tracker = UsageTracker()
     tracker.record_rate_limit(_rate(RateWindow("mystery", None, None)), NOW)
-    assert tracker.lines(NOW)[0] == "mystery."
+    assert report(tracker, NOW)[0] == "mystery."
 
 
 def test_the_last_message_and_the_conversation_are_reported() -> None:
@@ -70,7 +76,7 @@ def test_the_last_message_and_the_conversation_are_reported() -> None:
     tracker.start_conversation(0.0)
     tracker.record_result(_result(0.25))
     tracker.record_result(_result(0.75, Usage(1, 2, 3, 4)))
-    lines = tracker.lines(NOW)
+    lines = report(tracker, NOW)
     assert lines[1:] == [
         "Last message, tokens: 1 in, 2 out, 4 read from the cache, 3 written to the cache.",
         "Last message: cost 0.5000 dollars at list price, duration 1.7 seconds, turns: 1.",
@@ -89,7 +95,7 @@ def test_a_session_of_which_the_total_is_not_known_costs_nothing_to_the_first_me
     tracker = UsageTracker()
     tracker.record_result(_result(0.40))  # 0.40 is the whole session, not this message
     assert _costs(tracker) == (-1.0, 0.0)
-    assert "Last message: duration 1.7 seconds, turns: 1." in tracker.lines(NOW)
+    assert "Last message: duration 1.7 seconds, turns: 1." in report(tracker, NOW)
     tracker.record_result(_result(0.55))
     assert tracker.last_cost == pytest.approx(0.15)
     assert tracker.conversation_cost == pytest.approx(0.15)
@@ -129,7 +135,7 @@ def test_an_unknown_cost_is_not_written() -> None:
     tracker = UsageTracker()
     result = TurnResult(False, "success", "", None, None, None, None)
     tracker.record_result(result)
-    lines = tracker.lines(NOW)
+    lines = report(tracker, NOW)
     assert not any(line.startswith("Last message") for line in lines)
 
 
@@ -139,7 +145,7 @@ def test_a_new_conversation_starts_the_spending_again_but_keeps_the_gauges() -> 
     tracker.record_result(_result())
     tracker.start_conversation()
     assert tracker.session_total is None
-    lines = tracker.lines(NOW)
+    lines = report(tracker, NOW)
     assert lines[0] == "5-hour window, 50 % used."
     assert lines[-1] == "No message sent yet in this conversation since it was opened here."
     assert tracker.conversation_turns == 0

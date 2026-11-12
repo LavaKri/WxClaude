@@ -4,13 +4,11 @@ workspace (``WorkspacePresenter``); see ``docs/interface.md``."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
-from wxclaude.core.claude.claude_projects import SessionInfo, choose_conversation
-from wxclaude.core.claude.session_reader import Session
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.workspace_state import WorkspaceState
 from wxclaude.core.config.workspaces import describe
 from wxclaude.core.conversation.conversations import branch_name, default_name, new_conversation_id
 from wxclaude.core.conversation.messages import Message
@@ -18,11 +16,11 @@ from wxclaude.core.errors import (
     ClaudeNotFoundError,
     JsonStoreError,
     RunnerError,
-    SessionReadError,
 )
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.i18n import _
-from wxclaude.presenters.shared import Shared
+from wxclaude.presenters.conversation_loader import ConversationLoader, LoaderLinks
+from wxclaude.presenters.shared import ConversationState, Shared
 from wxclaude.presenters.workspace_presenter import WorkspacePresenter
 
 
@@ -73,6 +71,10 @@ class ConversationView(Protocol):
         """Announce, where the category of ``announce`` says."""
         ...
 
+    def set_status(self, text: str) -> None:
+        """The message field of the status bar."""
+        ...
+
     def show_error(self, message: str) -> None:
         """Tell the user that something failed."""
         ...
@@ -86,20 +88,17 @@ class ConversationView(Protocol):
         ...
 
 
-def session_label(session: SessionInfo) -> str:
-    """How a conversation is listed: its title (or the start of its id), then its last use."""
-    when = datetime.fromtimestamp(session.last_used).strftime("%Y-%m-%d %H:%M")
-    return _("{title} ({when})").format(title=session.title or session.id[:8], when=when)
-
-
 @dataclass(frozen=True, slots=True)
 class ConversationLinks:
     """What the presenter asks of the window: ``state_changed`` is called when what is greyed may
     have changed (a conversation appears or goes away), ``is_busy`` tells whether Claude is
-    answering."""
+    answering, and ``start`` starts Claude on a message with an agent (False if it could not)."""
 
     state_changed: Callable[[], None]
     is_busy: Callable[[], bool]
+    start: Callable[[str, Agent], bool]
+    entered: Callable[[str], None] = lambda name: None  # a conversation became the current one
+    remote: Callable[[], bool] = lambda: False  # is the remote control on? the title says it
 
 
 class ConversationPresenter:
@@ -122,19 +121,77 @@ class ConversationPresenter:
         self._settings = shared.settings
         self._usage = shared.usage
         self._files = shared.files
+        self._security = shared.security
         self._workspaces = workspaces
         self._links = links
-        self.conversation_id = ""
-        self.name = ""
-        self.agent = shared.settings.default_agent  # the main agent of the conversation
-        self.fork_from = ""  # the conversation a branch comes from, until its first message
-        self._branch_count = 0  # branches made from the current conversation
+        self._current = ConversationState(agent=shared.settings.default_agent)
+        self._loader = ConversationLoader(
+            view,
+            shared,
+            workspaces,
+            self._current,
+            LoaderLinks(self._set_conversation, self._set_name),
+        )
+
+    @property
+    def conversation_id(self) -> str:
+        return self._current.conversation_id
+
+    @property
+    def name(self) -> str:
+        return self._current.name
+
+    @property
+    def fork_from(self) -> str:
+        """The conversation a branch comes from, until its first message."""
+        return self._current.fork_from
+
+    @property
+    def agent(self) -> Agent:
+        """The main agent of the conversation."""
+        return self._current.agent
+
+    @agent.setter
+    def agent(self, agent: Agent) -> None:
+        self._current.agent = agent
 
     def agent_for(self, *, alternative: bool) -> Agent:
-        """The agent used to send: the conversation's, or the alternative one over it."""
+        """The agent used to send: the conversation's, or the alternative one of the workspace
+        (the one of the Preferences without a workspace); a field it leaves out comes from the
+        conversation's agent."""
         if alternative:
-            return self._settings.alternative_agent.over(self.agent)
+            return self.workspace_alternative_agent.over(self.agent)
         return self.agent
+
+    @property
+    def workspace_alternative_agent(self) -> Agent:
+        """The alternative agent of the workspace (the Preferences' one without a workspace)."""
+        state = self._workspaces.state
+        return self._settings.alternative_agent if state is None else state.alternative_agent
+
+    # Sending ---------------------------------------------------------------------------------
+
+    @property
+    def has_conversation(self) -> bool:
+        """Is there a current conversation? (Not before one is started or opened.)"""
+        return bool(self.conversation_id)
+
+    @property
+    def can_send(self) -> bool:
+        """Can a message be sent now? It needs a conversation, and Claude must not be answering."""
+        return self.has_conversation and not self._links.is_busy()
+
+    def send(self, text: str, *, alternative: bool) -> None:
+        """Send what was typed with the agent of the conversation, or with the alternative one.
+        Nothing is sent when the text is blank or a message cannot be sent now. Once Claude is
+        started the prompt is emptied and the focus goes to the message that was just sent;
+        otherwise the prompt keeps its text."""
+        text = text.strip()
+        if not text or not self.can_send:
+            return
+        if self._links.start(text, self.agent_for(alternative=alternative)):
+            self._view.clear_prompt()
+            self._view.focus_last_prompt()
 
     # Which conversation ----------------------------------------------------------------------
 
@@ -149,36 +206,26 @@ class ConversationPresenter:
     def close(self) -> None:
         """No conversation is current any more (a conversation belongs to its workspace)."""
         self._view.clear_messages()
-        self._view.clear_prompt()
-        self.conversation_id = ""
-        self.name = ""
-        self.fork_from = ""
-        self._branch_count = 0
+        self._start_over()
+        current = self._current
+        current.conversation_id = ""
+        current.name = ""
+        current.fork_from = ""
         self._usage.start_conversation()
         self.update_title()
         self._links.state_changed()
 
     def select_in_workspace(self, workspace: Path) -> None:
-        """Select the remembered conversation of ``workspace``, else its most recent one.
-
-        A workspace without any conversation stays without: none is created.
-        """
-        state = self._workspaces.state
-        if state is None:
-            return
-        sessions = self._files.list_sessions(workspace)
-        state.forget_missing({session.id for session in sessions})
-        chosen = choose_conversation(sessions, state.current_conversation)
-        if chosen is not None:
-            self._load(chosen)
-            return
-        # Nothing to talk to: the prompt and the buttons are greyed, the (empty) view says why.
-        self._view.focus_last_prompt()
-        self._view.say(Announce.NO_CONVERSATION)
+        """Select the remembered conversation of ``workspace``, else its most recent one (see
+        ``ConversationLoader``). A workspace without any conversation stays without."""
+        self._loader.select_in_workspace(workspace)
 
     def update_title(self) -> None:
-        """Window title: the conversation, the workspace, then the application."""
-        parts = [self.name] if self.name else []
+        """Window title: the conversation, the workspace, then the application. With the remote
+        control on, it starts with that, so that the screen reader says it first."""
+        parts = [_("Remote enabled")] if self._links.remote() else []
+        if self.name:
+            parts.append(self.name)
         if self._workspaces.workspace is not None:
             parts.append(describe(str(self._workspaces.workspace))[0])
         parts.append(_("WxClaude"))
@@ -194,62 +241,38 @@ class ConversationPresenter:
             return
         self._settings.conversation_counter = number + 1
         self._view.clear_messages()
-        self._view.clear_prompt()
-        self.agent = self._settings.default_agent
-        self._branch_count = 0
+        self._start_over()
+        self._current.agent = self._settings.default_agent
         self.start_new(name)
+        self._view.set_status(self._usage.ready_line())  # replaces a message such as a deletion
         self._view.focus_prompt()  # enabled by now: there is a conversation
 
     def resume(self) -> None:
         """Choose one of the conversations Claude Code holds for the workspace and show it."""
-        workspace = self._workspaces.workspace
-        if workspace is None:
-            return
-        sessions = self._files.list_sessions(workspace)
-        if not sessions:
-            self._view.show_error(_("This workspace has no conversation yet."))
-            return
-        labels = [session_label(session) for session in sessions]
-        index = self._view.choose(_("Resume a conversation"), _("Choose a conversation:"), labels)
-        if index is not None:
-            self._load(sessions[index])
+        self._loader.resume()
 
     def refresh(self) -> None:
         """Read the session file again: messages added since (by the CLI) appear."""
-        workspace = self._workspaces.workspace
-        if workspace is None or not self.conversation_id:
-            return
-        found = [s for s in self._files.list_sessions(workspace) if s.id == self.conversation_id]
-        if not found:
-            self._view.say(Announce.CONVERSATION_NOT_SAVED)
-            return
-        session = self._read(found[0].path)
-        if session is None:
-            return
-        if session.title and session.title != self.name:
-            self._set_name(session.title)  # renamed elsewhere (the CLI, another window)
-        if session.total_cost_usd is not None:
-            self._usage.session_total = session.total_cost_usd  # it may have grown elsewhere
-        before = self._view.shown_count()
-        self._view.show_messages(session.messages)
-        self._view.focus_last_prompt()
-        added = max(0, self._view.shown_count() - before)
-        self._view.say(Announce.CONVERSATION_REFRESHED, count=added)
+        self._loader.refresh()
 
     def rename(self) -> None:
         """Ask for a name; a conversation that has a session is renamed by the CLI itself."""
-        workspace = self._workspaces.workspace
-        if workspace is None or not self.conversation_id:
-            return
-        if self._links.is_busy():
-            self._view.show_error(_("Wait for Claude to finish before renaming the conversation."))
+        workspace = self._workspace_with_conversation()
+        if workspace is None or self._busy_reported(
+            _("Wait for Claude to finish before renaming the conversation.")
+        ):
             return
         name = self._view.ask_name(_("Rename the conversation"), self.name)
         if name is None or name == self.name:
             return
         if self._files.find_session(self.conversation_id) is not None:
             try:
-                self._files.rename_session(self.conversation_id, name, workspace)
+                self._files.rename_session(
+                    self.conversation_id,
+                    name,
+                    workspace,
+                    restricted=self._security is not None and self._security.restricted,
+                )
             except (ClaudeNotFoundError, RunnerError) as error:
                 self._view.show_error(
                     _("The conversation could not be renamed.\n{error}").format(error=error)
@@ -271,24 +294,23 @@ class ConversationPresenter:
                 _("This conversation has no message yet: there is nothing to branch.")
             )
             return
-        proposal = branch_name(self.name, self._branch_count + 1)
+        proposal = branch_name(self.name, self._current.branch_count + 1)
         name = self._view.ask_name(_("New conversation branch"), proposal)
         if name is None:
             return
-        self._branch_count = 0  # the new branch starts its own numbering
+        self._current.branch_count = 0  # the new branch starts its own numbering
         # A branch is a session of its own, whose total starts from the one of its parent.
         self.start_new(name, self._usage.session_total)
-        self.fork_from = parent
+        self._current.fork_from = parent
         self._view.focus_last_prompt()
 
     def delete(self) -> None:
         """After a confirmation, move the conversation to the Recycle Bin (what Claude Code keeps
         of it), then select the most recent conversation left in the workspace."""
-        workspace = self._workspaces.workspace
-        if workspace is None or not self.conversation_id:
-            return
-        if self._links.is_busy():
-            self._view.show_error(_("Wait for Claude to finish before deleting the conversation."))
+        workspace = self._workspace_with_conversation()
+        if workspace is None or self._busy_reported(
+            _("Wait for Claude to finish before deleting the conversation.")
+        ):
             return
         question = _('Move the conversation "{name}" to the Recycle Bin?').format(name=self.name)
         if not self._view.confirm(_("Delete the conversation"), question):
@@ -307,25 +329,36 @@ class ConversationPresenter:
             self.agent = agent
             self._remember()
 
+    def set_workspace_alternative_agent(self, agent: Agent) -> None:
+        """Remember the fields of the alternative agent that this workspace sets."""
+        state = self._workspaces.state
+        if state is None or state.alternative_agent == agent:
+            return
+        state.alternative_agent = agent
+        self._save_state(state)
+
     # What is kept ----------------------------------------------------------------------------
 
     def _set_conversation(
         self, conversation_id: str, name: str, session_total: float | None = None
     ) -> None:
         """Make the conversation ``conversation_id`` the current one and remember it."""
-        if conversation_id != self.conversation_id:
+        changed = conversation_id != self.conversation_id
+        if changed:
             self._usage.start_conversation(session_total)
         elif session_total is not None:
             self._usage.session_total = session_total
-        self.conversation_id = conversation_id
-        self.name = name
-        self.fork_from = ""
+        self._current.conversation_id = conversation_id
+        self._current.name = name
+        self._current.fork_from = ""
         self._remember()
         self.update_title()
         self._links.state_changed()
+        if changed:
+            self._links.entered(name)
 
     def _set_name(self, name: str) -> None:
-        self.name = name
+        self._current.name = name
         self.update_title()
 
     def _remember(self) -> None:
@@ -335,33 +368,28 @@ class ConversationPresenter:
         if not self.conversation_id or state is None:
             return
         state.remember(self.conversation_id, self.agent)
+        self._save_state(state)
+
+    def _save_state(self, state: WorkspaceState) -> None:
         try:
             state.save()
         except JsonStoreError as error:
             self._view.show_error(_("Cannot save the workspace data.\n{error}").format(error=error))
 
-    def _load(self, chosen: SessionInfo) -> bool:
-        """Show the conversation ``chosen`` and make it current; False if it cannot be read."""
-        session = self._read(chosen.path)
-        if session is None:
-            return False
-        settings = self._settings
-        state = self._workspaces.state
-        record = state.conversations.get(chosen.id) if state is not None else None
-        # A conversation WxClaude knows nothing about takes the agent of its last message as its
-        # main agent (it is remembered by _set_conversation below).
-        known = record.agent if record else session.last_agent
-        self.agent = known.over(settings.default_agent)
-        self._view.show_messages(session.messages)
+    def _start_over(self) -> None:
+        """Another conversation is going to be shown: its prompt is empty, and its branches are
+        counted again."""
         self._view.clear_prompt()
-        self._branch_count = 0
-        self._set_conversation(chosen.id, session.title or chosen.id[:8], session.total_cost_usd)
-        self._view.focus_last_prompt()
-        return True
+        self._current.branch_count = 0
 
-    def _read(self, path: Path) -> Session | None:
-        try:
-            return self._files.read_session(path)
-        except SessionReadError as error:
-            self._view.show_error(_("Cannot read the conversation.\n{error}").format(error=error))
-            return None
+    def _workspace_with_conversation(self) -> Path | None:
+        """The workspace, when there is a conversation in it to work on; else None."""
+        workspace = self._workspaces.workspace
+        return workspace if workspace is not None and self.has_conversation else None
+
+    def _busy_reported(self, message: str) -> bool:
+        """Is Claude answering? Then ``message`` is shown and the command must do nothing."""
+        busy = self._links.is_busy()
+        if busy:
+            self._view.show_error(message)
+        return busy

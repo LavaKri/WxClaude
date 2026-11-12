@@ -88,7 +88,10 @@ FIND_PREVIOUS_COMMAND = ConfigurableCommand("search.previous", N_("Find previous
 INTERRUPT_COMMAND = ConfigurableCommand("claude.interrupt", N_("Interrupt Claude"), "Ctrl+Shift+I")
 #: The same shortcut as the task list of the Claude Code CLI.
 TASKS_COMMAND = ConfigurableCommand("tasks.list", N_("Task list"), "Ctrl+T")
-USAGE_COMMAND = ConfigurableCommand("claude.usage", N_("Claude usage"), "Ctrl+Shift+U")
+USAGE_COMMAND = ConfigurableCommand("claude.usage", N_("Usage gauge"), "Ctrl+Shift+U")
+WORKSPACE_SETTINGS_COMMAND = ConfigurableCommand(
+    "workspace.settings", N_("Workspace settings"), "Alt+Enter"
+)
 AGENT_COMMAND = ConfigurableCommand("claude.agent", N_("Modify the agent"), "Ctrl+Shift+A")
 SEND_COMMAND = ConfigurableCommand("prompt.send", N_("Send the prompt"), "Ctrl+Enter")
 SEND_ALTERNATIVE_COMMAND = ConfigurableCommand(
@@ -107,6 +110,7 @@ CONFIGURABLE_COMMANDS = (
     INTERRUPT_COMMAND,
     TASKS_COMMAND,
     USAGE_COMMAND,
+    WORKSPACE_SETTINGS_COMMAND,
     AGENT_COMMAND,
     SEND_COMMAND,
     SEND_ALTERNATIVE_COMMAND,

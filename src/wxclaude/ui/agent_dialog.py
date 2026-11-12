@@ -3,16 +3,19 @@
 import wx
 
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.i18n import _
 from wxclaude.ui.agent_panel import AgentPanel
 
 
 class AgentDialog(wx.Dialog):
-    """Edit one agent. The initial focus is on the model field."""
+    """Edit one agent. The initial focus is on the provider field."""
 
-    def __init__(self, parent: wx.Window, agent: Agent) -> None:
+    def __init__(
+        self, parent: wx.Window, agent: Agent, providers: ProviderStore | None = None
+    ) -> None:
         super().__init__(parent, title=_("Modify the agent"))
-        self._panel = AgentPanel(self, agent, None)
+        self._panel = AgentPanel(self, agent, None, providers=providers)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self._panel, 1, wx.EXPAND | wx.ALL, 6)
         sizer.Add(self.CreateStdDialogButtonSizer(wx.OK | wx.CANCEL), 0, wx.EXPAND | wx.ALL, 6)

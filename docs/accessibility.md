@@ -13,7 +13,7 @@ explanation field of the permission question, the shortcut list, the unnamed rea
 - Where the focus and the caret go in every case (a dialog closes, the conversation is loaded,
   refreshed or searched, an answer ends...) is in `focus.md`.
 - Announcements are grouped in categories (progress of Claude, step in progress, end of an answer, question of
-  permission, answer to a permission, conversation movement done, no further movement possible, search, unsuccessful search, refresh, gauge alerts) and
+  permission, answer to a permission, conversation movement done, no further movement possible, search, unsuccessful search, refresh, gauge alerts, trust of the folder) and
   the user chooses a destination per category in Preferences > Announcements (the list is in
   alphabetical order of the labels, accents and case ignored): none, a message
   (a UI Automation notification raised by a hidden one-pixel window, a child of the panel and not of

@@ -39,6 +39,17 @@ The end of an answer (the session file is read again and the view rebuilt if it 
 focus where it is, so the user can type the next prompt; changing the option "Hide the system
 messages" rebuilds the text and keeps the caret on its message.
 
+**E. The user leaves the window (Alt+Tab) and comes back: the focus returns to the control it was on**
+(`ui/focus_keeper.py`). The control that has the focus is remembered when the window loses the
+foreground, and it gets the focus again when the window is activated, once (what was remembered is
+never kept for a later return). Three limits keep the rule simple:
+
+- a **button** is never returned to, and neither is a control that is greyed or hidden by then (as
+  *Interrupt Claude* once the answer ended): the focus goes to the **default control**, the prompt when
+  it can be typed in, else the conversation view (`MainWindow._default_focus`);
+- a window **blocked by a dialog** is not an Alt+Tab: nothing is remembered, rule A gives the focus back;
+- when the focus was not in the window, or the window is closing, nothing is done.
+
 ## Particular cases
 
 | Case | Focus | Why |
@@ -51,3 +62,15 @@ messages" rebuilds the text and keeps the caret on its message.
 | Second launch of the application | unchanged in the first window, which is brought to the front | |
 | New conversation branch | rule B: the conversation view, at the last prompt (the text stays) | the branch shows the conversation it copies |
 | Delete a conversation | rule B on the most recent conversation left; without any, the case "workspace without any conversation" | the deleted one cannot be shown any more |
+| Offer to approve a folder (a dialog once the window shows) | the button *Keep restricted*; rule A when it closes | the safe answer is the default, so a stray Enter approves nothing |
+| Alert about changed watched files | the list of the changed files, with their differences under it; rule A when it closes | the user reads what changed before deciding; Close decides nothing |
+| State of a folder said when it opens ("restricted mode") | unchanged | an announcement never moves the focus |
+| Workspace settings (when it opens) | the first tab (the tab control, so that the screen reader says which tab it is) | the dialog has several tabs: the user chooses where to go; Tab reaches the controls of the tab |
+| Tab *Alternative agent* | the field *Provider*, reached with Tab from the tab control | the first field, as in the Agent dialog |
+| Tab *Security* of the Workspace settings | the check box *Trusted folder* | the first decision of the tab |
+| Tab *Environment variables* | the list of the variables | what the tab is for; the explanation is read-only and reached with Tab |
+| Page *Providers* of the Preferences | the list of the providers | |
+| Form of a provider | the name | |
+| Entry of a key | the password field; with *Show the key* the focus follows the field that holds the text | the key is typed, never read back once saved |
+| Agent dialog | the list *Provider* | the first field |
+| Announcement history (Help menu) | the read-only text, the caret on its last line; rule A when it closes | the newest announcement is the last line, so the screen reader starts where the user wants to be |

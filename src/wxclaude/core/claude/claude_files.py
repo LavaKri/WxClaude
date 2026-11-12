@@ -13,6 +13,7 @@ from typing import Protocol
 
 from wxclaude.core.claude import claude_projects, claude_settings, plans, session_reader, tasks
 from wxclaude.core.claude.claude_projects import ClaudeProject, SessionInfo
+from wxclaude.core.claude.claude_settings import FileGuard
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.runner import ClaudeRunner
 from wxclaude.core.claude.session_reader import Session
@@ -51,14 +52,18 @@ class ClaudeFiles(Protocol):
         """The folders Claude Code has worked in that still exist."""
         ...
 
-    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
-        """Give a conversation that has a session file a new name (the CLI's ``/rename``); raises
-        ``RunnerError`` or ``ClaudeNotFoundError`` if it cannot."""
+    def rename_session(
+        self, conversation_id: str, name: str, workspace: Path, *, restricted: bool = False
+    ) -> None:
+        """Give a conversation that has a session file a new name (the CLI's ``/rename``);
+        ``restricted``: the folder is not trusted. Raises ``RunnerError`` or
+        ``ClaudeNotFoundError`` if it cannot."""
         ...
 
-    def allow_always(self, workspace: Path, rule: str) -> None:
-        """Write an allow rule in the personal settings file of ``workspace``; raises
-        ``ClaudeSettingsError`` if it cannot."""
+    def allow_always(self, workspace: Path, rule: str, guard: FileGuard | None = None) -> None:
+        """Write an allow rule in the personal settings file of ``workspace``, through ``guard``
+        (the one door for these files) when there is one; raises ``ClaudeSettingsError``
+        (``ExternalChangeError`` if the file was changed from outside) if it cannot."""
         ...
 
 
@@ -92,8 +97,10 @@ class DiskClaudeFiles:
     def list_projects(self) -> list[ClaudeProject]:
         return claude_projects.list_projects()
 
-    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
-        self._runner.rename_session(conversation_id, name, workspace)
+    def rename_session(
+        self, conversation_id: str, name: str, workspace: Path, *, restricted: bool = False
+    ) -> None:
+        self._runner.rename_session(conversation_id, name, workspace, restricted=restricted)
 
-    def allow_always(self, workspace: Path, rule: str) -> None:
-        claude_settings.allow_always(workspace, rule)
+    def allow_always(self, workspace: Path, rule: str, guard: FileGuard | None = None) -> None:
+        claude_settings.allow_always(workspace, rule, guard=guard)

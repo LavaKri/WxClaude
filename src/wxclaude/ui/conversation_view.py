@@ -5,26 +5,18 @@ from collections.abc import Callable
 import wx
 
 from wxclaude.core.conversation.blocks import (
-    Block,
     BlockKind,
-    block_starts,
-    next_block,
-    previous_block,
-    sibling_items,
 )
+from wxclaude.core.conversation.caret_anchor import CaretAnchor
 from wxclaude.core.conversation.conversation_document import ConversationDocument, MessageSpan
 from wxclaude.core.conversation.details import DetailAction, message_details
 from wxclaude.core.conversation.headings import (
-    Heading,
     from_utf16,
-    next_heading,
-    parse_headings,
-    previous_heading,
     to_utf16,
 )
 from wxclaude.core.conversation.messages import Message, Role
-from wxclaude.core.speech.announcements import Announce
-from wxclaude.i18n import _, ngettext
+from wxclaude.i18n import _
+from wxclaude.presenters.conversation_navigator import ConversationNavigator
 from wxclaude.ui.menu_keys import is_menu_key, is_shift_f10
 
 _LEVEL_KEYS = {ord(str(level)): level for level in range(1, 7)}
@@ -35,17 +27,6 @@ _BLOCK_KEYS = {
     ord("I"): BlockKind.ITEM,
     ord("K"): BlockKind.LINK,
 }
-#: What is said when there is nothing further: (kind, backwards) -> announcement.
-_BLOCK_MISSING = {
-    (BlockKind.TABLE, False): Announce.NO_NEXT_TABLE,
-    (BlockKind.TABLE, True): Announce.NO_PREVIOUS_TABLE,
-    (BlockKind.LIST, False): Announce.NO_NEXT_LIST,
-    (BlockKind.LIST, True): Announce.NO_PREVIOUS_LIST,
-    (BlockKind.ITEM, False): Announce.NO_NEXT_ITEM,
-    (BlockKind.ITEM, True): Announce.NO_PREVIOUS_ITEM,
-    (BlockKind.LINK, False): Announce.NO_NEXT_LINK,
-    (BlockKind.LINK, True): Announce.NO_PREVIOUS_LINK,
-}
 #: The labels of the context menu (translated when the menu opens, not at import).
 _MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
     DetailAction.TOOLS: lambda: _("Show the &tools used…"),
@@ -54,24 +35,6 @@ _MENU_LABELS: dict[DetailAction, Callable[[], str]] = {
     DetailAction.COPY_MESSAGE: lambda: _("&Copy the message"),
     DetailAction.COPY_EXCHANGE: lambda: _("Copy the &exchange"),
 }
-
-
-def _arrival(kind: BlockKind, block: Block, line: str) -> tuple[Announce, dict[str, str]]:
-    """What is said on arriving at ``block`` (its first line is ``line``)."""
-    if kind is BlockKind.TABLE:
-        columns = ngettext("{count} column", "{count} columns", block.columns)
-        rows = ngettext("{count} row", "{count} rows", block.count)
-        return Announce.MOVED_TABLE, {
-            "columns": columns.format(count=block.columns),
-            "rows": rows.format(count=block.count),
-            "line": line,
-        }
-    if kind is BlockKind.LIST:
-        items = ngettext("{count} item", "{count} items", block.count)
-        return Announce.MOVED_LIST, {"items": items.format(count=block.count), "line": line}
-    if kind is BlockKind.LINK:
-        return Announce.MOVED_LINK, {"label": block.label, "line": block.label}
-    return Announce.MOVED, {"line": line}
 
 
 class ConversationView(wx.TextCtrl):
@@ -103,6 +66,9 @@ class ConversationView(wx.TextCtrl):
         self._on_action = on_action
         self._on_position = on_position
         self._position: tuple[int, int] | None = None  # the last one reported
+        self._navigator = ConversationNavigator(
+            lambda: self._document.text, self._caret_index, self._move, say
+        )
         self._document = ConversationDocument()
         self._messages: list[Message] = []  # all of them, the hidden ones too
         self.Bind(wx.EVT_KEY_DOWN, self._on_key)
@@ -113,6 +79,11 @@ class ConversationView(wx.TextCtrl):
     @property
     def document(self) -> ConversationDocument:
         return self._document
+
+    @property
+    def messages(self) -> list[Message]:
+        """A copy of all the messages, the hidden ones too."""
+        return list(self._messages)
 
     def set_messages(self, messages: list[Message]) -> None:
         """Replace everything (new conversation, history loaded, field rebuilt)."""
@@ -151,42 +122,12 @@ class ConversationView(wx.TextCtrl):
     def replace_messages(self, messages: list[Message]) -> None:
         """Show ``messages`` again; the caret stays on its message, at the same place in it (or at
         the end when it was at the end), and the focus is not touched."""
-        text = self._document.text
-        caret = self._caret_index()
-        span = self._document.span_at(caret)
-        offset = caret - span.start if span is not None else 0
-        at_end = caret >= len(text)
-        rank = self._rank_among_same_role(span) if span is not None else -1
+        anchor = CaretAnchor.take(self._document, self._caret_index())
         self._messages = list(messages)
         self.ChangeValue(self._document.rebuild(self._messages))
-        new_text = self._document.text
-        position = len(new_text) if at_end else 0
-        new = None
-        if span is not None and not at_end:
-            new = self._same_message(span, rank)
-        if new is not None:
-            position = new.start + min(offset, max(0, new.end - new.start - 1))
-        self.SetInsertionPoint(to_utf16(new_text, position))
+        position = anchor.position(self._document)
+        self.SetInsertionPoint(to_utf16(self._document.text, position))
         self.report_position()
-
-    def _rank_among_same_role(self, span: MessageSpan) -> int:
-        """How many messages of the same role (prompts or answers) are shown before ``span``."""
-        return sum(
-            1
-            for s in self._document.spans
-            if s.message.role is span.message.role and s.start < span.start
-        )
-
-    def _same_message(self, old: MessageSpan, rank: int) -> MessageSpan | None:
-        """The message of the rebuilt text that ``old`` was. Messages shown live have identifiers of
-        their own and those read from the session file have the CLI's: when the identifier is gone,
-        it is the message with the same rank among those of its role."""
-        spans = self._document.spans
-        found = next((s for s in spans if s.message.id == old.message.id), None)
-        if found is not None:
-            return found
-        same_role = [s for s in spans if s.message.role is old.message.role]
-        return same_role[rank] if 0 <= rank < len(same_role) else None
 
     def append_message(self, message: Message) -> None:
         """Add a complete message at the end; the caret stays where the user left it."""
@@ -338,33 +279,13 @@ class ConversationView(wx.TextCtrl):
             if not self._open_details_at_caret():
                 event.Skip()
         elif code in _BLOCK_KEYS:
-            self._jump_block(_BLOCK_KEYS[code], backwards=event.ShiftDown())
+            self._navigator.jump_block(_BLOCK_KEYS[code], backwards=event.ShiftDown())
         elif code == _HEADING_KEY:
-            self._jump(None, backwards=event.ShiftDown())
+            self._navigator.jump_heading(None, backwards=event.ShiftDown())
         elif code in _LEVEL_KEYS:
-            self._jump(_LEVEL_KEYS[code], backwards=event.ShiftDown())
+            self._navigator.jump_heading(_LEVEL_KEYS[code], backwards=event.ShiftDown())
         else:
             event.Skip()
-
-    def _jump(self, level: int | None, *, backwards: bool) -> None:
-        headings = parse_headings(self._document.text)
-        position = self._caret_index()
-        if backwards:
-            target = previous_heading(headings, position, level)
-        else:
-            target = next_heading(headings, position, level)
-        if target is None:
-            self._say(self._missing(level, backwards=backwards), level=level)
-            return
-        self._go_to(target)
-
-    @staticmethod
-    def _missing(level: int | None, *, backwards: bool) -> Announce:
-        if level is None:
-            return Announce.NO_PREVIOUS_HEADING if backwards else Announce.NO_NEXT_HEADING
-        if backwards:
-            return Announce.NO_PREVIOUS_HEADING_OF_LEVEL
-        return Announce.NO_NEXT_HEADING_OF_LEVEL
 
     def _open_details_at_caret(self) -> bool:
         """Space: show what the caret is on (for now the table it is in); False if it is on
@@ -377,28 +298,6 @@ class ConversationView(wx.TextCtrl):
             return False
         wx.CallAfter(self._on_action, DetailAction.TABLE, span.message, line)
         return True
-
-    def _jump_block(self, kind: BlockKind, *, backwards: bool) -> None:
-        text = self._document.text
-        blocks = block_starts(text)[kind]
-        position = self._caret_index()
-        if kind is BlockKind.ITEM:
-            blocks = sibling_items(blocks, position)  # the items of the list the caret is in
-        target = previous_block(blocks, position) if backwards else next_block(blocks, position)
-        if target is None:
-            self._say(_BLOCK_MISSING[kind, backwards])
-            return
-        end = text.find("\n", target.start)
-        line = text[target.start : end if end >= 0 else len(text)]
-        self._move(target.start)
-        announce, values = _arrival(kind, target, line)
-        self._say(announce, **values)
-
-    def _go_to(self, heading: Heading) -> None:
-        self._move(heading.start)
-        self._say(
-            Announce.MOVED_HEADING, title=heading.title, level=heading.level, line=heading.title
-        )
 
     def _move(self, index: int) -> None:
         """Put the caret at the Python index ``index``."""

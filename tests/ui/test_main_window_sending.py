@@ -2,6 +2,8 @@
 
 import json
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -9,7 +11,9 @@ import wx
 from main_window_support import (
     OPUS,
     _Errors,
+    _runner,
     _send,
+    _settings,
     _use_log,
     _wait_until_idle,
 )
@@ -32,8 +36,8 @@ pytestmark = pytest.mark.ui
 
 
 def test_the_send_buttons_show_their_shortcuts(window: MainWindow) -> None:
-    assert window._send_button.GetLabel() == "&Send (Ctrl+Enter)"
-    assert window._alternative_button.GetLabel().endswith("(Shift+Enter)")
+    assert window._prompt_area.send_label == "&Send (Ctrl+Enter)"
+    assert window._prompt_area.alternative_label.endswith("(Shift+Enter)")
 
 
 def test_alternative_agent_overrides_only_what_it_sets(window: MainWindow) -> None:
@@ -175,6 +179,27 @@ def test_interrupting_stops_claude(
     assert sink.messages[-2:] == ["Interrupting Claude.", "Claude was interrupted."]
     assert errors.messages == []
     assert not conversation._menu.interrupt_item.IsEnabled()
+
+
+def test_closing_the_window_stops_the_message_being_answered(
+    wx_app: wx.App,
+    destroy_after: Callable[[MainWindow], MainWindow],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("FAKE_CLAUDE", "slow")
+    window = destroy_after(MainWindow(_settings(), _runner()))
+    window.open_workspace(tmp_path)
+    window._conversations.start_new("Notes")
+    runner = window._run.runner
+    window._prompt.SetValue("hello")
+    window.send_prompt(alternative=False)
+    assert window._run.busy
+    window.Close()
+    deadline = time.monotonic() + 15
+    while runner.is_running:  # the process is stopped, its end is seen by the thread of the runner
+        assert time.monotonic() < deadline, "Claude was still running after the window closed"
+        time.sleep(0.02)
 
 
 def test_nothing_is_sent_without_a_conversation(window: MainWindow) -> None:

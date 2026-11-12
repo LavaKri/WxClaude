@@ -15,7 +15,6 @@ from wxclaude.ui.feedback import Feedback
 from wxclaude.ui.plans_dialog import PlansDialog
 from wxclaude.ui.table_dialog import TableCellsDialog
 from wxclaude.ui.tasks_dialog import TasksDialog
-from wxclaude.ui.usage_dialog import UsageDialog
 
 #: The dialog that shows a table. ``TableDialog`` (one sentence per row) is the other one: set it
 #: here to go back to it.
@@ -62,10 +61,6 @@ class WxMessageView:
 
     def show_plans(self, plans: list[Plan]) -> None:
         with PlansDialog(self._parent, plans) as dialog:
-            self._feedback.modal(dialog)
-
-    def show_usage(self, lines: list[str]) -> None:
-        with UsageDialog(self._parent, lines) as dialog:
             self._feedback.modal(dialog)
 
     def set_clipboard(self, text: str) -> bool:

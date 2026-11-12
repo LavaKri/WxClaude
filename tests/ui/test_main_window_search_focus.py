@@ -156,6 +156,16 @@ def test_a_workspace_without_conversation_focuses_the_view_and_says_so(
     assert sink.messages[-1] == "No conversation in this workspace."
 
 
+def test_the_default_control_is_the_prompt_or_else_the_conversation(
+    conversation: MainWindow, tmp_path: Path
+) -> None:
+    assert conversation._default_focus() is conversation._prompt
+    empty = tmp_path / "empty-workspace"
+    empty.mkdir()
+    conversation.open_workspace(empty)  # no conversation: the prompt is greyed
+    assert conversation._default_focus() is conversation._conversation
+
+
 def test_the_focus_comes_back_after_a_dialog(conversation: MainWindow) -> None:
     conversation.Show()  # the focus only exists in a window that is shown
     wx.Yield()

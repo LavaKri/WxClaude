@@ -54,7 +54,9 @@ class FakeRunner(ClaudeRunner):
         self.start_error: Exception | None = None
         self.interrupted = 0
 
-    def read_usage(self, cwd: Path, on_event: Callable[[RunEvent], None]) -> None:
+    def read_usage(
+        self, cwd: Path, on_event: Callable[[RunEvent], None], *, restricted: bool = False
+    ) -> None:
         if self.start_error is not None:
             raise self.start_error
         self.reads.append(cwd)

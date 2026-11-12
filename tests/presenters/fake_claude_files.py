@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from wxclaude.core.claude.claude_projects import ClaudeProject, SessionInfo
+from wxclaude.core.claude.claude_settings import FileGuard
 from wxclaude.core.claude.cost_state import CostState
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.session_reader import Session
@@ -19,6 +20,7 @@ from wxclaude.core.errors import (
     SessionReadError,
     TaskReadError,
 )
+from wxclaude.core.security.watch import ExternalChangeError
 
 
 @dataclass(slots=True)
@@ -34,6 +36,9 @@ class FakeClaudeFiles:
     renamed: list[tuple[str, str]] = field(default_factory=list)  # (conversation, name)
     rename_error: str = ""  # when set, a rename fails with this message
     allow_error: str = ""  # when set, writing a rule fails with this message
+    allow_external_change: ExternalChangeError | None = None  # when set, the write is refused
+    guards: list[FileGuard | None] = field(default_factory=list)  # the guard of each write
+    rename_restricted: list[bool] = field(default_factory=list)  # restricted, for each rename
     tasks_error: str = ""  # when set, reading the tasks fails with this message
     plans_error: str = ""  # when set, reading the plans fails with this message
 
@@ -86,12 +91,18 @@ class FakeClaudeFiles:
     def list_projects(self) -> list[ClaudeProject]:
         return list(self.projects)
 
-    def rename_session(self, conversation_id: str, name: str, workspace: Path) -> None:
+    def rename_session(
+        self, conversation_id: str, name: str, workspace: Path, *, restricted: bool = False
+    ) -> None:
         if self.rename_error:
             raise RunnerError(self.rename_error)
         self.renamed.append((conversation_id, name))
+        self.rename_restricted.append(restricted)
 
-    def allow_always(self, workspace: Path, rule: str) -> None:
+    def allow_always(self, workspace: Path, rule: str, guard: FileGuard | None = None) -> None:
         if self.allow_error:
             raise ClaudeSettingsError(self.allow_error)
+        if self.allow_external_change is not None:
+            raise self.allow_external_change
         self.rules.append((workspace, rule))
+        self.guards.append(guard)

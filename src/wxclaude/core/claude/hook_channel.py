@@ -104,10 +104,12 @@ class HookChannel:
         ).start()
 
     def arguments(self) -> list[str]:
+        return []
+
+    def settings(self) -> dict[str, object]:
         url = f"http://127.0.0.1:{self._server.server_address[1]}/hook/{self._token}"
         hook = {"type": "http", "url": url, "timeout": self._timeout_seconds}
-        settings = {"hooks": {"PermissionRequest": [{"hooks": [hook]}]}}
-        return ["--settings", json.dumps(settings)]
+        return {"hooks": {"PermissionRequest": [{"hooks": [hook]}]}}
 
     def bind(self, process_input: ProcessInput) -> None:
         """The hook does not use the standard input."""

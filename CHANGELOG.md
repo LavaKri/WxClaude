@@ -1,7 +1,92 @@
 # Changelog
 
 Every version of WxClaude and what changed in it, newest first. The rules for versions are in
-`docs/versions.md`. Format: one line per change, no jargon.
+`docs/versions.md`. Format: one or two lines per change, starting with `Added:`, `Modified:` or
+`Fixed:`, no jargon.
+
+## 0.4.0 (2026-11-12)
+
+- Added: the option `--remote`, which lets another program give WxClaude a few commands through the
+  named pipe `\\.\pipe\WxClaude-<user>`: stop the message being answered, send a message, read the last
+  answer with its status and its tokens, read the history of the announcements, and ask which version
+  of WxClaude and of the protocol answers (`docs/remote.md`).
+  It is off unless the option is given, and the window title then starts with *Remote enabled*
+  (*Remote activé*). A message sent this way goes through the usual permission questions and does not
+  touch the prompt or the focus.
+- Modified: the announcement history says what a tool works on: `Claude uses the tool Edit on build.bat.`,
+  `... Bash to run git.`, `... Grep on def main.` (the name of the file without its folder, only the program
+  of a command, the host of a web address). What is said to the screen reader and shown in the status bar does
+  not change (`Claude uses the tool Edit.`).
+- Added: when Claude Code is not logged in, the status bar says "Not logged in to Claude Code" instead of
+  "Ready", and at the start a message offers to sign in (*Sign in…*, or *Close*). It is asked in the
+  background, so the window does not wait; it is asked again when the Preferences or the sign-in dialog are
+  closed. It is not asked when the default agent uses another provider than Claude.
+- Added: *Help > Open the log folder*, which shows the folder of `wxclaude.log` in the file explorer.
+- Added: the error boxes have a button *Copy the details* (the text of the error and the version of WxClaude
+  go to the clipboard) next to *Close*, which stays the default one (Enter, Escape).
+- Fixed: the announcement history (and every list that opens on its last line) puts the caret back on the
+  last line once the dialog is up, in case Windows selected the whole text when the field took the focus.
+- Added: the folder `tools` of the packaged application holds `WxClaude-remote.bat` (starts WxClaude with
+  `--remote`), the description of the remote control (`remote.md`) and `WxClaude-debug.bat`, moved there.
+
+## 0.3.1 (2026-11-11)
+
+- Modified: the help is corrected, translated again to English, and holds the agents of a workspace, the
+  announcement history and the delegation of tasks to a local AI.
+- Added: *Help > Announcement history…*, a read-only list of the last 500 announcements with their time
+  (`10:20 Ready`), the newest last. It keeps what was said even when a category is set to *No
+  announcement*, and the messages of the error and information boxes; the movements in the conversation
+  and the searches are left out. A change of workspace or conversation adds a blank line and a line
+  that names it; it does not clear the history.
+- Added: an MCP server that did not start, or is slow to start, is said once (new category *MCP servers*),
+  so that the user knows why its tools are missing.
+- Added: when the server returns an error that the CLI retries (overloaded, 429, 5xx), each retry is
+  said with its reason and its number ("Retry 2 of 10; you can interrupt"), in the status bar too.
+- Added: when Claude compacts the conversation, it is said, with the sizes before and after and the advice
+  to consider a new conversation or a branch (a fixed announcement).
+- Added: when the CLI runs a message in another permission mode than the one sent, it is said (new
+  category *Permission mode not applied*); with the key transmission *Masked* the text says that Claude
+  Code forces the manual mode. This also shows that `auto` is not applied.
+- Added: tab *Alternative agent* in the Workspace settings, with the fields of the Agent dialog (provider,
+  model, effort, permission mode). Each workspace has its own alternative agent, used by Shift+Enter in
+  all its conversations, so a workspace can send with another provider. A new workspace takes the values
+  of the alternative agent of the Preferences (a field left on "same as the conversation" takes the value
+  of the agent of a new conversation); after that only the user changes it.
+- Added: the shortcut Alt+Enter opens the Workspace settings; it is shown in the menu and can be changed.
+- Modified: when the Workspace settings open, the keyboard focus is on the first tab instead of the list of tools.
+- Added: at the first start (no `providers.json` yet), the providers *DeepSeek* (its key to add) and *Ollama*
+  (a local server, no key) are already there; a provider deleted later does not come back.
+- Added: a provider can set `API_TIMEOUT_MS`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, `CLAUDE_CODE_AUTO_COMPACT_WINDOW`
+  and `CLAUDE_CODE_MAX_OUTPUT_TOKENS` (a closed list, whole numbers);
+  they are sent to the CLI for this provider only, also in a restricted folder.
+- Modified: in the form of a provider, the four fields of the models are replaced by a list *Variable*
+  (`Small model = ...`, then the two variables) and a field *Value* for the selected line, with its explanation.
+- Fixed: after Alt+Tab the focus no longer jumps to a control it was on long before; a button (such as
+  *Interrupt Claude*) or a control that is greyed by then gives the focus to the prompt, or to the conversation.
+- Added: field *Limit of turns per message* in the tab *Security* of the Workspace settings (0: no limit);
+  when Claude reaches it, a message says so.
+
+## 0.3.0 (2026-11-10)
+
+- Added: page *Providers* in the Preferences (DeepSeek, a local server...): four ranked models and a key
+  encrypted with the Windows account, set in the form of the provider; list *Provider* in the agents.
+- Added: lists *Models retrieval* and *Gauge retrieval* in the form of a provider, and the button
+  *Check the data retrieved*, which shows the models and the credit its server gives.
+- Added: list *API key transmission* (*Masked*, *Shared*, *Relayed*) with an explanation; *Relayed* keeps
+  the key in WxClaude behind a local relay, so the commands of Claude cannot read it.
+- Added: the dialog *Usage gauge* shows the credit left with the providers that have a gauge method
+  (DeepSeek).
+- Added: item *Statistics* in the Help menu, with the spending and the statistics of the workspace.
+- Added: a folder not seen before is offered for approval, and runs in restricted mode until approved.
+- Added: dialog that shows the changes of the files that can change what Claude does, to accept or restrict.
+- Added: tabs *Environment variables* and *Security* in the Workspace settings.
+- Added: settings `relay_idle_minutes` and `relay_timeout_seconds` of the relay, in the file only.
+- Modified: *Claude usage* becomes *Usage gauge* (gauges and credits only, a blank line between each).
+- Modified: the announcements name the provider of the message ("DeepSeek is thinking").
+- Modified: the setting `scrub_credentials` becomes `key_transmission` (the old value is read).
+- Fixed: a server that refuses the key (401 or 403) stops the message at once, not after minutes of retries.
+- Fixed: the focus returns to its control after Alt+Tab, and the status bar goes back to "Ready" after a
+  new or resumed conversation.
 
 ## 0.2.0 (2026-10-26)
 

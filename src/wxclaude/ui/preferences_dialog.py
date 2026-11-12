@@ -2,6 +2,7 @@
 
 import wx
 
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.shortcuts import CONFIGURABLE_COMMANDS
 from wxclaude.i18n import _
@@ -13,13 +14,16 @@ from wxclaude.ui.preferences_pages import (
     ScreenReaderPage,
     WorkspacePage,
 )
+from wxclaude.ui.providers_page import ProvidersPage
 from wxclaude.ui.shortcuts_page import ShortcutsPage
 
 
 class PreferencesDialog(wx.Dialog):
     """Edit the preferences. ``apply`` copies the chosen values into the settings."""
 
-    def __init__(self, parent: wx.Window, settings: Settings) -> None:
+    def __init__(
+        self, parent: wx.Window, settings: Settings, providers: ProviderStore | None = None
+    ) -> None:
         super().__init__(
             parent, title=_("Preferences"), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER
         )
@@ -27,7 +31,7 @@ class PreferencesDialog(wx.Dialog):
         self.general = GeneralPage(self._notebook, settings)
         self.claude = ClaudePage(self._notebook, settings)
         self.workspace = WorkspacePage(self._notebook, settings)
-        self.agent = AgentPage(self._notebook, settings)
+        self.agent = AgentPage(self._notebook, settings, providers)
         self.shortcuts = ShortcutsPage(
             self._notebook, CONFIGURABLE_COMMANDS, settings.all_shortcuts()
         )
@@ -41,6 +45,10 @@ class PreferencesDialog(wx.Dialog):
         ]
         self._notebook.AddPage(self.general, _("General"))
         self._notebook.AddPage(self.claude, _("Claude"))
+        if providers is not None:
+            self.providers = ProvidersPage(self._notebook, providers, settings)
+            self._pages.append(self.providers)
+            self._notebook.AddPage(self.providers, _("Providers"))
         self._notebook.AddPage(self.workspace, _("Workspace"))
         self._notebook.AddPage(self.agent, _("Agent"))
         self._notebook.AddPage(self.shortcuts, _("Shortcuts"))

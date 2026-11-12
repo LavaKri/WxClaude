@@ -14,6 +14,7 @@ from wxclaude.core.diagnostics import (
     log_startup,
 )
 from wxclaude.core.errors import JsonStoreError
+from wxclaude.core.remote.pipe_server import pipe_name
 from wxclaude.i18n import _, install
 from wxclaude.ui.main_window import MainWindow
 from wxclaude.ui.single_instance import (
@@ -26,9 +27,14 @@ from wxclaude.ui.wx_locale import init_wx_locale
 
 
 def parse_arguments(argv: list[str] | None = None) -> argparse.Namespace:
-    """Read the command line (only the level of the log for now)."""
+    """Read the command line: the level of the log, and the remote control."""
     parser = argparse.ArgumentParser(prog="WxClaude")
     parser.add_argument("--log-level", choices=LOG_LEVELS, default=DEFAULT_LOG_LEVEL)
+    parser.add_argument(
+        "--remote",
+        action="store_true",
+        help="let other programs send a few commands through a named pipe (docs/remote.md)",
+    )
     return parser.parse_args(argv)
 
 
@@ -49,7 +55,8 @@ def main() -> int:
     configure_logging(settings_file.parent, arguments.log_level)
     log_startup(settings_file.parent, Path(sys.executable), arguments.log_level)
     wx_locale = init_wx_locale(settings.language)  # must stay referenced while the app runs
-    window = MainWindow(settings)
+    remote_pipe = pipe_name(wx.GetUserId()) if arguments.remote else None
+    window = MainWindow(settings, remote_pipe=remote_pipe)
     window.Show()
     window.gauge_watch.start()
     try:

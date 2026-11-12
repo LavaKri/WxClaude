@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from wxclaude.core.claude import status as status_module
-from wxclaude.core.claude.status import ClaudeStatus, describe_status, read_status
+from wxclaude.core.claude.status import ClaudeStatus, describe_status, read_login, read_status
 
 pytestmark = pytest.mark.unit
 
@@ -81,6 +81,21 @@ def test_a_program_that_cannot_be_started_is_reported(tmp_path: Path) -> None:
     status = read_status(command=[str(tmp_path / "nothing.exe")])
     assert status.found  # a command was given, so it is not looked for
     assert status.problem
+
+
+@pytest.mark.parametrize(("mode", "expected"), [("in", True), ("out", False), ("garbage", None)])
+def test_the_login_alone_is_read_with_auth_status(
+    tmp_path: Path, mode: str, expected: bool | None
+) -> None:
+    assert read_login(_fake(tmp_path, mode)) is expected
+
+
+def test_a_login_that_is_not_answered_in_time_or_cannot_be_asked_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(status_module, "_TIMEOUT_SECONDS", 1)
+    assert read_login(_fake(tmp_path, "slow")) is None
+    assert read_login([str(tmp_path / "nothing.exe")]) is None
 
 
 def test_a_missing_claude_is_said_with_the_reason(

@@ -10,6 +10,7 @@ from wxclaude.core.speech.announcements import (
     PERMISSION_QUESTION,
     PROGRESS,
     SEARCH_FAILED,
+    SECURITY,
     Announce,
     AnnouncementCenter,
     Category,
@@ -207,3 +208,11 @@ def test_output_named_ignores_unavailable_outputs() -> None:
     assert output_named("uia", "win32") is UIA
     assert output_named("uia", "linux") is None
     assert output_named("unknown", "win32") is None
+
+
+def test_the_state_of_a_folder_has_its_own_category() -> None:
+    assert SECURITY.default is Destination.MESSAGE
+    assert SECURITY.accepts(Destination.DIALOG)
+    assert not SECURITY.accepts(Destination.SOUND_1)
+    for announce in (Announce.FOLDER_RESTRICTED, Announce.FOLDER_APPROVED, Announce.FOLDER_CHANGED):
+        assert announce.category is SECURITY

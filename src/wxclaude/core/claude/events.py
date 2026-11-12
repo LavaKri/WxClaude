@@ -10,12 +10,23 @@ from wxclaude.core.conversation.messages import Usage
 
 
 @dataclass(frozen=True, slots=True)
+class McpServer:
+    """An MCP server as the CLI reports it at start: ``status`` is ``connected``, ``pending``
+    (still starting) or ``failed``; others may exist."""
+
+    name: str
+    status: str
+
+
+@dataclass(frozen=True, slots=True)
 class SessionInit:
-    """The CLI has started: the session, the model and the permission mode really used."""
+    """The CLI has started: the session, the model and the permission mode really used, and the
+    MCP servers it knows with their state."""
 
     session_id: str
     model: str
     permission_mode: str
+    mcp_servers: tuple[McpServer, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +146,40 @@ class TurnEnded:
     diagnostics: list[str] = field(default_factory=list)
 
 
+_REFUSED = (401, 403)
+
+
+@dataclass(frozen=True, slots=True)
+class ApiRetry:
+    """The CLI will ask the server again after an error (``system`` / ``api_retry``).
+
+    ``status`` is the HTTP status of the error (None when unknown) and ``error`` the name the CLI
+    gives it. A refusal (401, 403) is retried as the others, ten times with growing waits: it can
+    not get better, so the run is stopped at the first one.
+    """
+
+    attempt: int
+    max_retries: int
+    status: int | None
+    error: str
+
+    @property
+    def refused(self) -> bool:
+        """Did the server refuse the credentials?"""
+        return self.status in _REFUSED
+
+
+@dataclass(frozen=True, slots=True)
+class Compacted:
+    """The CLI compacted the conversation (``system`` / ``compact_boundary``): only a summary of
+    it is kept. ``trigger`` is ``auto`` or ``manual``; the sizes are in tokens (None if unknown).
+    """
+
+    trigger: str
+    pre_tokens: int | None
+    post_tokens: int | None
+
+
 @dataclass(frozen=True, slots=True)
 class GaugesRead:
     """The end of a reading of the gauges (``/usage``); ``windows`` is empty when it failed."""
@@ -153,6 +198,8 @@ RunEvent = (
     | PermissionExpired
     | RateLimit
     | TurnResult
+    | ApiRetry
+    | Compacted
     | TurnEnded
     | GaugesRead
 )

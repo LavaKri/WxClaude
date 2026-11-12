@@ -31,6 +31,11 @@ changes a lot. Only what was tested or read in the documentation is stated here.
   `orgName`, `subscriptionType` (`pro`). Not logged in: `loggedIn` false, `authMethod` `none`. With
   `--text`: "Not logged in. Run claude auth login to authenticate." It asks nothing and opens nothing.
   An empty `CLAUDE_CONFIG_DIR` gives the not logged in answer without touching the real sign-in.
+  Measured 2026-11-12 (CLI 2.1.286, no model call): with an empty `CLAUDE_CONFIG_DIR` and an
+  `ANTHROPIC_API_KEY` in the environment (a made-up key) it says `loggedIn` true, `authMethod` `api_key`,
+  `apiKeySource` `ANTHROPIC_API_KEY`, exit 0: a key in the environment counts as logged in. The key is not
+  checked. It sees the environment of the process that runs it, not what WxClaude adds to a launch for a
+  provider (`launch.py`): so WxClaude does not ask it when the default agent uses another provider.
 - `claude auth login` has `--claudeai` (the subscription, the default), `--console` (Anthropic
   Console, API billing), `--sso` and `--email <email>` (pre-fills the address on the sign-in page);
   `logout` and `setup-token` are in the CLI reference.
@@ -157,6 +162,24 @@ costs the cache of the conversation. (Haiku seems to ignore the effort.)
 
 One JSON object per line:
 
+- `system` / `compact_boundary` (checked with `/compact` through `-p`, 2026-11-11): after `system` /
+  `status` lines (`status` `compacting`, then `compact_result` `success`) and the `init` line comes
+  `compact_metadata`: `trigger` (`manual` or `auto`), `pre_tokens`, `post_tokens`, `duration_ms`,
+  `cumulative_dropped_tokens` and the identifiers of the messages kept. In the stream the keys are in
+  snake case; the session file has them in camel case (`compactMetadata`).
+- `system` / `init` gives the mode the CLI really uses (measured with haiku, 2026-11-11, no provider):
+  asked `manual` gives `default`; `acceptEdits`, `plan` and `dontAsk` keep their name; **`auto` gives
+  `default`** (the mode is not applied, even with Claude).
+- MCP servers (measured 2026-11-11 with a throwaway stdio server, haiku, CLI 2.1.286): `system` / `init`
+  lists them in `mcp_servers` (`name`, `status`, `source`: `user`, `local`, `project`, `claudeai`).
+  A server that exits at once is `failed`; one that takes 25 s to answer `initialize` is `pending` and
+  its tool is "No such tool available" for that message (each message is a new process, so it starts
+  again every time); a tool call of 130 s completes (no time-out met). A server declared with
+  `claude mcp add` in scope `local`, or in the `.mcp.json` of the project, is not loaded in a restricted
+  launch (`--setting-sources user`); one of scope `user` is. In an approved folder the `.mcp.json` servers
+  connect without asking. The permission question of an MCP tool (`mcp__<server>__<tool>`) reaches both
+  channels, with the suggested rule `mcp__<server>__<tool>`, and an allow rule in
+  `.claude/settings.local.json` silences it.
 - `system` / `init`: `session_id`, `model`, `permissionMode`. `system` / `thinking_tokens`
   (`estimated_tokens`). `system` / `permission_denied` (`tool_name`, `tool_use_id`, `message`,
   `decision_reason_type`).
@@ -314,3 +337,225 @@ ways to change it, all seen working:
   `id`, `subject`, `description`, `activeForm`, `status` (`pending`, `in_progress`, `completed`),
   `blocks` and `blockedBy` (lists of identifiers), `metadata` (free); the folder also holds a
   `.lock` file, which is not a task. WxClaude only reads them.
+
+## Other providers (verified 2026-11-09, CLI 2.1.286, a fake local server)
+
+Measured with the real CLI in an empty `CLAUDE_CONFIG_DIR` against two fake servers that log the
+requests and answer with a short stream (no model, nothing paid). Not yet measured with a real
+model (tools, resuming a session of another provider): see `open-questions.md`.
+
+- **No sign-in is needed.** With `ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` (sent as
+  `Authorization`), `claude -p` runs and the `system/init` line says `apiKeySource: "none"`.
+- **Precedence of `env`**, strongest first: `--settings` (inline JSON or file), the `env` key of
+  `.claude/settings.local.json`, then the environment of the process. The `env` of the shared
+  `.claude/settings.json` also beat the process (the order between the two project files and the
+  general file was not tried). So a provider chosen by WxClaude in the environment of the process
+  is overridden by a project file that sets the same variable; `--settings` is not.
+- **No trust is needed in `-p`**: the `env` of both project files was applied in a folder that was
+  never trusted. A cloned repository can therefore point the CLI to another server.
+- **The variables are merged key by key.** A project file that sets only `ANTHROPIC_BASE_URL`
+  leaves `ANTHROPIC_AUTH_TOKEN` of the process in place, and the token **is sent to the URL of the
+  file** (seen in the `Authorization` header received by the fake server). With `--settings`
+  setting only the URL, the URL of `--settings` wins and the token of the process is still used.
+  So the URL must always be given by `--settings`; the token can stay in the environment of the
+  process (not on the command line).
+- **The tools of Claude see the key.** A `Bash` command run by the CLI printed
+  `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` as set in the environment of the process: the
+  CLI does not remove them from the environment of its tools. A prompt injection (text in a file
+  that Claude reads) can therefore ask Claude to show or send the key. Not measured: the
+  `PowerShell` tool (it was not available in that run), other variables (`ANTHROPIC_API_KEY`), a
+  way to hide them (settings of the CLI such as a list of variables to remove).
+- **Models.** `--model` takes any name and sends it as is; `ANTHROPIC_DEFAULT_HAIKU_MODEL` (and the
+  `SONNET` and `OPUS` ones) redirect the aliases. For a name the CLI does not know, stderr gets
+  `[claude-code:unrecognized_model] {...}`; it is not an error (exit code 0).
+- **Effort and thinking.** `--effort low` is sent as `output_config: {"effort": "low"}`; `thinking`
+  is `{"type": "adaptive"}` or `{"type": "enabled", "budget_tokens": ...}`. Whether a given server
+  accepts them is not known.
+- **Cost.** `total_cost_usd` and `modelUsage[...].costUSD` are computed by the CLI from its own
+  price list, not by the server. For an unknown model `costBasis` is `"unknown"` and a figure is
+  still given (it is not a real cost). `modelUsage` is keyed by the name sent to the server, and
+  `canonicalModel` holds it as is when it is not a Claude one.
+- **Other stderr lines.** With a server that is not the official one, the CLI writes a notice about
+  the billing of the classifier of the auto mode on stderr. It is not an error.
+
+### DeepSeek, first contact (measured 2026-11-09, CLI 2.1.286, `deepseek-v4-flash`)
+
+`https://api.deepseek.com/anthropic`, key as `ANTHROPIC_AUTH_TOKEN`, empty work folder, temporary
+`CLAUDE_CONFIG_DIR`, prompt "Reply with the single word: ok", the provider launch of WxClaude
+(`provider_settings`, `provider_environment`).
+
+- **It works**: exit 0, `result` "ok", 1 to 1.4 s, `system/init` names `deepseek-v4-flash` and
+  `apiKeySource` `none`. `ANTHROPIC_AUTH_TOKEN` is accepted (the server takes the Bearer header).
+- **`--effort low` is accepted** (same answer with and without it): `send_effort` can stay on.
+- **A `thinking` block comes first**, with an empty text and a UUID as signature, then the `text` block.
+  Nothing to display; to look at in P2.4 (a history written by DeepSeek sent back to Claude).
+- **Stderr**: `[claude-code:unrecognized_model] {"model":"deepseek-v4-flash",...}` (a notice, exit 0).
+- **The figures are not a cost**: 16,305 input tokens for a one word prompt (system prompt and tools),
+  `total_cost_usd` 0.0816, `costBasis` `unknown`, `provider` `firstParty`, `contextWindow` 200000 (the
+  CLI's guess). The dollars are Claude's price list applied to DeepSeek's tokens.
+- **A wrong key (401) is retried**: the stream carries `system` / `api_retry` lines
+  (`attempt`, `max_retries` 10, `retry_delay_ms` 600, 1166, 2283, 4202, 9102, 17571, 37085..., 
+  `error_status` 401, `error` `authentication_failed`) and no `result` for minutes (more than 120 s
+  without an end). WxClaude now reads `api_retry` (`ApiRetry`) and, for a 401 or a 403, kills the CLI
+  at the first one and tells the user (measured with the real runner and a wrong key: stopped in
+  0.8 s, an error box "The server refused the credentials (error 401)..."). The other statuses are
+  retried by the CLI; WxClaude says each retry with its reason (`interface.md`, "Silent retries").
+- The names `deepseek-v4-flash` and `deepseek-v4-pro` are the ones the server gave; `deepseek-flash`
+  (typed in the provider by the user) was not tried.
+
+### DeepSeek with the Claude login, and switching (measured 2026-11-10, CLI 2.1.286)
+
+With the real configuration of the user (logged in to claude.ai, subscription) and the real runner of
+WxClaude; `haiku` low for Claude, `deepseek-v4-flash` low for DeepSeek; one session, a work folder
+made for the test, prompts of one sentence.
+
+- **No login and no subscription needed** for DeepSeek (first section above, empty configuration:
+  `apiKeySource` `none`). **With a login, the token of the provider wins**: the CLI answers with DeepSeek
+  and writes on stderr `⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth
+  source is set and takes precedence over your claude.ai login`. It is a notice (exit 0); WxClaude
+  does not take it for the cause of a failure (`progress.py`).
+- **Switching in one conversation works**: Claude (haiku), then DeepSeek (`--resume` of the same
+  session), then Claude again (`--resume`): the three answered, and the secret word given in the
+  first message was recalled by DeepSeek and by Claude afterwards. So one session file for all the
+  providers is right; the fall-back (a branch) is not needed for this pair.
+- **The cache**: Claude wrote 33,449 tokens in its cache when it came back (read: 0), so the cache
+  of the first Claude message was lost, as expected. DeepSeek reported tokens read from its own
+  cache (87,936 then 29,696 of 29,302 / 209 new input tokens): its caching is automatic.
+- Not tried: a history with a long thinking block of Claude sent to DeepSeek, a Plan-mode session.
+
+### DeepSeek, tools and permission modes (measured 2026-11-10, CLI 2.1.286, `deepseek-v4-flash` low)
+
+The real runner of WxClaude, stdio channel, an empty work folder holding `note.txt`.
+
+- **Tools work**: `Read` (no question, answer "alpha"), `Write` (a question, allowed: the file was
+  made), `Bash` (`echo hi` ran with no question, as a read-only command; a command that changes
+  something was not tried), `ExitPlanMode`. The `ASK` events are the usual ones; `suggested_rule` is
+  empty for `Write`.
+- **The scrub forces the permission mode** (`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, on by default for a
+  provider): stderr says `Permission mode forced to default — CLAUDE_CODE_SUBPROCESS_ENV_SCRUB is set
+  (allowed_non_write_users hardening). Declare allowedTools explicitly, or set
+  CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=0 to opt out`, `system/init` gives `permissionMode` `default`, and the
+  modes of the agent do not apply: `acceptEdits` asked before writing, `auto` and `dontAsk` asked, and
+  `plan` wrote the file after a question (no plan at all). Only `manual` is what it says.
+- **Without the scrub every mode is honoured**: `acceptEdits` and `auto` wrote with no question,
+  `dontAsk` refused `Write` and `Bash` (`denied`, reason `mode`) and said so, `plan` wrote the plan to
+  `~/.claude/plans/<name>.md`, asked `ExitPlanMode` (with the plan) and then, allowed, wrote the file.
+- `--allowedTools Read` does not lift the forced mode (`plan` and `acceptEdits` tried). Other values were
+  not tried.
+- The mode really used is in `system/init` (`SessionInit.permission_mode`), so a difference with the
+  mode asked can be detected.
+- Not tried yet: the hook channel, a structured question (`AskUserQuestion`), `WebSearch`, a `Bash`
+  command that changes something.
+- **The key is visible to `Bash` without the scrub** (measured: `echo len=${#ANTHROPIC_AUTH_TOKEN}` gave
+  `len=35`). **The sandbox does not help on native Windows**: the documentation says it runs on
+  macOS, Linux and WSL2 only; with `sandbox.enabled` and `sandbox.credentials.envVars` `deny` for the
+  variable, the CLI wrote `Sandbox disabled: ... the Windows sandbox is not active on this session
+  (feature gate off). Commands will run WITHOUT sandboxing` and the length was still 35. (With the
+  scrub the same command was refused by the permission rule: "Contains expansion"; the scrub itself
+  was measured earlier.)
+
+### DeepSeek through the relay of WxClaude (measured 2026-11-10, CLI 2.1.286)
+
+The real runner, `deepseek-v4-flash` low, the relay in the same process
+(`core/security/key_relay.py`), `ANTHROPIC_BASE_URL` the relay and `ANTHROPIC_AUTH_TOKEN` its token, no
+scrub.
+
+- **Everything works through the relay**: a plain answer (2 s), `Read`, `Write` (with its question), and the
+  stream of events. Nothing was cut or held back.
+- **The permission modes are applied**: `system/init` gave `acceptEdits` and `plan`; `acceptEdits` wrote
+  with no question, `plan` wrote the plan to `~/.claude/plans`, asked `ExitPlanMode` and, refused, did not
+  write the file. Without the relay and with the scrub these modes were forced to manual.
+- **The key is not in the CLI**: `Bash` printed `len=43` for `ANTHROPIC_AUTH_TOKEN` (the token); the key
+  has 35 characters.
+- **The CLI closes its connections to the relay with a reset** (`WinError 10054`) when it ends a
+  message: it is not an error and the server does not report it.
+
+### Folders never trusted and credentials (documentation read on 2026-11-09, not measured)
+
+From the pages Permissions ("What runs before you trust a folder"), Settings reference (`env`,
+`apiKeyHelper`), Environment variables and Sandboxing of the official documentation:
+
+- **`claude -p` never shows the trust dialog, and uses what the repository supplies**: the hooks of
+  its settings files, its `env` block, helper commands such as `apiKeyHelper` and `awsAuthRefresh`,
+  and the servers of its `.mcp.json` (connected without asking). The `allow` rules and
+  `additionalDirectories` of `.claude/settings.json` are not used (stderr: `this workspace has not
+  been trusted`). So a repository cloned from elsewhere can run commands through a hook.
+- **What the documentation proposes before `claude -p` in a repository one did not write**:
+  `--setting-sources user` (neither the settings files of the project nor its `.mcp.json` are
+  read); `--bare` (no hooks, skills, commands, subagents, plugins or `.mcp.json` servers of the
+  project; its `env` and `awsAuthRefresh` still apply and `apiKeyHelper` is read only from
+  `--settings`); `--settings '{"disableAllHooks": true}'` (also turns off the hook of the `hook`
+  permission channel of WxClaude); an entry in `disabledMcpjsonServers`.
+- **`ANTHROPIC_BASE_URL` and `ANTHROPIC_AUTH_TOKEN` are not in the list of the variables that the
+  project and local files cannot set** (the list is about paths, telemetry, sign-in and
+  accessibility variables). This agrees with the measurement above.
+- **`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`** (environment of the process) removes credentials from the
+  environments of the subprocesses of the CLI: Bash commands, hooks, stdio MCP servers. A
+  credential is recognized by the name of the variable or the shape of its value (`ANTHROPIC_API_KEY`
+  is listed as removed; `ANTHROPIC_AUTH_TOKEN` is not named: to measure). `GITHUB_TOKEN`, `GH_TOKEN`
+  and the proxy variables stay. The CLI keeps the credentials for its own calls. The documentation
+  calls it one layer, not the only control. `CLAUDE_CODE_MCP_ALLOWLIST_ENV=1` does the same for
+  stdio MCP servers.
+- **`apiKeyHelper`** (a shell command, `cmd /c` on Windows, accepted from `--settings`): its output
+  is sent as both `X-Api-Key` and `Authorization: Bearer`, cached five minutes
+  (`CLAUDE_CODE_API_KEY_HELPER_TTL_MS`) and run again after a 401 or 403. The key then is not in the
+  environment of the CLI. The documentation points to it for API credentials, and says the values
+  of `env` are plain text in the settings file.
+- **The sandbox of the Bash tool does not exist on native Windows** (macOS, Linux and WSL2 only), so
+  `sandbox.credentials` (hide variables and files from commands) cannot be used there.
+- **Data sent to Anthropic**: `DISABLE_TELEMETRY`, `DISABLE_ERROR_REPORTING` and
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` turn off telemetry, error reports, updates and the
+  feature flags. Whether the CLI sends any of it when `ANTHROPIC_BASE_URL` points elsewhere is not
+  known.
+
+### Measured: restricted run, scrub and key helper (2026-11-09, CLI 2.1.286, fake server)
+
+Project used: a hook (writes a file), an `env` with another URL, a `.mcp.json` server (writes a
+file when started), a `CLAUDE.md`, a command and an agent. The folder was never trusted.
+
+- **Without restriction in `claude -p`**: the hook ran, the command of the `.mcp.json` server was
+  started (its status is `failed`, it is not an MCP server, but the command ran), the request went
+  to the URL of the project's `env` with the token of the process, and `CLAUDE.md`, the command and
+  the agent were loaded.
+- **`--setting-sources user`**: none of it. No hook, no server started, the URL of the process is
+  used, and `CLAUDE.md`, the commands and the agents of the project are not loaded either (the
+  project's instructions are lost in a restricted run).
+- **`deny` rules given by `--settings`** together with `--setting-sources user` are applied: the
+  `Read` of a denied file answered `File is in a directory that is denied by your permission
+  settings`; without the rule the file was read.
+- **`CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`**: the CLI still used the keys (both headers), while a
+  `Bash` command and a `PowerShell` command saw `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_API_KEY` and a
+  `DEEPSEEK_API_KEY` of the shape `sk-...` as empty. `ANTHROPIC_BASE_URL` stays visible. Without the
+  scrub both tools saw all of them. The `PowerShell` tool only existed with
+  `CLAUDE_CODE_USE_POWERSHELL_TOOL=1` in this setup.
+- **With both `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` set**, both headers are sent
+  (`x-api-key` and `Authorization: Bearer`) and `apiKeySource` is `ANTHROPIC_API_KEY`.
+- **`apiKeyHelper` given by `--settings`** (`echo ...` on Windows): works; `apiKeySource` is
+  `apiKeyHelper`; the key is sent in both headers; the tools do not see it because it is in no
+  environment. Not measured: a slow helper, the refresh.
+### Measured: two `--settings`, and the restricted launch of WxClaude (2026-11-09, CLI 2.1.286, fake server)
+
+- **Two `--settings` are accepted but not merged**: only the last one counts. With a first JSON holding
+  an `env` and a hook and a second holding another `env` and another hook, only the second ones were
+  applied (also with `--setting-sources user`). WxClaude therefore writes one `--settings`, merged from
+  the permission channel and, for a folder not trusted, the rules of the project
+  (`core/claude/inline_settings.py`).
+- **A project with a hook, an `env` pointing at another URL and a `.mcp.json`, launched through
+  `ClaudeRunner`**: not restricted, the hook ran and the request, with the token of the process, went to
+  the URL of the project. Restricted (`--setting-sources user`, with the stdio channel and with the
+  hook channel), no hook ran and the request went to the URL of the user. (The command of the
+  `.mcp.json` did not write its file in this run, restricted or not; the earlier measure above did.)
+
+### Measured: the variables of a provider in the inline `--settings` (2026-11-10, CLI 2.1.286, `haiku` low)
+
+The variables `API_TIMEOUT_MS` and `CLAUDE_CODE_MAX_CONTEXT_TOKENS` of a provider (`providers.md`, field
+`env`) are given in the `env` of the inline `--settings`, like the address and the aliases.
+
+- **They reach the process**: `--settings '{"env":{"API_TIMEOUT_MS":"123456",...}}'` and a `Bash` call
+  `echo $API_TIMEOUT_MS` print `123456`, with and without `--setting-sources user` (the restricted
+  launch). So they apply in a folder that is not trusted.
+- **`API_TIMEOUT_MS` is used for the calls to the server**: with `ANTHROPIC_BASE_URL` pointing at a local
+  socket that accepts and never answers, `API_TIMEOUT_MS` set to 3000 gave three `api_retry` lines (error
+  `unknown`, no status) within 25 seconds; without it, none in 25 seconds (the default wait is much longer).
+- **Not measured**: that `CLAUDE_CODE_MAX_CONTEXT_TOKENS` changes what the CLI sends or when it compacts
+  (only that the variable reaches the process), and the effect on a real local model.

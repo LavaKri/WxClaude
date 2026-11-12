@@ -6,6 +6,7 @@ from pathlib import Path
 import wx
 
 from wxclaude.core.config.agents import Agent
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.core.conversation.messages import Message
 from wxclaude.core.speech.announcements import Announce
 from wxclaude.ui import desktop
@@ -24,7 +25,9 @@ class WxConversationScreen:
         view: ConversationView,
         prompt: wx.TextCtrl,
         feedback: Feedback,
+        providers: ProviderStore | None = None,
     ) -> None:
+        self._providers = providers
         self._frame = frame
         self._view = view
         self._prompt = prompt
@@ -35,7 +38,7 @@ class WxConversationScreen:
             return dialog.name if self._feedback.modal(dialog) == wx.ID_OK else None
 
     def ask_agent(self, agent: Agent) -> Agent | None:
-        with AgentDialog(self._frame, agent) as dialog:
+        with AgentDialog(self._frame, agent, self._providers) as dialog:
             if self._feedback.modal(dialog) != wx.ID_OK:
                 return None
             chosen: Agent = dialog.agent
@@ -67,6 +70,9 @@ class WxConversationScreen:
 
     def say(self, announce: Announce, **values: object) -> None:
         self._feedback.say(announce, **values)
+
+    def set_status(self, text: str) -> None:
+        self._feedback.set_status(text)
 
     def show_error(self, message: str) -> None:
         self._feedback.show_error(message)

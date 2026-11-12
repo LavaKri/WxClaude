@@ -3,7 +3,10 @@ import json
 import pytest
 
 from wxclaude.core.claude.events import (
+    ApiRetry,
     AssistantText,
+    Compacted,
+    McpServer,
     PermissionDenied,
     RateLimit,
     RateWindow,
@@ -29,6 +32,35 @@ def test_init() -> None:
     assert _parse(entry) == [SessionInit("s", "m", "plan")]
 
 
+def test_init_gives_the_mcp_servers_and_their_state() -> None:
+    entry = {
+        "type": "system",
+        "subtype": "init",
+        "session_id": "s",
+        "model": "m",
+        "permissionMode": "default",
+        "mcp_servers": [
+            {"name": "ollama", "status": "connected", "source": "user"},
+            {"name": "slow", "status": "pending", "source": "local"},
+            {"name": "crash", "status": "failed"},
+            {"status": "failed"},  # no name: left out
+            "nonsense",
+        ],
+    }
+    assert _parse(entry) == [
+        SessionInit(
+            "s",
+            "m",
+            "default",
+            (
+                McpServer("ollama", "connected"),
+                McpServer("slow", "pending"),
+                McpServer("crash", "failed"),
+            ),
+        )
+    ]
+
+
 def test_system_lines() -> None:
     assert _parse({"type": "system", "subtype": "thinking_tokens", "estimated_tokens": 7}) == [
         Thinking(7)
@@ -41,6 +73,39 @@ def test_system_lines() -> None:
     }
     assert _parse(denied) == [PermissionDenied("Bash", "no")]
     assert _parse({"type": "system", "subtype": "something else"}) == []
+
+
+def test_a_retry_after_an_error_of_the_server() -> None:
+    retry = {
+        "type": "system",
+        "subtype": "api_retry",
+        "attempt": 2,
+        "max_retries": 10,
+        "retry_delay_ms": 1166,
+        "error_status": 401,
+        "error": "authentication_failed",
+    }
+    (event,) = _parse(retry)
+    assert event == ApiRetry(2, 10, 401, "authentication_failed")
+    assert event.refused
+    assert not ApiRetry(1, 10, 529, "overloaded").refused
+    assert not ApiRetry(1, 10, None, "").refused
+
+
+def test_the_compaction_of_the_conversation() -> None:
+    # Seen with the real CLI (``/compact``): the metadata is in snake case in the stream.
+    boundary = {
+        "type": "system",
+        "subtype": "compact_boundary",
+        "compact_metadata": {
+            "trigger": "manual",
+            "pre_tokens": 22239,
+            "post_tokens": 1784,
+            "duration_ms": 11007,
+        },
+    }
+    assert _parse(boundary) == [Compacted("manual", 22239, 1784)]
+    assert _parse({"type": "system", "subtype": "compact_boundary"}) == [Compacted("", None, None)]
 
 
 def test_assistant_blocks() -> None:

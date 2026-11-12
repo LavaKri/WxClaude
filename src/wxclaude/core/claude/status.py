@@ -62,6 +62,17 @@ def _parse_auth(output: str) -> tuple[bool | None, str, str]:
     )
 
 
+def read_login(command: Sequence[str]) -> bool | None:
+    """Is Claude Code logged in? Asked with ``auth status`` of the program ``command`` (JSON,
+    ``loggedIn``; an API key in the environment counts as logged in, measured with CLI 2.1.286).
+    None when it could not be told (the program did not answer, or not with JSON)."""
+    try:
+        output = _run([*command, "auth", "status"]).stdout
+    except OSError, subprocess.TimeoutExpired:
+        return None
+    return _parse_auth(output)[0]
+
+
 def read_status(path: str = "", command: Sequence[str] | None = None) -> ClaudeStatus:
     """Ask Claude Code its state. ``path`` is the file chosen by hand ('' looks in the PATH);
     ``command`` replaces the program (tests)."""

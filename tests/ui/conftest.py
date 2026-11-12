@@ -1,3 +1,5 @@
+import threading
+import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import TypeVar
@@ -7,6 +9,7 @@ import wx
 from main_window_support import _runner, _settings
 
 from wxclaude.core.speech.announcements import NullSoundPlayer
+from wxclaude.presenters.security_presenter import SecurityPresenter
 from wxclaude.ui.main_window import MainWindow
 
 _Window = TypeVar("_Window", bound=wx.Window)
@@ -18,10 +21,43 @@ def wx_app() -> wx.App:
     return wx.App()
 
 
+#: The names of the threads of ``ui/worker.run_in_background``.
+BACKGROUND_THREADS = {"claude-login-check", "provider-check", "provider-balances"}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def finish_background_work(wx_app: wx.App) -> Iterator[None]:
+    """At the end of the session, wait for the work still running in the background.
+
+    A window made by the last test may have started one (the check of the login of Claude): its
+    thread hands the result over with ``wx.CallAfter``, which fails once the application is gone.
+    The fixture needs ``wx_app`` so that it is torn down before it. The windows are destroyed by
+    then: nothing is delivered to them. There is no wait after each test, which would make every
+    window wait for its thread.
+    """
+    yield
+    deadline = time.monotonic() + 10
+    for thread in threading.enumerate():
+        if thread.name in BACKGROUND_THREADS:
+            thread.join(max(deadline - time.monotonic(), 0))
+    wx.SafeYield()
+
+
 @pytest.fixture(autouse=True)
 def silent_sounds(monkeypatch: pytest.MonkeyPatch) -> None:
     """The announcement sounds are never played by the tests."""
     monkeypatch.setattr("wxclaude.ui.feedback.create_sound_player", NullSoundPlayer)
+
+
+@pytest.fixture(autouse=True)
+def folders_are_trusted(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No offer to approve a folder opens a modal dialog during a test, and a folder is not
+    restricted, as before the trust of folders existed. The tests of that feature opt out with
+    the marker ``real_security``."""
+    if request.node.get_closest_marker("real_security"):
+        return
+    monkeypatch.setattr(SecurityPresenter, "greet", lambda self: None)
+    monkeypatch.setattr(SecurityPresenter, "restricted", property(lambda self: False))
 
 
 @pytest.fixture

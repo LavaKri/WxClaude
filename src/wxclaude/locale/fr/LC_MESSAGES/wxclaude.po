@@ -738,26 +738,50 @@ msgstr "Actualisation"
 msgid "WxClaude is already running."
 msgstr "WxClaude est déjà en cours d'exécution."
 
-msgid "Claude is thinking."
-msgstr "Claude réfléchit."
+msgid "Remote enabled"
+msgstr "Remote activé"
 
-msgid "Claude uses the tool {tool}."
-msgstr "Claude utilise l'outil {tool}."
+msgid "Open the &log folder"
+msgstr "Ouvrir le dossier du &journal"
 
-msgid "Claude is answering."
-msgstr "Claude répond."
+msgid "Co&py the details"
+msgstr "Co&pier les détails"
 
-msgid "Claude has answered."
-msgstr "Claude a répondu."
+msgid "Details copied."
+msgstr "Détails copiés."
 
-msgid "Interrupting Claude."
-msgstr "Interruption de Claude."
+msgid "{message}\n\nWxClaude {version}"
+msgstr "{message}\n\nWxClaude {version}"
 
-msgid "Claude was interrupted."
-msgstr "Claude a été interrompu."
+msgid "The remote control cannot start.\n{error}"
+msgstr "Le contrôle à distance ne peut pas démarrer.\n{error}"
 
-msgid "Claude could not answer: {details}"
-msgstr "Claude n'a pas pu répondre : {details}"
+msgid "{name} is thinking."
+msgstr "{name} réfléchit."
+
+msgid "{name} uses the tool {tool}."
+msgstr "{name} utilise l'outil {tool}."
+
+msgid "{name} uses the tool {tool} on {target}."
+msgstr "{name} utilise l'outil {tool} sur {target}."
+
+msgid "{name} uses the tool {tool} to run {target}."
+msgstr "{name} utilise l'outil {tool} pour lancer {target}."
+
+msgid "{name} is answering."
+msgstr "{name} répond."
+
+msgid "{name} has answered."
+msgstr "{name} a répondu."
+
+msgid "Interrupting {name}."
+msgstr "Interruption de {name}."
+
+msgid "{name} was interrupted."
+msgstr "Réponse de {name} interrompue."
+
+msgid "{name} could not answer: {details}"
+msgstr "{name} n'a pas pu répondre : {details}"
 
 msgid "Permission denied for the tool {tool}."
 msgstr "Permission refusée pour l'outil {tool}."
@@ -765,8 +789,8 @@ msgstr "Permission refusée pour l'outil {tool}."
 msgid "Claude cannot be started.\n{error}"
 msgstr "Claude ne peut pas être lancé.\n{error}"
 
-msgid "Claude could not answer.\n{details}"
-msgstr "Claude n'a pas pu répondre.\n{details}"
+msgid "{name} could not answer.\n{details}"
+msgstr "{name} n'a pas pu répondre.\n{details}"
 
 msgid "A second launch will not be able to bring this window to the front.\n{error}"
 msgstr "Un second lancement ne pourra pas ramener cette fenêtre devant.\n{error}"
@@ -858,8 +882,8 @@ msgstr "{name} : {value}"
 msgid "Re&move"
 msgstr "Re&tirer"
 
-msgid "Claude asks permission for the tool {tool}."
-msgstr "Claude demande la permission d'utiliser l'outil {tool}."
+msgid "{name} asks permission for the tool {tool}."
+msgstr "{name} demande la permission d'utiliser l'outil {tool}."
 
 msgid "Permission granted for the tool {tool}."
 msgstr "Permission accordée pour l'outil {tool}."
@@ -867,8 +891,8 @@ msgstr "Permission accordée pour l'outil {tool}."
 msgid "Permission refused for the tool {tool}."
 msgstr "Permission refusée pour l'outil {tool}."
 
-msgid "The question about the tool {tool} expired: Claude denied the tool."
-msgstr "La question sur l'outil {tool} a expiré : Claude a refusé l'outil."
+msgid "The question about the tool {tool} expired: {name} denied the tool."
+msgstr "La question sur l'outil {tool} a expiré : {name} a refusé l'outil."
 
 msgid "Claude could not be answered.\n{error}"
 msgstr "Impossible de répondre à Claude.\n{error}"
@@ -1122,14 +1146,48 @@ msgstr "bloquée par {tasks}"
 
 # Usage of Claude
 
-msgid "Claude &usage…"
-msgstr "&Utilisation de Claude…"
+msgid ""
+"The server refused the credentials (error {status}). Check the key of the provider in the "
+"Preferences, page Providers, or sign in to Claude again."
+msgstr ""
+"Le serveur a refusé les identifiants (erreur {status}). Vérifiez la clé du fournisseur dans les "
+"Préférences, page Fournisseurs, ou connectez-vous de nouveau à Claude."
 
-msgid "Claude usage"
-msgstr "Utilisation de Claude"
+msgid "Usage &gauge…"
+msgstr "&Jauge d'utilisation…"
+
+msgid "Usage gauge"
+msgstr "Jauge d'utilisation"
 
 msgid "&Usage"
 msgstr "&Utilisation"
+
+msgid "&Statistics…"
+msgstr "&Statistiques…"
+
+msgid "Statistics"
+msgstr "Statistiques"
+
+msgid "&Statistics"
+msgstr "&Statistiques"
+
+msgid "{name}: balance not available. {reason}"
+msgstr "{name} : solde indisponible. {reason}"
+
+msgid "The server did not answer with a balance."
+msgstr "Le serveur n'a pas répondu par un solde."
+
+msgid "{name}: balance {total} {currency}"
+msgstr "{name} : solde {total} {currency}"
+
+msgid "topped up {amount}"
+msgstr "rechargé {amount}"
+
+msgid "offered {amount}"
+msgstr "offert {amount}"
+
+msgid "{name}: the balance is too low to be answered."
+msgstr "{name} : le solde est trop bas pour obtenir une réponse."
 
 msgid "5-hour window"
 msgstr "fenêtre de 5 heures"
@@ -1221,11 +1279,11 @@ msgstr "Votre propre réponse, si aucun choix ne convient"
 msgid "Answer every question first."
 msgstr "Répondez d'abord à toutes les questions."
 
-msgid "Claude has questions for you."
-msgstr "Claude a des questions pour vous."
+msgid "{name} has questions for you."
+msgstr "{name} a des questions pour vous."
 
-msgid "Your answers were sent to Claude."
-msgstr "Vos réponses ont été envoyées à Claude."
+msgid "Your answers were sent to {name}."
+msgstr "Vos réponses ont été envoyées à {name}."
 
 msgid "Cu&t"
 msgstr "Co&uper"
@@ -1248,8 +1306,8 @@ msgstr "Claude propose ce plan. Autoriser l'approuve ; Refuser demande des chang
 msgid "Claude proposes a plan"
 msgstr "Claude propose un plan"
 
-msgid "Claude proposes a plan."
-msgstr "Claude propose un plan."
+msgid "{name} proposes a plan."
+msgstr "{name} propose un plan."
 
 msgid "Link: {label}"
 msgstr "Lien : {label}"
@@ -1262,6 +1320,22 @@ msgstr "Pas de lien précédent."
 
 msgid "Claude Code not found"
 msgstr "Claude Code introuvable"
+
+msgid "Not logged in to Claude Code"
+msgstr "Claude Code n'est pas connecté"
+
+msgid ""
+"Claude Code is not logged in: no message can be answered until you sign in.\n"
+"\n"
+"You can also sign in later, with Tools > Sign in to Claude…"
+msgstr ""
+"Claude Code n'est pas connecté : aucun message ne recevra de réponse tant que vous ne vous "
+"êtes pas connecté.\n"
+"\n"
+"Vous pouvez aussi vous connecter plus tard, avec Outils > Se connecter à Claude…"
+
+msgid "&Sign in…"
+msgstr "&Se connecter…"
 
 msgid ""
 "Claude Code was not found on this computer.\n"
@@ -1357,14 +1431,14 @@ msgstr ""
 "La connexion a échoué.\n"
 "{details}"
 
-msgid "Claude asked to leave the Plan mode: refused, as set in the Preferences."
-msgstr "Claude a demandé à quitter le mode Plan : refusé, selon les Préférences."
+msgid "{name} asked to leave the Plan mode: refused, as set in the Preferences."
+msgstr "{name} a demandé à quitter le mode Plan : refusé, selon les Préférences."
 
 msgid "&Maximize the window at startup"
 msgstr "&Maximiser la fenêtre au démarrage"
 
-msgid "Claude's questions were refused in the Plan mode, as set in the Preferences."
-msgstr "Les questions de Claude ont été refusées en mode Plan, selon les Préférences."
+msgid "The questions of {name} were refused in the Plan mode, as set in the Preferences."
+msgstr "Les questions de {name} ont été refusées en mode Plan, selon les Préférences."
 
 msgid "&Refuse the requests of Claude to leave the Plan mode"
 msgstr "&Refuser les demandes de Claude pour sortir du mode plan"
@@ -1377,3 +1451,586 @@ msgstr ""
 "{label} : Force Claude à rester dans le mode de planification, jusqu'à ce que l'utilisateur "
 "change la permission de l'agent. Son plan et ses questions structurées sont refusés : il doit "
 "présenter le plan et poser ses questions dans sa réponse."
+
+msgid "unchanged"
+msgstr "inchangé"
+
+msgid "changed"
+msgstr "modifié"
+
+msgid "added"
+msgstr "ajouté"
+
+msgid "removed"
+msgstr "supprimé"
+
+msgid "absent"
+msgstr "absent"
+
+msgid "{path}, {state}"
+msgstr "{path}, {state}"
+
+msgid "{line}, not watched"
+msgstr "{line}, non surveillé"
+
+msgid "{paths} changed since you approved it and was not modified."
+msgstr "Modifié depuis votre approbation et laissé tel quel : {paths}."
+
+msgid "A provider needs a name."
+msgstr "Un fournisseur a besoin d'un nom."
+
+msgid "The name of a provider has at most {limit} characters."
+msgstr "Le nom d'un fournisseur a au plus {limit} caractères."
+
+msgid "A model name has at most {limit} characters."
+msgstr "Le nom d'un modèle a au plus {limit} caractères."
+
+msgid "The address of a provider starts with http:// or https://."
+msgstr "L'adresse d'un fournisseur commence par http:// ou https://."
+
+msgid "A provider needs at least one model."
+msgstr "Un fournisseur a besoin d'au moins un modèle."
+
+msgid "The provider {name} already exists."
+msgstr "Le fournisseur {name} existe déjà."
+
+msgid "The provider {name} does not exist."
+msgstr "Le fournisseur {name} n'existe pas."
+
+msgid "Claude cannot be changed."
+msgstr "Claude ne peut pas être modifié."
+
+msgid "Claude cannot be deleted."
+msgstr "Claude ne peut pas être supprimé."
+
+msgid "The key is empty."
+msgstr "La clé est vide."
+
+msgid "No key is saved for {name}."
+msgstr "Aucune clé n'est enregistrée pour {name}."
+
+msgid ""
+"The key of {name} cannot be read. It was saved by another Windows account or on another "
+"computer: enter it again."
+msgstr ""
+"La clé de {name} ne peut pas être lue. Elle a été enregistrée par un autre compte Windows ou "
+"sur un autre ordinateur : saisissez-la de nouveau."
+
+msgid "Folder not trusted: restricted mode."
+msgstr "Dossier non approuvé : mode restreint."
+
+msgid "Folder approved: Claude uses its settings."
+msgstr "Dossier approuvé : Claude utilise ses réglages."
+
+msgid "A watched file changed: {files}."
+msgstr "Un fichier surveillé a changé : {files}."
+
+msgid "The watched files cannot be checked.\n{error}"
+msgstr "Les fichiers surveillés ne peuvent pas être vérifiés.\n{error}"
+
+msgid "The folder could not be approved.\n{error}"
+msgstr "Le dossier n'a pas pu être approuvé.\n{error}"
+
+msgid "The changes could not be accepted.\n{error}"
+msgstr "Les changements n'ont pas pu être acceptés.\n{error}"
+
+msgid "The state of the folder could not be saved.\n{error}"
+msgstr "L'état du dossier n'a pas pu être enregistré.\n{error}"
+
+msgid "A watched file changed"
+msgstr "Un fichier surveillé a changé"
+
+msgid "Changed &files"
+msgstr "Fichiers &modifiés"
+
+msgid "&Differences"
+msgstr "&Différences"
+
+msgid "No details are available for this file."
+msgstr "Aucun détail n'est disponible pour ce fichier."
+
+msgid "You have worked in {folder} before, and WxClaude has not checked it yet."
+msgstr "Vous avez déjà travaillé dans {folder}, et WxClaude ne l'a pas encore vérifié."
+
+msgid "{folder} is a folder WxClaude has not seen before."
+msgstr "{folder} est un dossier que WxClaude n'a jamais vu."
+
+msgid "It holds these files that can change what Claude does:\n{files}"
+msgstr "Il contient ces fichiers qui peuvent changer ce que fait Claude :\n{files}"
+
+msgid "It holds no file that can change what Claude does."
+msgstr "Il ne contient aucun fichier qui puisse changer ce que fait Claude."
+
+msgid ""
+"{intro}\n\n{found}\n\nUntil you approve it, Claude runs in restricted mode: the hooks, the "
+"settings and the servers of the project are ignored, and Claude cannot act without your "
+"permission. You can still ask Claude to read the project, then approve it later in Tools > "
+"Workspace settings, tab Security."
+msgstr ""
+"{intro}\n\n{found}\n\nTant que vous ne l'approuvez pas, Claude travaille en mode restreint : "
+"les hooks, les réglages et les serveurs du projet sont ignorés, et Claude ne peut rien faire "
+"sans votre permission. Vous pouvez quand même demander à Claude de lire le projet, puis "
+"l'approuver plus tard dans Outils > Paramètres de l'espace de travail, onglet Sécurité."
+
+msgid "Approve this folder?"
+msgstr "Approuver ce dossier ?"
+
+msgid "&Approve the folder"
+msgstr "&Approuver le dossier"
+
+msgid "&Keep restricted"
+msgstr "&Garder restreint"
+
+msgid "&Accept the changes"
+msgstr "&Accepter les changements"
+
+msgid "&Restrict the folder"
+msgstr "&Restreindre le dossier"
+
+msgid "{name}, built in"
+msgstr "{name}, intégré"
+
+msgid "{name}, {address}, {key}"
+msgstr "{name}, {address}, {key}"
+
+msgid "no key needed"
+msgstr "pas de clé nécessaire"
+
+msgid "key saved"
+msgstr "clé enregistrée"
+
+msgid "no key"
+msgstr "pas de clé"
+
+msgid "Claude uses the sign-in of Claude Code; it has no key here."
+msgstr "Claude utilise la connexion de Claude Code ; il n'a pas de clé ici."
+
+msgid "{name}: {key}."
+msgstr "{name} : {key}."
+
+msgid "sensitive"
+msgstr "sensible"
+
+msgid "ignored in project files"
+msgstr "ignorée dans les fichiers du projet"
+
+msgid "not set"
+msgstr "non définie"
+
+msgid "enabled"
+msgstr "activée"
+
+msgid "value set"
+msgstr "valeur définie"
+
+msgid "set to {value}"
+msgstr "définie à {value}"
+
+msgid "This variable is not described."
+msgstr "Cette variable n'est pas décrite."
+
+msgid "A project file does not apply this variable."
+msgstr "Un fichier du projet n'applique pas cette variable."
+
+msgid "Enable"
+msgstr "Activer"
+
+msgid "Disable"
+msgstr "Désactiver"
+
+msgid "{name} is given by the provider at each launch."
+msgstr "{name} est donnée par le fournisseur à chaque lancement."
+
+msgid "&Variables"
+msgstr "&Variables"
+
+msgid "&Set the value..."
+msgstr "Défi&nir la valeur..."
+
+msgid "E&xplanation"
+msgstr "E&xplication"
+
+msgid "Value of {name}:"
+msgstr "Valeur de {name} :"
+
+msgid "Environment variable"
+msgstr "Variable d'environnement"
+
+msgid "Environment variables"
+msgstr "Variables d'environnement"
+
+msgid ""
+"This file is versioned: the other developers of the project get this change. Change it anyway?"
+msgstr ""
+"Ce fichier est versionné : les autres développeurs du projet recevront ce changement. Le "
+"modifier quand même ?"
+
+msgid "&Trusted folder"
+msgstr "Dossier appr&ouvé"
+
+msgid "&Limit of turns per message (0: no limit)"
+msgstr "Limite de &tours par message (0 : sans limite)"
+
+msgid "&Watched files"
+msgstr "Fichiers &surveillés"
+
+msgid "&Accept the change"
+msgstr "&Accepter le changement"
+
+msgid "Add a &file..."
+msgstr "Ajouter un &fichier..."
+
+msgid "Re&move from the list"
+msgstr "Reti&rer de la liste"
+
+msgid "Trusted folder"
+msgstr "Dossier approuvé"
+
+msgid "Choose a file to watch"
+msgstr "Choisir un fichier à surveiller"
+
+msgid "Security"
+msgstr "Sécurité"
+
+msgid "The limit of turns was reached. Send a new message to continue."
+msgstr "La limite de tours a été atteinte. Envoyez un nouveau message pour continuer."
+
+msgid "Only a file inside the workspace can be watched."
+msgstr "Seul un fichier du workspace peut être surveillé."
+
+msgid ""
+"Approve this folder? Claude will use its hooks, its settings and its servers, which can run "
+"commands on your computer. Approve only a folder you trust."
+msgstr ""
+"Approuver ce dossier ? Claude utilisera ses hooks, ses réglages et ses serveurs, qui peuvent "
+"lancer des commandes sur votre ordinateur. N'approuvez qu'un dossier de confiance."
+
+msgid ""
+"Approved folder: Claude uses the hooks, the settings and the servers of the project, as Claude "
+"Code does in a terminal."
+msgstr ""
+"Dossier approuvé : Claude utilise les hooks, les réglages et les serveurs du projet, comme "
+"Claude Code dans un terminal."
+
+msgid ""
+"Restricted folder: all of that is ignored, the CLAUDE.md, the commands and the agents of the "
+"project are not loaded, and Claude cannot act without your permission. It can still read the "
+"project, so you can have it examined first."
+msgstr ""
+"Dossier restreint : tout cela est ignoré, le CLAUDE.md, les commandes et les agents du projet "
+"ne sont pas chargés, et Claude ne peut rien faire sans votre permission. Il peut quand même "
+"lire le projet : vous pouvez donc le faire examiner d'abord."
+
+msgid ""
+"Approve only a folder you trust: a hook runs a command on your computer, and a file of the "
+"project can send what you type to another server."
+msgstr ""
+"N'approuvez qu'un dossier de confiance : un hook lance une commande sur votre ordinateur, et "
+"un fichier du projet peut envoyer ce que vous tapez vers un autre serveur."
+
+msgid ""
+"The watched files are compared with what you approved each time the folder is opened and this "
+"dialog is; a change is shown to you before anything else."
+msgstr ""
+"Les fichiers surveillés sont comparés à ce que vous avez approuvé à chaque ouverture du "
+"dossier et de cette boîte de dialogue ; un changement vous est montré avant toute autre chose."
+
+msgid "Pro&vider"
+msgstr "&Fournisseur"
+
+msgid "Provider"
+msgstr "Fournisseur"
+
+msgid "&Address"
+msgstr "&Adresse"
+
+msgid "&Key"
+msgstr "C&lé"
+
+msgid "Va&riable"
+msgstr "Va&riable"
+
+msgid "Val&ue"
+msgstr "Vale&ur"
+
+msgid "Value of {name}"
+msgstr "Valeur de {name}"
+
+msgid "Small model"
+msgstr "Petit modèle"
+
+msgid "Medium model"
+msgstr "Modèle moyen"
+
+msgid "Large model"
+msgstr "Grand modèle"
+
+msgid "Largest model"
+msgstr "Très grand modèle"
+
+msgid "(as the weakest model given)"
+msgstr "(comme le modèle le plus faible indiqué)"
+
+msgid "(not set)"
+msgstr "(non définie)"
+
+msgid ""
+"The name of the small model, sent to the server as it is. It answers to the name haiku. Empty: "
+"the weakest model given."
+msgstr ""
+"Le nom du petit modèle, envoyé tel quel au serveur. Il répond au nom haiku. Vide : le modèle le "
+"plus faible indiqué."
+
+msgid ""
+"The name of the medium model, sent to the server as it is. It answers to the name sonnet. Empty: "
+"the weakest model given."
+msgstr ""
+"Le nom du modèle moyen, envoyé tel quel au serveur. Il répond au nom sonnet. Vide : le modèle "
+"le plus faible indiqué."
+
+msgid ""
+"The name of the large model, sent to the server as it is. It answers to the name opus. Empty: "
+"the weakest model given."
+msgstr ""
+"Le nom du grand modèle, envoyé tel quel au serveur. Il répond au nom opus. Vide : le modèle le "
+"plus faible indiqué."
+
+msgid ""
+"The name of the largest model, sent to the server as it is. It has no alias. Empty: the weakest "
+"model given."
+msgstr ""
+"Le nom du très grand modèle, envoyé tel quel au serveur. Il n'a pas d'alias. Vide : le modèle "
+"le plus faible indiqué."
+
+msgid "{text} Empty: not set."
+msgstr "{text} Vide : non définie."
+
+msgid "The variable {name} cannot be set by a provider."
+msgstr "La variable {name} ne peut pas être réglée par un fournisseur."
+
+msgid "The value of {name} is a whole number above zero."
+msgstr "La valeur de {name} est un nombre entier supérieur à zéro."
+
+msgid "Send the &effort"
+msgstr "Envoyer l'e&ffort"
+
+msgid "Saved by WxClaude"
+msgstr "Enregistrée par WxClaude"
+
+msgid "No key (a local server)"
+msgstr "Aucune clé (serveur local)"
+
+msgid "Key of {name}"
+msgstr "Clé de {name}"
+
+msgid "&Show the key"
+msgstr "&Afficher la clé"
+
+msgid "&Providers"
+msgstr "&Fournisseurs"
+
+msgid "&Add..."
+msgstr "&Ajouter..."
+
+msgid "&Edit..."
+msgstr "&Modifier..."
+
+msgid "&Delete..."
+msgstr "&Supprimer..."
+
+msgid "Add a ke&y"
+msgstr "A&jouter une clé"
+
+msgid "Remove the ke&y"
+msgstr "Ret&irer la clé"
+
+msgid "API key &transmission"
+msgstr "&Transmission de clé API"
+
+msgid "Masked"
+msgstr "Masquée"
+
+msgid "Shared"
+msgstr "Partagée"
+
+msgid "Relayed"
+msgstr "Relayée"
+
+msgid ""
+"The application sends the key to Claude Code, but Claude Code hides it from its models and "
+"tools.\n"
+"In return, Claude Code forces the permission mode to manual.\n"
+"The modes Plan, Accept edits, Auto and Don't ask are therefore not applied and every question "
+"is asked."
+msgstr ""
+"L'application envoie la clé à Claude Code, mais ce dernier la masque à ses modèles et "
+"outils.\n"
+"En contrepartie, Claude Code force le mode de permission en manuel.\n"
+"Ainsi, les modes Plan, Accepter les modifications, Auto et Ne pas demander ne sont pas "
+"appliqués et chaque question est posée."
+
+msgid ""
+"The application shares the key in the environment of Claude Code.\n"
+"Warning: the key is visible to all the models and tools, so it may end up in messages or "
+"exports.\n"
+"This method is therefore rather meant for tests."
+msgstr ""
+"L'application partage la clé dans l'environnement de Claude Code.\n"
+"Attention, la clé est visible par tous les modèles et outils, donc susceptible de se "
+"retrouver dans des messages ou des exports.\n"
+"Cette méthode est donc plutôt réservée à des tests."
+
+msgid ""
+"The application does not give the key to Claude Code.\n"
+"In this mode, Claude Code only receives a throw-away token and its requests go through a "
+"relay.\n"
+"\n"
+"The relay replaces the tokens with the key in each request forwarded to the provider.\n"
+"It starts on demand and keeps no trace of the exchanges."
+msgstr ""
+"L'application ne fournit pas la clé à Claude Code.\n"
+"Dans ce mode, Claude Code ne reçoit qu'un jeton jetable et ses requêtes passent par un "
+"relais.\n"
+"\n"
+"Le relais remplace les jetons par la clé, dans chaque requête transmise au fournisseur.\n"
+"Il démarre à la demande et ne garde aucune trace des échanges."
+
+msgid "The server cannot be reached: {reason}"
+msgstr "Le serveur est injoignable : {reason}"
+
+msgid "The server refused the key (error {code})."
+msgstr "Le serveur a refusé la clé (erreur {code})."
+
+msgid "The server redirects to another address; enter that address instead."
+msgstr "Le serveur redirige vers une autre adresse ; saisissez plutôt cette adresse."
+
+msgid "This server does not offer a list of models (error 404). Type the names."
+msgstr "Ce serveur ne propose pas de liste de modèles (erreur 404). Saisissez les noms."
+
+msgid "The server did not answer with a list of models. Type the names."
+msgstr "Le serveur n'a pas répondu par une liste de modèles. Saisissez les noms."
+
+msgid "The server offers no model."
+msgstr "Le serveur ne propose aucun modèle."
+
+msgid "The server answered with the error {code}.{detail}"
+msgstr "Le serveur a répondu par l'erreur {code}.{detail}"
+
+msgid "Delete the provider {name} and its key?"
+msgstr "Supprimer le fournisseur {name} et sa clé ?"
+
+msgid "Providers"
+msgstr "Fournisseurs"
+
+msgid "Trust of the folder"
+msgstr "Approbation du dossier"
+
+msgid "Models re&trieval"
+msgstr "Récupération des m&odèles"
+
+msgid "Gauge retrie&val"
+msgstr "Récupération de jaug&e"
+
+msgid "&Check the data retrieved"
+msgstr "&Vérifier les données récupérées"
+
+msgid "Data of {name}"
+msgstr "Données de {name}"
+
+msgid "&Data"
+msgstr "&Données"
+
+msgid "Models: {count}."
+msgstr "Modèles : {count}."
+
+msgid "Models not available. {reason}"
+msgstr "Modèles indisponibles. {reason}"
+
+msgid "No method"
+msgstr "Aucune"
+
+msgid "V1"
+msgstr "V1"
+
+msgid "DeepSeek"
+msgstr "DeepSeek"
+
+msgid "No way to ask the models is chosen for this provider."
+msgstr "Aucune méthode de récupération des modèles n'est choisie pour ce fournisseur."
+
+msgid "The server does not offer this information (error 404)."
+msgstr "Le serveur ne propose pas cette information (erreur 404)."
+
+msgid "status {status}"
+msgstr "statut {status}"
+
+msgid "unknown error"
+msgstr "erreur inconnue"
+
+msgid "automatic"
+msgstr "automatique"
+
+msgid "manual"
+msgstr "manuel"
+
+msgid "Permission mode not applied"
+msgstr "Mode de permission non appliqué"
+
+msgid ""
+"The server of {name} returned an error ({reason}). Retry {attempt} of {total}; "
+"you can interrupt."
+msgstr ""
+"Le serveur de {name} a renvoyé une erreur ({reason}). Nouvelle tentative {attempt} sur "
+"{total} ; vous pouvez interrompre."
+
+msgid ""
+"Conversation compacted ({trigger}): {before} tokens reduced to {after}. {name} may "
+"have lost details; consider a new conversation or a branch."
+msgstr ""
+"Conversation compactée ({trigger}) : {before} jetons réduits à {after}. {name} a pu "
+"perdre des détails ; envisagez une nouvelle conversation ou une branche."
+
+msgid ""
+"Conversation compacted ({trigger}). {name} may have lost details; consider a new "
+"conversation or a branch."
+msgstr ""
+"Conversation compactée ({trigger}). {name} a pu perdre des détails ; envisagez une "
+"nouvelle conversation ou une branche."
+
+msgid ""
+"The mode {asked} was not applied: with the key transmission Masked, Claude Code "
+"forces the manual mode. Change it in the Preferences, page Providers."
+msgstr ""
+"Le mode {asked} n'a pas été appliqué : avec la transmission de clé Masquée, Claude Code "
+"impose le mode manuel. Changez-la dans les Préférences, page Fournisseurs."
+
+msgid "Workspace: {name}"
+msgstr "Espace de travail : {name}"
+
+msgid "Conversation: {name}"
+msgstr "Conversation : {name}"
+
+msgid "No announcement yet."
+msgstr "Aucune annonce pour le moment."
+
+msgid "Announcement history"
+msgstr "Historique des annonces"
+
+msgid "A&nnouncement history…"
+msgstr "Historique des a&nnonces…"
+
+msgid "MCP servers"
+msgstr "Serveurs MCP"
+
+msgid "The MCP server {server} did not start: its tools are not available."
+msgstr "Le serveur MCP {server} n'a pas démarré : ses outils ne sont pas disponibles."
+
+msgid ""
+"The MCP server {server} is slow to start: its tools may not be available for this "
+"message."
+msgstr ""
+"Le serveur MCP {server} démarre lentement : ses outils peuvent être indisponibles pour "
+"ce message."
+
+msgid "{name} runs in the mode {actual}, not in the mode {asked} that was chosen."
+msgstr "{name} fonctionne dans le mode {actual}, et non dans le mode {asked} choisi."

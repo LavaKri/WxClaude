@@ -20,6 +20,7 @@ from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.config.workspaces import add_recent, remove_missing, workspace_label
 from wxclaude.core.errors import JsonStoreError, SessionReadError
 from wxclaude.i18n import _, ngettext
+from wxclaude.presenters.security_presenter import SecurityPresenter
 
 
 class WorkspaceView(Protocol):
@@ -45,22 +46,33 @@ class WorkspaceView(Protocol):
 @dataclass(frozen=True, slots=True)
 class WorkspaceLinks:
     """What the presenter asks of the window: close the conversation, select the one of a
-    workspace, refresh what depends on the workspace (title, greyed items), save the settings."""
+    workspace, refresh what depends on the workspace (title, greyed items), save the settings, and
+    (``opened``) do what must wait until the window shows: the offer to approve the folder.
+    ``entered`` is told the name of a workspace that has just been opened (not one that was
+    already the current one)."""
 
     close_conversation: Callable[[], None]
     select_conversation: Callable[[Path], None]
     changed: Callable[[], None]
     save_settings: Callable[[], None]
+    opened: Callable[[], None] = lambda: None
+    entered: Callable[[str], None] = lambda name: None
 
 
 class WorkspacePresenter:
     """The current workspace and the ways to open another one."""
 
     def __init__(
-        self, view: WorkspaceView, settings: Settings, links: WorkspaceLinks, files: ClaudeFiles
+        self,
+        view: WorkspaceView,
+        settings: Settings,
+        links: WorkspaceLinks,
+        files: ClaudeFiles,
+        security: SecurityPresenter | None = None,
     ) -> None:
         self._view = view
         self._files = files
+        self._security = security
         self._settings = settings
         self._links = links
         self.workspace: Path | None = None
@@ -78,16 +90,27 @@ class WorkspacePresenter:
 
     def _set(self, folder: Path) -> None:
         """Make ``folder`` the working folder and remember it in the recent list."""
-        if self.state is None or folder != self.workspace:
+        reloaded = self.state is None or folder != self.workspace
+        if reloaded:
             self.state = WorkspaceState.load(folder, self._settings.workspaces_dir)
             if self.state.warning:
                 self._view.show_file_warning(self.state.warning)
+            # A new workspace gets the alternative agent of the Preferences. It has no conversation
+            # yet: "same as the conversation" is then the agent of a new conversation.
+            self.state.start_alternative_agent(
+                self._settings.alternative_agent, self._settings.default_agent
+            )
+            if self._security is not None:
+                self._security.open(folder, self.state)  # restricted until the user decides
             self.stats = self._load_stats(folder)
         self.workspace = folder
         self._settings.last_workspace = str(folder)
         self._settings.recent_workspaces = add_recent(self._settings.recent_workspaces, folder)
         self._links.changed()
         self._links.save_settings()
+        if reloaded:
+            self._links.entered(folder.name or str(folder))
+            self._links.opened()
 
     def _load_stats(self, folder: Path) -> WorkspaceStats:
         """The statistics of ``folder``. The first time, the conversations that already exist are

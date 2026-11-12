@@ -1,18 +1,14 @@
 """What can be done with the messages: their details (tools, table, links), copying them, the task
-list and the plans of the conversation and the usage of Claude (see
-``docs/conversation-display.md``)."""
+list and the plans of the conversation (see ``docs/conversation-display.md``)."""
 
 import enum
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Protocol
 
 from wxclaude.core.claude.claude_files import ClaudeFiles
 from wxclaude.core.claude.plans import Plan
 from wxclaude.core.claude.tasks import TaskList
-from wxclaude.core.claude.usage import UsageTracker
-from wxclaude.core.config.workspace_stats import WorkspaceStats
 from wxclaude.core.conversation.details import DetailAction, Link, Table, message_details
 from wxclaude.core.conversation.messages import Message, ToolUse
 from wxclaude.core.errors import PlanReadError, TaskReadError
@@ -61,10 +57,6 @@ class MessageView(Protocol):
         """The plans of the conversation."""
         ...
 
-    def show_usage(self, lines: list[str]) -> None:
-        """The usage of Claude, one fact per line."""
-        ...
-
     def set_clipboard(self, text: str) -> bool:
         """Put ``text`` on the clipboard; False if the clipboard cannot be used."""
         ...
@@ -81,23 +73,18 @@ class MessageView(Protocol):
 class MessagePresenter:
     """Shows the details of the messages and does what the user asks (copy, open a link).
 
-    ``conversation_id`` gives the current conversation and ``usage`` what is known of the usage
-    of Claude.
+    ``conversation_id`` gives the current conversation.
     """
 
     def __init__(
         self,
         view: MessageView,
         conversation_id: Callable[[], str],
-        usage: UsageTracker,
         files: ClaudeFiles,
-        stats: Callable[[], WorkspaceStats | None] = lambda: None,
     ) -> None:
         self._view = view
         self._files = files
         self._conversation_id = conversation_id
-        self._usage = usage
-        self._stats = stats  # the statistics of the current workspace
 
     def show_tasks(self) -> None:
         """The tasks Claude wrote for this conversation (read from its task folder)."""
@@ -116,15 +103,6 @@ class MessagePresenter:
             self._view.show_error(_("Cannot read the plans.\n{error}").format(error=error))
             return
         self._view.show_plans(plans)
-
-    def show_usage(self) -> None:
-        """The gauges of the subscription and the tokens spent, as far as the answers told, then
-        the statistics of the whole workspace."""
-        lines = self._usage.lines(datetime.now())
-        stats = self._stats()
-        if stats is not None:
-            lines += stats.lines()
-        self._view.show_usage(lines)
 
     def act(self, action: DetailAction, message: Message, line: int) -> None:
         """An item of the context menu of the conversation view."""

@@ -187,6 +187,15 @@ def test_the_name_is_given_to_the_cli_by_the_first_message_only(tmp_path: Path) 
     assert "--name" not in build_arguments(unnamed, StdioChannel())
 
 
+def test_the_limit_of_turns_is_given_to_the_cli_only_when_there_is_one(tmp_path: Path) -> None:
+    limited = RunRequest("Hello", AGENT, "s-1", True, tmp_path, max_turns=4)
+    arguments = build_arguments(limited, StdioChannel())
+    assert arguments[arguments.index("--max-turns") + 1] == "4"
+    assert "--max-turns" not in build_arguments(
+        RunRequest("Hello", AGENT, "s-1", True, tmp_path), StdioChannel()
+    )
+
+
 def test_the_first_message_of_a_branch_forks_the_conversation_it_comes_from(
     tmp_path: Path,
 ) -> None:

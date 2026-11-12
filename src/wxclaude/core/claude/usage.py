@@ -97,7 +97,7 @@ class UsageTracker:
         week = _percent(week_window)
         last_threshold = ALERT_THRESHOLDS["seven_day"][-1]
         if week_window is None or (week_window.utilization or 0) < last_threshold:
-            week = None  # not worth a look yet: the usage dialog has it
+            week = None  # not worth a look yet: the usage gauge dialog has it
         if five_hours is None and week is None:
             return _("Ready")
         if week is None:
@@ -144,11 +144,12 @@ class UsageTracker:
         self.conversation_cost = 0.0
         self.conversation_turns = 0
 
-    def lines(self, now: datetime) -> list[str]:
-        """The report, one fact per line; what is unknown is not written."""
-        return [*self._gauge_lines(now), *self._turn_lines(), *self._conversation_lines()]
+    def statistics_lines(self) -> list[str]:
+        """The spending of the last message and of the conversation, one fact per line."""
+        return [*self._turn_lines(), *self._conversation_lines()]
 
-    def _gauge_lines(self, now: datetime) -> list[str]:
+    def gauge_lines(self, now: datetime) -> list[str]:
+        """The gauges of the subscription, one per line."""
         if not self.windows:
             return [_("No subscription usage information yet: it arrives with the next answer.")]
         lines = [_window_line(window, now) for window in self.windows.values()]

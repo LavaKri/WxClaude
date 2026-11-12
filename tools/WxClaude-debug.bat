@@ -1,3 +1,3 @@
 @echo off
 rem Levels of --log-level: debug, info, error
-start "" "%~dp0WxClaude.exe" --log-level debug
+start "" "%~dp0..\WxClaude.exe" --log-level debug

@@ -57,7 +57,7 @@ select = [
 
 [tool.mypy]
 python_version = "3.14"
-mypy_path = "src"
+mypy_path = "src:tests/fakes"
 warn_unused_ignores = true
 # The tests are not packages (pytest imports them by folder), so the two conftest.py files are
 # both the module "conftest" for mypy: the short root one, which only redirects the Claude
@@ -78,12 +78,13 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "tests/fakes"]
 # faulthandler prints a harmless first-chance COM exception (0x8001010d) raised by wx while it
 # dispatches the events posted by the runner threads
 addopts = "-ra -p no:faulthandler"
 markers = [
     "unit: fast tests of pure logic (no wx)",
-    "ui: tests that create wx windows",
+    "ui: tests of the wx side: they import wx, most create windows",
     "slow: tests with large inputs",
+    "real_security: tests of a window with the real trust of folders (no patching of it)",
 ]

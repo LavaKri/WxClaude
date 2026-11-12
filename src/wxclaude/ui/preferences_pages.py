@@ -11,6 +11,7 @@ import wx
 
 from wxclaude.core.claude.permission_channel import CHANNEL_KINDS, HOOK, STDIO
 from wxclaude.core.claude.status import describe_status, read_status
+from wxclaude.core.config.providers import ProviderStore
 from wxclaude.core.config.settings import HOOK_TIMEOUT_MINUTES, SUPPORTED_LANGUAGES, Settings
 from wxclaude.core.labels import accessible_name
 from wxclaude.core.speech.screen_reader import available_outputs, default_output, output_named
@@ -217,7 +218,9 @@ class WorkspacePage(PreferencesPage):
 class AgentPage(PreferencesPage):
     """The agent of a new conversation and the alternative agent."""
 
-    def __init__(self, parent: wx.Window, settings: Settings) -> None:
+    def __init__(
+        self, parent: wx.Window, settings: Settings, providers: ProviderStore | None = None
+    ) -> None:
         super().__init__(parent)
         self._agents = [settings.default_agent, settings.alternative_agent]
         self._unset_labels = [None, _("(same as the conversation)")]
@@ -233,7 +236,9 @@ class AgentPage(PreferencesPage):
         self.agent_list.SetMinSize(wx.Size(-1, self.agent_list.GetCharHeight() * 2 + 12))
         self.agent_list.SetSelection(0)
         self.agent_list.Bind(wx.EVT_LISTBOX, self._on_agent_chosen)
-        self.agent_panel = AgentPanel(self, self._agents[0], self._unset_labels[0])
+        self.agent_panel = AgentPanel(
+            self, self._agents[0], self._unset_labels[0], providers=providers
+        )
 
         refuse_text = _("&Refuse the requests of Claude to leave the Plan mode")
         self.refuse_plan = wx.CheckBox(self, label=refuse_text)

@@ -16,8 +16,8 @@ Check the installation in a terminal with `claude --version`.
 
 To use Claude Code, you must sign in:
 
-- in a terminal, run `claude auth login` and follow the instructions.
-- Check with `claude auth status`.
+- in a terminal, run `claude auth login` and follow the instructions;
+- check with `claude auth status`.
 
 ### Claude in WxClaude
 
@@ -39,11 +39,18 @@ In the permission mode *Do not ask*, nothing is asked, whatever the type.
 
 ### Workspaces
 
-A workspace is a working folder. Claude works in it and reads its files.
+A workspace is simply the folder where Claude is going to work.
+So it is important to set limits for it in this space.
+For this, the Workspace settings let you define permission rules and environment variables.
+All these settings are natively shared with the Claude Code application.
+
+However, these settings could be modified without any real warning, for example after a Git operation, an overwrite, etc.
+This is why these settings files are monitored, so that any change made outside WxClaude can be reported.
+If in doubt, the application can work in restricted mode, which means that the agents will be limited in their actions.
+To go back to normal operation, you only have to approve the folder in the workspace settings.
 
 - File > Open from Claude projects lists the folders already used with Claude Code.
 - At startup, the last workspace is reopened. You can turn this off in the Preferences, General page.
-- Tools > Workspace settings changes the permission rules of the `.claude` folder. They are shared with Claude Code in a terminal.
 
 ### Conversations
 
@@ -53,31 +60,31 @@ A conversation always belongs to a workspace. Opening a workspace loads its reme
 - Conversation > Refresh the conversation reads the session file again.
 - Conversation > New conversation branch copies the conversation under another name. The text stays on screen. Claude Code makes the copy with the first message of the branch; the original conversation does not change.
 - Conversation > Delete the conversation moves what Claude Code keeps of the conversation to the Windows Recycle Bin, after a confirmation. You can get it back from the Recycle Bin.
-
-Conversation > Modify the agent changes the agent of the current conversation.
+- Conversation > Modify the agent changes the agent of the current conversation.
 Changing the model loses the prompt cache of the conversation. Changing the effort or the permission mode does not.
 
 ### Agents
 
-An agent is a set of characteristics.
+An agent is a set of characteristics, specific to a provider.
 For WxClaude, it is limited to a model, an effort and a permission mode.
 
-Two agents are defined in the Preferences, Agent page:
+- Each conversation has its own main agent.
+It can be configured, independently of the other conversations, in a dedicated dialog box.
+- Each workspace has its own alternative agent.
+It can be configured in the workspace settings.
+It is useful, for example, to quickly send messages with a low effort level, without having to change the main agent of the conversation.
 
-- the one of new conversations, by default.
-It belongs to a conversation and can be changed independently of the others.
-- an alternative agent.
-The alternative agent has its own send button and it is the same for all workspaces.
-It is useful to send prompts easily with a low effort level, for example, without changing the main agent.
+In the preferences, you can define:
 
-Changing the model loses the prompt cache of the conversation. Changing the effort or the permission mode does not.
+- the main agent, the default for a new conversation;
+- the alternative agent, the default for a new workspace.
 
 ### Permissions
 
 When Claude wants to use a tool that the permission mode does not allow, a dialog box asks the question. The status bar announces it.
 
 - *Allow* allows the tool this time.
-- *Always allow this* writes a rule in `.claude/settings.local.json`, as Claude Code does. This button appears when Claude Code proposes a rule.
+- *Always allow* writes a rule in `.claude/settings.local.json`, as Claude Code does. This button appears when Claude Code proposes a rule.
 - *Deny* refuses. You can type an explanation that is sent to Claude.
 
 Closing the box with Escape is a refusal. The first field describes the request and receives the initial focus.
@@ -89,19 +96,10 @@ The workspace settings let you give each tool an allow, ask or deny rule. Deny p
 ### Conversation area
 
 The conversation area shows the exchange in read-only form.
-Your message is a level 1 heading. Claude's answer is a level 2 heading.
-Move through it with the heading navigation of your screen reader.
-
-It never takes the focus when an answer arrives.
-It takes it when you load, send, refresh or search.
-
-You can search for text in it. The search does not wrap around: at the end, it tells you so.
-
-The context menu depends on the message where the cursor is. It only offers what applies:
-
-- *Show the tools used*: when the answer used tools. A list gives the details of each.
-- *Show the table*: when the cursor is in a table. Its rows are read one by one. You can copy the table.
-- *Show the links*: when the message contains some. You can open a web or mail link, or copy the address.
+Your prompts (messages) are under a level 1 heading.
+Claude's answers are under a level 2 heading.
+The usual web navigation keyboard shortcuts can be used (heading, list, table).
+Suitable display windows make some elements easier to read (see the context menu).
 
 ### Prompt
 
@@ -121,23 +119,28 @@ The status bar has three zones. It does not take the focus: use the command of y
 
 - The position: `Message 3 of 8` gives the message where the cursor is among yours. It is empty if there are none.
 - The step: `Step 2 of 5: subject` gives the task of Claude's list that it has just started. It is empty if there is none and when WxClaude waits for your message.
-- The message: the last announcement. When WxClaude waits for your message, it says `Ready`, followed by the 5-hour gauge if it is known: `Ready, gauge at 50 %`. The week is added from 75 %: `Ready, gauge at 50 %, week at 76 %`. After a failure, it keeps the error.
+- The message: the last announcement.
+When WxClaude is ready to receive messages, it says so with the gauges of your subscription.
 
 ### Announcements
 
 WxClaude tells your screen reader what is happening. The announcements are grouped in categories.
 
-In the "Screen reader" tab of the preferences, you choose for each category what is done.
+In the "Announcements" tab of the preferences, you choose for each category what is done.
 Depending on the category: nothing, a message, reading the line, a dialog box or a sound.
 The *Announcements* choice turns the sending to the screen reader off or on.
 
 Errors from Claude always open a dialog box.
+Whatever the output setting of the announcements, they are all kept in a history, which can be viewed from the Help menu.
 
 #### Gauge alerts
 
-The subscription has two gauges: the 5-hour window and the week.
+The Claude Code subscription has two gauges: the 5-hour window and the week.
 Each alert is spoken the first time the gauge reaches or passes its threshold.
 The thresholds are those of Claude Code: 90 % for the 5 hours, 25, 50 and 75 % for the week.
+
+With other providers, the gauges and alerts will not be available.
+Only the balance, or credit, can be consulted in the gauge dialog box, for the providers that supply it.
 
 ### Tasks, plans and usage
 
@@ -146,3 +149,51 @@ Three information windows open on request. They show what WxClaude knows when th
 - The task list gives the tasks that Claude set itself for the conversation: number, subject and state (pending, in progress, completed). A line also says what blocks it. The details of the chosen task are below.
 - The plans are those that Claude wrote in the permission mode *Plan only*. They are read-only: there is nothing to approve here.
 - The usage shows the gauges of the subscription and their reset. It also gives information about the tokens used.
+
+## Other AI providers
+
+A provider is a source of models other than your Claude subscription: a remote service (DeepSeek, GLM, OpenRouter) or a server on your machine (Ollama, LM Studio).
+Only the providers that support the Anthropic API can be used with WxClaude. It should be possible to widen the list by using a relay, such as LiteLLM.
+
+Claude is always present, it is the default choice, and it can be neither modified nor deleted.
+Providers are shared by the whole application, not specific to a workspace.
+Using WxClaude with a provider is possible without being signed in with a Claude Code account.
+
+In the preferences, the form of a provider lets you define:
+
+- a name and an address (URL);
+- an API key, or "none" for a local server;
+- the list of available models and configuration variables.
+
+### Protection of API keys
+
+The authorization keys of the providers are encrypted with your Windows account.
+Several methods of passing the keys to Claude Code are possible:
+
+- Masked (default): the commands that Claude runs do not see the key, but the CLI then forces the manual permission mode. The Plan, Accept edits, Auto and Do not ask modes do not apply.
+- Shared: all modes work, but the commands of Claude can read the key, and an instruction hidden in a file or a web page could make Claude reveal it.
+- Relayed: the key stays only in WxClaude, behind a small relay on your computer (`127.0.0.1`). All modes work, at the price of a more complex mechanism.
+
+### Privacy
+
+- For a provider other than Claude, telemetry and non-essential traffic to Anthropic are turned off.
+- Also, the prompts and the answers will not go through Anthropic's servers.
+
+### Particularities
+
+- With a provider other than Anthropic's, the agent will always answer in the name of Claude.
+
+## Delegating tasks to a local AI
+
+For economic or privacy reasons, it is possible to use a local AI with Claude Code.
+Claude remains your interlocutor, and will be able to outsource some tasks.
+WxClaude offers no configuration for this way of working, but some announcements are dedicated to it.
+
+Simplified procedure:
+
+- Install and set up a local AI (LM Studio, Ollama, ...).
+- Install and set up an MCP server (MCP in LM Studio, ollama-mcp, ...).
+- Declare the MCP server to Claude Code,
+either with Claude Code, in its interface or on the command line,
+or directly with the files `.claude.json` or `.mcp.json`.
+- In WxClaude, ask Claude to use the local AI for some tasks.

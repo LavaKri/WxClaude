@@ -34,11 +34,17 @@ les questions de permission sur les outils. WxClaude démarre pour cela un serve
 <p>Dans le mode de permission <em>Ne pas demander</em>, rien n'est demandé, quel que soit le type.</p>
 <h2>Fonctionnement</h2>
 <h3>Espaces de travail</h3>
-<p>Un espace de travail est simplement un dossier de travail. Claude y travaille et en lit les fichiers.</p>
+<p>Un espace de travail est simplement le dossier où Claude va travailler.
+Ainsi, il est important de lui fixer des limites dans cet espace.
+Pour cela, les Paramètres de l'espace de travail permettent de définir des règles de permission et des variables d'environnement.
+Tous ces paramètres sont nativement partagés avec l'application Claude Code.</p>
+<p>Toutefois, ces paramètres pourraient être modifiés sans réel avertissement, par exemple à la suite d'une opération Git, d'un écrasement, etc.
+C'est pourquoi ces fichiers de paramètres sont sous surveillance, pour pouvoir indiquer tous les changements extérieurs à WxClaude.
+En cas de doute, l'application pourra fonctionner en mode restreint, c'est-à-dire que les agents seront limités dans leurs actions.
+Pour retrouver un fonctionnement normal, il suffira d'approuver le dossier dans les paramètres de l'espace de travail.</p>
 <ul>
 <li>Fichier &gt; Ouvrir depuis les projets Claude liste les dossiers déjà utilisés avec Claude Code.</li>
 <li>Au démarrage, le dernier espace de travail est rouvert. Vous pouvez le désactiver dans les Préférences, page Général.</li>
-<li>Outils &gt; Paramètres de l'espace de travail modifie les règles de permission du dossier <code>.claude</code>. Elles sont partagées avec Claude Code dans un terminal.</li>
 </ul>
 <h3>Conversations</h3>
 <p>Une conversation appartient toujours à un espace de travail. Ouvrir un espace de travail charge sa conversation mémorisée, sinon la plus récente. Une conversation n'est jamais créée automatiquement.</p>
@@ -51,15 +57,19 @@ les questions de permission sur les outils. WxClaude démarre pour cela un serve
 Changer de modèle fait perdre le cache de l'invite de la conversation. Changer l'effort ou le mode de permission ne le fait pas.</li>
 </ul>
 <h3>Agents</h3>
-<p>Un agent est un ensemble de caractéristiques.
+<p>Un agent est un ensemble de caractéristiques, propre à un fournisseur.
 Pour WxClaude, il se limite à un modèle, un effort et un mode de permission.</p>
-<p>Deux agents se définissent dans les Préférences, page Agent :</p>
 <ul>
-<li>celui des nouvelles conversations, par défaut.
-Il est propre à une conversation et pourra être modifié indépendamment des autres.</li>
-<li>un agent alternatif.
-L'agent alternatif a son propre bouton d'envoi et il sera le même pour tous les espaces de travail.
-Il sera utile pour envoyer facilement des prompts avec un niveau d'effort faible, par exemple, sans avoir à modifier l'agent principal.</li>
+<li>Chaque conversation a son propre agent principal.
+Configurable, indépendamment des autres conversations, dans une boîte de dialogue dédiée.</li>
+<li>Chaque espace de travail a son propre agent alternatif.
+Configurable dans les paramètres de l'espace de travail.
+Utile pour, par exemple, envoyer rapidement des messages avec un niveau d'effort faible, sans avoir à modifier l'agent principal de la conversation.</li>
+</ul>
+<p>Dans les préférences, on peut définir :</p>
+<ul>
+<li>l'agent principal, par défaut pour une nouvelle conversation.</li>
+<li>l'agent alternatif, par défaut pour un nouvel espace de travail.</li>
 </ul>
 <h3>Permissions</h3>
 <p>Quand Claude veut utiliser un outil que le mode de permission n'autorise pas, une boîte de dialogue pose la question. La barre d'état l'annonce.</p>
@@ -97,18 +107,63 @@ Quand WxClaude est prêt à recevoir des messages, il l'indique avec les jauges 
 <p>WxClaude dit ce qui se passe à votre lecteur d'écran. Les annonces sont regroupées en catégories.</p>
 <p>Dans l'onglet &quot;Annonces&quot; des préférences, vous choisissez pour chaque catégorie ce qui est fait.
 Selon la catégorie : rien, un message, la lecture de la ligne, une boîte de dialogue ou un son.
-Le choix <em>Annonces</em> coupe ou rétablit l'envoi vers le lecteur d'écran.</p>
-<p>Les erreurs de Claude ouvrent toujours une boîte de dialogue.</p>
+Le choix &quot;Annonces&quot; coupe ou rétablit l'envoi vers le lecteur d'écran.</p>
+<p>Les erreurs de Claude ouvrent toujours une boîte de dialogue.
+Quel que soit l'état de sortie des annonces, elles sont toutes mémorisées dans un historique, consultable depuis l'aide.</p>
 <h4>Alertes de jauge</h4>
-<p>L'abonnement a deux jauges : la fenêtre de 5 heures et la semaine.
+<p>L'abonnement de Claude Code a deux jauges : la fenêtre de 5 heures et la semaine.
 Chaque alerte est dite la première fois que la jauge atteint ou dépasse son seuil.
 Les seuils sont ceux de Claude Code : 90 % pour les 5 heures, 25, 50 et 75 % pour la semaine.</p>
+<p>Avec d'autres fournisseurs, les jauges et alertes ne seront pas disponibles.
+Seul le solde, ou crédit, pourra être consulté dans la boîte de dialogue de jauge, pour ceux qui le fournissent.</p>
 <h3>Tâches, plans et utilisation</h3>
 <p>Trois fenêtres d'information s'ouvrent à la demande. Elles montrent ce que WxClaude sait au moment de l'ouverture.</p>
 <ul>
 <li>La liste de tâches donne les tâches que Claude s'est fixées pour la conversation : numéro, sujet et état (en attente, en cours, terminée). Une ligne dit aussi ce qui la bloque. Le détail de la tâche choisie est dessous.</li>
 <li>Les plans sont ceux que Claude a écrits dans le mode de permission <em>Planifier seulement</em>. Ils sont en lecture seule : il n'y a rien à approuver ici.</li>
 <li>L'utilisation montre les jauges de l'abonnement et leur remise à zéro. Elle donne aussi des informations sur les jetons utilisés.</li>
+</ul>
+<h2>Autres fournisseurs d'IA</h2>
+<p>Un fournisseur est une source de modèles autre que votre abonnement Claude : un service distant (DeepSeek, GLM, OpenRouter) ou un serveur sur votre machine (Ollama, LM Studio).
+Seuls les fournisseurs proposant la prise en charge d'Anthropic sont utilisables avec WxClaude. Il devrait être possible d'élargir la liste en utilisant un relais, tel que LiteLLM.</p>
+<p>Claude est toujours présent, c'est le choix par défaut, et il ne peut ni se modifier ni se supprimer.
+Les fournisseurs sont communs à toute l'application, pas propres à un espace de travail.
+L'utilisation de WxClaude avec un fournisseur est possible sans être identifié avec un compte Claude Code.</p>
+<p>Dans les préférences, le formulaire d'un fournisseur permet de définir :</p>
+<ul>
+<li>un nom et une adresse (URL) ;</li>
+<li>une clé API, ou « aucune » pour un serveur local ;</li>
+<li>la liste des modèles disponibles et des variables de configuration.</li>
+</ul>
+<h3>Protection des clés API</h3>
+<p>Les clés d'autorisation des fournisseurs sont chiffrées avec votre compte Windows.
+Plusieurs méthodes de transmission des clés à Claude Code sont possibles :</p>
+<ul>
+<li>Masquée (par défaut) : les commandes que Claude exécute ne voient pas la clé, mais la CLI impose alors le mode de permission manuel. Les modes Plan, Accepter les modifications, Auto et Ne pas demander ne s'appliquent pas.</li>
+<li>Partagée : tous les modes marchent, mais les commandes de Claude peuvent lire la clé, et une consigne cachée dans un fichier ou une page web pourrait la leur faire révéler.</li>
+<li>Relayée : la clé reste seulement dans WxClaude, derrière un petit relais sur votre ordinateur (<code>127.0.0.1</code>). Tous les modes marchent, au prix d'un mécanisme de fonctionnement plus complexe.</li>
+</ul>
+<h3>Confidentialité</h3>
+<ul>
+<li>Pour un fournisseur autre que Claude, la télémétrie et les envois non essentiels vers Anthropic sont désactivés.</li>
+<li>Aussi, les prompts et les réponses ne transiteront pas par les serveurs d'Anthropic.</li>
+</ul>
+<h3>Particularités</h3>
+<ul>
+<li>Avec un fournisseur autre que celui d'Anthropic, l'agent répondra toujours au nom de Claude.</li>
+</ul>
+<h2>Déléguer des tâches à une IA locale</h2>
+<p>Pour des raisons économiques ou de confidentialité, il est possible d'utiliser une IA locale avec Claude Code.
+Claude reste votre interlocuteur, qui va pouvoir externaliser certaines tâches.
+WxClaude ne propose pas de configuration pour ce mode d'utilisation, mais certaines annonces lui sont dédiées.</p>
+<p>Procédure simplifiée de mise en œuvre :</p>
+<ul>
+<li>Installer et configurer une IA en local (LM Studio, Ollama, ...).</li>
+<li>Installer et configurer un serveur MCP (MCP in LM Studio, ollama-mcp, ...).</li>
+<li>Déclarer le serveur MCP à Claude Code,
+soit avec Claude Code, dans son interface ou en ligne de commande,
+soit directement avec les fichiers <code>.claude.json</code> ou <code>.mcp.json</code>.</li>
+<li>Dans WxClaude, demander à Claude d'utiliser l'IA locale pour certaines tâches.</li>
 </ul>
 </body>
 </html>

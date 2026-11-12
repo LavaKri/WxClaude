@@ -13,14 +13,6 @@ the file it belongs to and delete it from this one.
   ...) may hinder the reading of the labels with a screen reader. To check, and if so, remove them
   from the Preferences (the accessible name already comes without the `&`, see `core/labels.py`).
 
-- **The name and Anthropic's branding.** The Agent SDK page allows "Claude Agent" or "{YourName}
-  powered by Claude" and forbids "Claude Code" and anything that looks like Claude Code; it says the
-  product must keep its own identity. "WxClaude" is not forbidden by name but is
-  not covered either (a grey zone). The same page says that,
-  unless approved before, a third party must not offer the claude.ai sign-in or its rate limits in
-  its products. For a personal use the risk is low; before any distribution, ask Anthropic (the page
-  gives the sales team contact) and consider a name of the form "X for Claude Code". Not legal advice.
-
 ## To verify
 
 - **Plans.** *Tools > Plan…* finds the plans as the `Write` calls of the session file to
@@ -39,6 +31,15 @@ the file it belongs to and delete it from this one.
   bar left alone with *No announcement* are to be checked with NVDA and JAWS.
 - **Screen readers and the Preferences, Claude tab.** The list *Interface type* and the spin
   control are to be checked with NVDA and JAWS.
+- **The log and the error boxes** (*Help > Open the log folder*, the button *Copy the details* of the error
+  boxes, `interface.md`): to check with NVDA and JAWS: the two buttons of the error box (*Copy the details*,
+  *Close*, which has the focus) and their access keys, the announcement *Details copied*.
+- **Remote control (`--remote`, `remote.md`).** Checked with the tests and with a Python client; still
+  to try: a PowerShell client (the example of `remote.md`), the title *Remote enabled* read by NVDA and
+  JAWS, and the rights of the pipe from another account of the computer (the documentation of Windows
+  says it cannot write to it; not tested). Open: a request while a modal dialog is open (the client
+  gets `timeout` after 5 seconds), and the pipe when WxClaude runs as administrator (another account
+  could be refused).
 
 - **The hidden window of the announcements.** It now lives under the panel, no longer under the
   status bar (the status bar read by the screen reader gave the last announcement, in the same
@@ -72,23 +73,23 @@ the file it belongs to and delete it from this one.
   not counted at all (no `result`), nor the tokens it used; (4) the time of work of the import
   (`totalAPIDuration + totalToolDuration`) and of the new messages (`duration_ms` minus the waits)
   are two measures of the same thing: compare them on a real conversation.
-- **Claude Code missing, what is left.** The start message and the status bar line exist. Not done: grey the
-  send buttons while Claude Code is missing; a *Try again* button in the message and an item *Tools >
-  Look for Claude Code…* to search again without opening the Preferences; the address and steps of the
-  installation in the message (to read in the official documentation first); a CLI that is there but not
-  logged in (the error comes with the first message).
+- **Claude Code missing or not logged in.** Done: the start message and the status bar line for a missing
+  program, and the same for a program that is not logged in (`interface.md`). Decided against (2026-11-12):
+  greying the send buttons (the interface stays usable, the error comes with the message), a *Try again*
+  button, and the address and steps of the installation in the message. To check: a login that expires
+  during a session is only seen with the next message (the status bar is not read again by a timer); a
+  conversation sent with another provider than the default one, while Claude is not logged in, is not
+  warned about.
 - **Signing in to Claude Code from WxClaude, what is left.** *Tools > Sign in to Claude…* exists
   for the subscription (`interface.md`, "Sign in"; the CLI needs no code, `claude-cli.md`). Not done:
   *Sign out* (`claude auth logout`); the other kinds of sign-in of `auth login`: `--sso` (the
   identity provider of an organization, Team or Enterprise offers; with `--email` to pre-fill the work
   address) and `--console` (Anthropic Console, API billing), the user being on a personal Pro account;
-  "not logged in" at the start (message and status bar, as for a missing program; `auth status`
-  would have to be read outside the interface thread); a way in from an expired session (the error
+  a way in from an expired session (the error
   "Failed to authenticate: OAuth session expired…" stays in the conversation, the user opens the
   dialog). To check: `--email` together with `--claudeai` on the real sign-in page; the exit code of
   `auth login`; the question of the working folder that a user saw before the browser opened (not
-  reproduced with the output redirected: if it comes back, the dialog has to show it). Anthropic's rule
-  on third-party sign-in (see *Subscription use*) is to be read again before it is shipped.
+  reproduced with the output redirected: if it comes back, the dialog has to show it).
 - **Moving or renaming the folder of a workspace** (measured with the real CLI, haiku): no command of
   Claude Code does it; `/cd` exists in the interactive mode only and is refused with `-p` ("/cd isn't
   available in this environment"). `--resume <id>` finds a session by its identifier from any folder
@@ -102,11 +103,114 @@ the file it belongs to and delete it from this one.
   after a hash of the path. A "Rename the workspace" function would rename the folder, move the folder
   of sessions with its memory, migrate the files of WxClaude and fix that list. Not done; the user said
   to forget the files of WxClaude for now.
-- **Subscription use.** Driving `claude -p` from a custom front end with a subscription login may
-  be restricted by the usage policy of the provider (an API key is the safe path). Check the current
-  terms.
 
 ## Improvements not done yet
+
+- **A thread that ends after the application.** `ui/worker.run_in_background` (the check of the login
+  of Claude, the credit of the providers) hands its result over with `wx.CallAfter`, which fails with
+  `No wx.App created yet` once the application is gone. The tests wait for these threads at the end of
+  the session (`tests/ui/conftest.py`). In the application the same could happen if it is closed while
+  one of them runs: the error would then be written to the log (level critical, `core/diagnostics.py`).
+  Not seen in use, and harmless; the same pattern exists in `ui/run_view.py` and the remote control.
+
+- **AI providers and trusted folders, what is left open.** Described in `providers.md` and
+  `security.md`; part 1 of `plan-providers.md` is built, parts 2 and 3 need a real server. Open:
+  - **The scrub forces the permission mode to manual.** Measured with DeepSeek (`claude-cli.md`,
+    "tools and permission modes"): with `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB=1`, which is on by default for a
+    provider, `plan`, `acceptEdits`, `auto` and `dontAsk` all become `default`; Plan mode even writes
+    files (after a question). Without the scrub they are honoured. To decide: warn the user when
+    `system/init` gives another mode than the one asked (and say why), and/or turn the scrub off by
+    default (the key is then in the environment of the tools of Claude). The text of the check box does
+    not say it yet. Tried and failed (2026-11-10): `--allowedTools Read`, and `allowedTools` or
+    `permissions.allow` (Read, Glob, Grep) in the inline `--settings`: the mode stays forced. The
+    variable is not in the official reference (only in bug reports of the CLI, one of which asks that it
+    stops overriding the mode), so the behaviour may change. *Done:* a message that runs in another
+    mode than the one sent is announced, with the reason when the transmission is *Masked*
+    (`interface.md`). *Left:* whether to turn *Masked* off by default, and a sentence about it in the
+    text of the choice (the explanation of *Masked* already says it). Seen on the way: `auto` is
+    reported as `default` even with Claude (haiku, `claude-cli.md`), so that warning also fires for
+    `auto`; why the CLI does not apply it (the account or the model) is not known.
+  - **`apiKeyHelper` measured (2026-11-10, DeepSeek, CLI 2.1.286)**: with the helper in the inline
+    `--settings` and no `ANTHROPIC_AUTH_TOKEN` in the environment, the CLI authenticates (the helper
+    prints the key). *Without* the scrub the modes are honoured (`plan` gave `permissionMode` `plan` in
+    `system/init` and wrote a plan) and `Bash` sees an empty `ANTHROPIC_AUTH_TOKEN` (`len=0`). *With* the
+    scrub the mode is forced to default as before, so the helper gains nothing there. What stays: the
+    command of the helper can be run by `Bash` (any process of the user can run it; not run in the
+    test, true by construction). So it is a third way between *Masked* and *Shared*: modes work, the key
+    is not in the environment, but it is one command away. Not built; a list entry *Helper* would do it.
+  - **The relay, what is left to check** (built and tried with DeepSeek, `claude-cli.md`): whether the
+    firewall of Windows or an antivirus reacts to the port on `127.0.0.1` (not seen so far); long
+    answers and several requests at once (sub-agents) on a real session; the default of the list (still
+    *Masked*; *Relayed* could become the default once it has been used for a while); `aiohttp` as a
+    fall-back if the stream proves fragile. The idle time and the wait of the relay are settings of
+    `settings.json` with no interface (an interface would be two number fields in the page Providers).
+    The relay is in the process of WxClaude (a separate console executable was considered and left
+    out for now).
+  - **Other ways to give the key to the CLI**, from the documentation and bug reports read on 2026-11-10:
+    (a) *Standard input*: nothing in `stream-json` carries a credential; not possible. (b) `apiKeyHelper`
+    (official setting, a command the CLI runs to get the key; the order is `ANTHROPIC_AUTH_TOKEN`,
+    `CLAUDE_CODE_OAUTH_TOKEN`, `apiKeyHelper`, the login, `ANTHROPIC_API_KEY`): the key is then not in
+    the environment, but the command is one anyone running as the user, Claude's tools included, can
+    call (already rejected in `providers.md`). (c) `CLAUDE_CODE_API_KEY_FILE_DESCRIPTOR` (found only in
+    dumps of the source, undocumented): reads the key from an open file descriptor; Windows passing of a
+    descriptor to the child and whether the tools inherit it are unknown. (d) **A local relay in
+    WxClaude** (a token system; built, see "The relay" in `providers.md`): `ANTHROPIC_BASE_URL` points to `127.0.0.1:<port>`, the CLI gets a
+    throw-away token, the proxy adds the real key and forwards to the provider. The real key never
+    reaches the CLI, so the scrub (and its forced mode) is not needed (the sandbox of Claude Code, with
+    its `sandbox.credentials` setting, is no way out on native Windows: measured, see `claude-cli.md`); a tool that finds the token can
+    only use the proxy while WxClaude runs. Built with the standard library; what is left is below.
+  - **Cost, statistics and gauges with another provider.** The CLI computes its cost from its own
+    price list and gives a figure even for a model it does not know (`costBasis` `unknown`); the
+    families of `workspace_stats.py` are Claude's; `/usage` is the subscription's. Not decided: what
+    is shown (tokens only?), and which Claude-only parts are greyed (sign in, state of Claude Code,
+    gauges).
+  - **Which provider answered each message**: to show and to count, and where it is kept (the session
+    file holds the model name the server returned).
+  - **With a real server** (parts 2 and 3 of the plan). Settled with DeepSeek (`claude-cli.md`):
+    `--effort` accepted, `ANTHROPIC_AUTH_TOKEN` works, the token wins over a claude.ai login, and a
+    session can go Claude, DeepSeek, Claude. Still to measure: tools and permissions with a small model
+    (P2.3), a long thinking block of Claude sent to DeepSeek, what the CLI sends to Anthropic when the
+    base URL is another one, and everything for a local server (part 3).
+  - **The four ranks and the aliases.** A provider has four models (small, medium, large, largest);
+    the first three answer to `haiku`, `sonnet` and `opus`. To check with a real server that the CLI
+    asks for these names by itself, and whether a variable redirects `fable` (none is known).
+    The button *Check the data retrieved* shows the list a server offers (method *V1*, `providers.md`);
+    to check with a real server (DeepSeek, LM Studio, Ollama) the path and the format, and that DeepSeek's
+    list is found at the root of its host. Other methods, the most generic possible (models and gauge),
+    are to be added as real services are tried.
+  - **The variables of a provider.** The closed list (`API_TIMEOUT_MS`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS`,
+    `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`) is measured only as far as the process
+    receiving them and `API_TIMEOUT_MS` being used (`claude-cli.md`). Not measured: the effect of the context,
+    the compaction window and the output limit on what the CLI sends and when it compacts, with a real model.
+    Others may join the list when a real need shows (one line in `provider_variables.py`).
+  - **The focus after Alt+Tab** (`focus.md`, rule E). Built from the documentation of Windows and checked only
+    with simulated events, not with a real Alt+Tab or a screen reader. If Windows has moved the focus before the
+    window is told it is deactivated, nothing is remembered and nothing is restored; if losses of focus go on,
+    follow the last focused control continuously instead of reading it at the deactivation.
+  - **The subscription token and a project file.** Whether the token of a claude.ai sign-in is sent
+    to a URL set by a project file in a trusted folder. Needs a real sign-in (the token would only
+    go to `127.0.0.1`) and the user's consent.
+  - **The `env` of the settings files**: the order between the two project files and the general
+    file; `--settings` given as a file; whether a change applies to a running session; whether the
+    scrub also removes the `env` an MCP server is configured with; the Windows path of the managed
+    settings file (read only).
+  - **Sensitive names**: the lists are in `core/security/sensitive.py` (settled for now: `DATABASE_URL`
+    is not sensitive by its name, its value is masked as an URL); to review with real files.
+  - **The list of environment variables** (`data/env_vars.txt`, 38 lines) was written from the part of
+    the official page `env-vars` that could be read (it stops at `CLAUDE_CODE_NO_FLICKER`, and went
+    through a summarizer): read the whole page, and note which variables the project files cannot set.
+  - **Approval and the restricted folder**: the approval takes the watched files as they are; a summary of
+    what they would do (hooks, servers, `env`) before approving is left out (see below).
+  - **A key that cannot be decrypted** (another account): the page Providers says so when a message is
+    sent; nothing offers to enter it again from that message.
+  - **Alerting the user of a security point** beyond the cases of `security.md`: the announcement
+    center for information, a dialog when a decision is needed, and a place where the points stay
+    listed (the Security tab).
+  - **In restricted mode** the `CLAUDE.md`, the commands and the agents of the project are not
+    loaded (measured); no setting of the CLI was found that loads only `CLAUDE.md`.
+  - **Left out, may come back**: a check before each message; a summary of what the watched files
+    would do; forbidding Claude to edit the watched files; the credential manager and the
+    environment variable as sources of the key.
 
 - **Automatic checks still to write** (each one a test run by `pytest`, tried on a small tree or
   dialog made for the purpose and on the real code). In this order:
@@ -151,27 +255,20 @@ the file it belongs to and delete it from this one.
   thread removes the risk; the `RunnerError` of `allow` and `deny` would then come back with
   `wx.CallAfter` instead of being raised on the spot. The hook channel does no input or output in
   the window thread: the window thread only hands the decision to the thread of the HTTP handler.
-- **Reach the log from the application.** The log file (errors and a few events, next to the other
-  data files of WxClaude) is only found by hand. To decide: a menu item in Help that opens the
-  folder of the log, and a "Copy the details" button in the dialog of an unexpected error. Both
-  touch the interface, the translations and the accessibility checks.
 - **Structured questions of Claude** (`AskUserQuestion`): the dialog is written and tested with the fake
   `claude`, and the real CLI (stdio channel, `haiku`, `low`) was tried: a free text answer and a multiple
   choice joined with ", " came back to Claude as given (`Database: MariaDB (my own), Extras: Cache,
   Queue.`), and a refusal made Claude say the action was denied. Still to check with NVDA and JAWS (lists,
   check boxes, the message when a question is left unanswered).
-- **Tell the user when Claude compacts the conversation.** The summary is hidden, but the user learns
-  nothing: after a compaction Claude keeps only a summary and may have lost details, and a new
-  conversation or a branch could be better. The session file has a `system` entry of subtype
-  `compact_boundary` just before the summary (`compactMetadata`: `trigger` `auto` or `manual`,
-  `preTokens`, `postTokens`, `durationMs`; seen in a real session, ignored by the reader). Proposed:
-  (1) in the conversation, a short line written by WxClaude where the summary was, for example
-  "Conversation compacted (automatic): 362,766 tokens reduced to 76,351. Claude may have lost details;
-  consider a new conversation or a branch.", always shown (it is information, not noise); (2) a live
-  announcement when the event arrives during an answer, in a category of the Announcements page. To
-  check with the real CLI before (2): that the stream of `-p` carries the same `compact_boundary` event
-  (`/compact` or a full context), and its fields. To decide: the wording, and whether the advice about
-  a new conversation is part of the text.
+- **Compaction of the conversation, what is left.** The live announcement is built (`interface.md`,
+  "Compaction"; the stream carries `compact_boundary`, checked with `/compact`, `claude-cli.md`). Not
+  done: a short line written by WxClaude in the conversation, where the hidden summary was, so that a
+  user who reads the conversation later (or after F5) sees that it was compacted. The session file has
+  the `compact_boundary` entry just before the summary (`compactMetadata`, in camel case), which the
+  reader ignores. Not checked: an automatic compaction (a full context) in a real run; only `/compact`
+  was.
+- **The wording of the three new announcements** (retry, compaction, mode not applied) is a first
+  proposal to read with NVDA and JAWS: length, and whether "you can interrupt" is wanted at each retry.
 - **Spelling errors in the prompt.** A test (a red wavy underline put on a word of a rich text prompt
   with `SetStyle`, which Windows held as a wavy underline) was read with NVDA: the underline was
   displayed but not reported. The test item and the rich text prompt were removed. So the errors must

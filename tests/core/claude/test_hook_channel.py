@@ -3,6 +3,7 @@ import threading
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
@@ -52,6 +53,13 @@ class Call:
         assert not self._thread.is_alive(), "the server never answered"
 
 
+def hook_of(channel: HookChannel) -> dict[str, Any]:
+    """The hook the channel puts in the inline settings."""
+    settings = json.loads(json.dumps(channel.settings()))
+    hook: dict[str, Any] = settings["hooks"]["PermissionRequest"][0]["hooks"][0]
+    return hook
+
+
 class Host:
     """A hook channel and what it reports."""
 
@@ -60,10 +68,7 @@ class Host:
         self.asked = threading.Event()
         self.expired = threading.Event()
         self.channel = HookChannel(self._on_event, timeout_seconds)
-        arguments = self.channel.arguments()
-        assert arguments[0] == "--settings"
-        hook = json.loads(arguments[1])["hooks"]["PermissionRequest"][0]["hooks"][0]
-        self.url: str = hook["url"]
+        self.url: str = hook_of(self.channel)["url"]
 
     def _on_event(self, event: RunEvent) -> None:
         self.events.append(event)
@@ -89,16 +94,15 @@ def host() -> Iterator[Host]:
     value.channel.close()
 
 
-def test_the_arguments_hold_a_http_hook_on_the_loopback_with_a_token_and_the_timeout() -> None:
+def test_the_settings_hold_a_http_hook_on_the_loopback_with_a_token_and_the_timeout() -> None:
     value = Host(timeout_seconds=90)
     try:
-        arguments = value.channel.arguments()
-        hook = json.loads(arguments[1])["hooks"]["PermissionRequest"][0]["hooks"][0]
+        hook = hook_of(value.channel)
         assert hook["type"] == "http"
         assert hook["timeout"] == 90
         assert hook["url"].startswith("http://127.0.0.1:")
         assert "/hook/" in hook["url"]
-        assert "--permission-prompt-tool" not in arguments
+        assert value.channel.arguments() == []  # the settings are given by the launch, once
     finally:
         value.channel.close()
 
@@ -156,7 +160,7 @@ def test_the_interface_may_answer_from_inside_the_event() -> None:
     channel = HookChannel(answer_at_once, 600)
     channels.append(channel)
     try:
-        url = json.loads(channel.arguments()[1])["hooks"]["PermissionRequest"][0]["hooks"][0]["url"]
+        url = hook_of(channel)["url"]
         call = Call(url, json.dumps(BODY).encode("utf-8"))
         call.wait()
         assert isinstance(call.reply, dict)

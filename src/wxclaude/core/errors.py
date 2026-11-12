@@ -25,6 +25,26 @@ class ClaudeSettingsError(WxClaudeError):
     """A settings file of Claude Code cannot be modified or written."""
 
 
+class WatchError(WxClaudeError):
+    """A watched file of a workspace cannot be read, or its approved copy cannot be written."""
+
+
+class KeyVaultError(WxClaudeError):
+    """A key cannot be encrypted, or cannot be decrypted (another account, another computer)."""
+
+
+class ProviderError(WxClaudeError):
+    """A provider is not valid, or the one asked for cannot be changed or does not exist."""
+
+
+class ModelListError(WxClaudeError):
+    """The list of models of a provider cannot be fetched from its server; the message says why."""
+
+
+class BalanceError(WxClaudeError):
+    """The credit left with a provider cannot be asked; the message says why."""
+
+
 class SessionReadError(WxClaudeError):
     """A session file of the Claude Code CLI cannot be read."""
 
@@ -55,3 +75,15 @@ class ClaudeLoginError(WxClaudeError):
 
 class StreamParseError(WxClaudeError):
     """A line of the ``stream-json`` output is not valid JSON."""
+
+
+class RemoteError(WxClaudeError):
+    """The remote control cannot start (the pipe cannot be created, or the system has no pipes)."""
+
+
+class RemoteRequestError(WxClaudeError):
+    """A request of the remote control is refused; ``code`` is the error given to the client."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code

@@ -21,6 +21,7 @@ from wxclaude.core.config.shortcuts import (
     RESUME_CONVERSATION_COMMAND,
     TASKS_COMMAND,
     USAGE_COMMAND,
+    WORKSPACE_SETTINGS_COMMAND,
     ConfigurableCommand,
 )
 from wxclaude.core.config.workspaces import workspace_label
@@ -56,11 +57,14 @@ class MenuHandlers:
     tasks: Handler
     plans: Handler
     usage: Handler
+    statistics: Handler
     sign_in: Handler
     open_workspace_folder: Handler
     workspace_settings: Handler
     preferences: Handler
     show_help: Handler
+    history: Handler
+    open_log_folder: Handler
     about: Handler
     recent_workspaces: Callable[[], list[str]]
     open_recent: Callable[[str], None]
@@ -104,8 +108,13 @@ class MainMenu:
         self.usage_item = kept_tools["usage"]
         help_menu = wx.Menu()
         help_entry = MenuEntry(_("WxClaude &help\tF1"), handlers.show_help)
+        statistics = MenuEntry(_("&Statistics…"), handlers.statistics, needs=Needs.WORKSPACE)
+        history = MenuEntry(_("A&nnouncement history…"), handlers.history)
+        log_folder = MenuEntry(_("Open the &log folder"), handlers.open_log_folder)
         about = MenuEntry(_("&About"), handlers.about, item_id=wx.ID_ABOUT)
-        add_entries(window, help_menu, [help_entry, about], registry)
+        add_entries(
+            window, help_menu, [help_entry, statistics, history, log_folder, about], registry
+        )
 
         menu_bar = wx.MenuBar()
         menu_bar.Append(self._file_menu, _("&File"))
@@ -181,12 +190,17 @@ class MainMenu:
         return [
             MenuEntry(_("Task &list…"), h.tasks, TASKS_COMMAND, Needs.CONVERSATION),
             MenuEntry(_("Pla&n…"), h.plans, needs=Needs.CONVERSATION),
-            MenuEntry(_("Claude &usage…"), h.usage, USAGE_COMMAND, key="usage"),
+            MenuEntry(_("Usage &gauge…"), h.usage, USAGE_COMMAND, key="usage"),
             MenuEntry(_("Sign &in to Claude…"), h.sign_in),
             MenuEntry(
                 _("Open the workspace &folder"), h.open_workspace_folder, needs=Needs.WORKSPACE
             ),
-            MenuEntry(_("Workspace &settings…"), h.workspace_settings, needs=Needs.WORKSPACE),
+            MenuEntry(
+                _("Workspace &settings…"),
+                h.workspace_settings,
+                WORKSPACE_SETTINGS_COMMAND,
+                Needs.WORKSPACE,
+            ),
         ]
 
     # What changes --------------------------------------------------------------------------------

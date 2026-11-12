@@ -9,6 +9,7 @@ from pathlib import Path
 
 import wx
 
+from wxclaude import __version__
 from wxclaude.core.claude.session_reader import Session, read_session
 from wxclaude.core.errors import ScreenReaderOutputError, SessionReadError
 from wxclaude.core.labels import shorten
@@ -22,6 +23,7 @@ from wxclaude.core.speech.announcements import (
 )
 from wxclaude.core.speech.sounds import WinsoundPlayer
 from wxclaude.i18n import _
+from wxclaude.ui import desktop
 from wxclaude.ui.message_sinks import create_sink
 
 _POSITION_FIELD = 0
@@ -54,8 +56,9 @@ class Feedback:
             destination_of=destination_of,
             on_error=self._on_screen_reader_error,
             sound_player=create_sound_player(),
-            show_dialog=lambda text: self.show_info(text),
+            show_dialog=self._show_announcement_box,
         )
+        self._record_boxes = True  # False while a box shows what the center already recorded
 
     # Status bar and announcements --------------------------------------------------------------
 
@@ -65,6 +68,14 @@ class Feedback:
         text = self.announcements.notify(announce, **values)
         if text is not None:
             self.set_status(text)
+
+    def note_workspace(self, name: str) -> None:
+        """A workspace was opened: a mark in the history of the announcements."""
+        self.announcements.record_change(_("Workspace: {name}").format(name=name))
+
+    def note_conversation(self, name: str) -> None:
+        """Another conversation became the current one: a mark in the history."""
+        self.announcements.record_change(_("Conversation: {name}").format(name=name))
 
     def set_status(self, text: str) -> None:
         """The message field of the status bar (the last one)."""
@@ -117,13 +128,42 @@ class Feedback:
         if current is None or not frame.IsDescendant(current):
             focused.SetFocus()
 
+    def _show_announcement_box(self, text: str) -> None:
+        """The box of an announcement whose destination is a dialog: the center put the text in
+        the history already, so the box must not do it again."""
+        self._record_boxes = False
+        try:
+            self.show_info(text)
+        finally:
+            self._record_boxes = True
+
     def message_box(self, message: str, caption: str, icon: int) -> None:
-        """A message with an OK button; the focus comes back where it was."""
+        """A message with an OK button; the focus comes back where it was. The text goes to the
+        history of the announcements: once the box is closed it would be lost."""
+        if self._record_boxes:
+            self.announcements.record(message)
         with wx.MessageDialog(self._frame, message, caption, wx.OK | icon) as dialog:
             self.modal(dialog)
 
     def show_error(self, message: str) -> None:
-        self.message_box(message, _("Error"), wx.ICON_ERROR)
+        """An error box. Enter and Escape close it; the other button copies the details (the text
+        of the error and the version) to the clipboard, to paste them in a report."""
+        if self._record_boxes:
+            self.announcements.record(message)
+        style = wx.OK | wx.CANCEL | wx.CANCEL_DEFAULT | wx.ICON_ERROR
+        with wx.MessageDialog(self._frame, message, _("Error"), style) as dialog:
+            dialog.SetOKCancelLabels(_("Co&py the details"), _("&Close"))
+            copy = self.modal(dialog) == wx.ID_OK
+        if copy:
+            self._copy_details(message)
+
+    def _copy_details(self, message: str) -> None:
+        """Put the text of an error and the version of WxClaude on the clipboard."""
+        details = _("{message}\n\nWxClaude {version}").format(message=message, version=__version__)
+        if desktop.set_clipboard(details):
+            self.say(Announce.DETAILS_COPIED)
+        else:
+            self.message_box(_("The clipboard cannot be used."), _("Error"), wx.ICON_ERROR)
 
     def confirm(self, title: str, message: str, yes_label: str = "", no_label: str = "") -> bool:
         """Ask a Yes / No question, No by default; True for Yes. The buttons may have labels of

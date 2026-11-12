@@ -8,6 +8,7 @@ from wxclaude.core.config.settings import Settings
 from wxclaude.core.config.shortcuts import INTERRUPT_COMMAND, NEW_CONVERSATION_COMMAND
 from wxclaude.core.conversation.conversations import new_conversation_id
 from wxclaude.core.errors import SettingsError
+from wxclaude.core.security.key_relay import IDLE_SECONDS, UPSTREAM_TIMEOUT
 from wxclaude.core.speech.announcements import END_OF_ANSWER, PROGRESS, Destination
 from wxclaude.core.speech.screen_reader import default_output
 
@@ -31,7 +32,9 @@ def test_save_then_load_round_trip(tmp_path: Path) -> None:
     settings.save()
     loaded = Settings.load(store)
     assert loaded.language == "en"
-    assert loaded.default_agent == Agent(model="opus", effort="high", permission_mode="plan")
+    assert loaded.default_agent == Agent(
+        model="opus", effort="high", permission_mode="plan", provider="claude"
+    )
     assert loaded.alternative_agent == Agent(model="haiku", permission_mode="plan")
     assert loaded.recent_workspaces == ["C:\\work\\one"]
 
@@ -60,7 +63,7 @@ def test_invalid_or_conflicting_saved_shortcuts_are_ignored(tmp_path: Path) -> N
 def test_the_application_starts_with_the_agents_chosen_by_the_user(tmp_path: Path) -> None:
     settings = Settings.load(tmp_path / "settings.json")
     assert settings.default_agent == Agent(
-        model="sonnet", effort="medium", permission_mode="manual"
+        model="sonnet", effort="medium", permission_mode="manual", provider="claude"
     )
     assert settings.alternative_agent == Agent(effort="low")
 
@@ -198,7 +201,7 @@ def test_the_default_agent_is_always_complete(tmp_path: Path) -> None:
     store = tmp_path / "settings.json"
     store.write_text('{"default_agent": {"model": "opus"}}', encoding="utf-8")
     assert Settings.load(store).default_agent == Agent(
-        model="opus", effort="medium", permission_mode="manual"
+        model="opus", effort="medium", permission_mode="manual", provider="claude"
     )
     store.write_text("{}", encoding="utf-8")
     assert Settings.load(store).default_agent == DEFAULT_AGENT
@@ -286,3 +289,79 @@ def test_the_remove_markdown_marks_option_defaults_to_true_and_round_trips(tmp_p
     assert Settings.load(store).remove_markdown_marks is False
     store.write_text('{"remove_markdown_marks": "no"}', encoding="utf-8")
     assert Settings.load(store).remove_markdown_marks is True
+
+
+def test_the_providers_file_is_beside_the_settings(tmp_path: Path) -> None:
+    assert Settings.load(tmp_path / "settings.json").providers_path == tmp_path / "providers.json"
+    assert Settings.load(None).providers_path is None
+
+
+def test_the_transmission_of_the_key_is_masked_by_default_and_remembered(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    assert settings.key_transmission == "masked"
+    settings.key_transmission = "relayed"
+    settings.save()
+    assert Settings.load(store).key_transmission == "relayed"
+    assert "scrub_credentials" not in store.read_text(encoding="utf-8")
+    store.write_text('{"key_transmission": "something else"}', encoding="utf-8")
+    assert Settings.load(store).key_transmission == "masked"
+    store.write_text('{"key_transmission": 3}', encoding="utf-8")
+    assert Settings.load(store).key_transmission == "masked"
+
+
+def test_the_old_yes_or_no_of_the_scrub_is_read_as_masked_or_shared(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text('{"scrub_credentials": false}', encoding="utf-8")
+    assert Settings.load(store).key_transmission == "shared"
+    store.write_text('{"scrub_credentials": true}', encoding="utf-8")
+    assert Settings.load(store).key_transmission == "masked"
+    store.write_text('{"scrub_credentials": "no"}', encoding="utf-8")
+    assert Settings.load(store).key_transmission == "masked"  # not a yes or a no: the default
+    both = '{"scrub_credentials": false, "key_transmission": "relayed"}'
+    store.write_text(both, encoding="utf-8")
+    assert Settings.load(store).key_transmission == "relayed"  # the new choice wins
+
+
+def test_the_settings_of_the_relay_have_the_defaults_of_the_relay(tmp_path: Path) -> None:
+    settings = Settings.load(tmp_path / "settings.json")
+    assert settings.relay_idle_minutes * 60 == IDLE_SECONDS
+    assert settings.relay_timeout_seconds == UPSTREAM_TIMEOUT
+
+
+def test_the_settings_of_the_relay_are_remembered(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    settings = Settings.load(store)
+    settings.relay_idle_minutes = 2
+    settings.relay_timeout_seconds = 120
+    settings.save()
+    loaded = Settings.load(store)
+    assert (loaded.relay_idle_minutes, loaded.relay_timeout_seconds) == (2, 120)
+
+
+@pytest.mark.parametrize("value", [0, 121, -1, 1.5, "10", True, None, [10]])
+def test_an_idle_time_of_the_relay_out_of_range_or_of_the_wrong_kind_is_ignored(
+    tmp_path: Path, value: object
+) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text(json.dumps({"relay_idle_minutes": value}), encoding="utf-8")
+    assert Settings.load(store).relay_idle_minutes == 10
+
+
+@pytest.mark.parametrize("value", [0, 29, 3601, -1, 1.5, "600", True, None, [600]])
+def test_a_wait_of_the_relay_out_of_range_or_of_the_wrong_kind_is_ignored(
+    tmp_path: Path, value: object
+) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text(json.dumps({"relay_timeout_seconds": value}), encoding="utf-8")
+    assert Settings.load(store).relay_timeout_seconds == 600
+
+
+def test_the_limits_of_the_relay_settings_are_accepted(tmp_path: Path) -> None:
+    store = tmp_path / "settings.json"
+    store.write_text('{"relay_idle_minutes": 120, "relay_timeout_seconds": 30}', encoding="utf-8")
+    loaded = Settings.load(store)
+    assert (loaded.relay_idle_minutes, loaded.relay_timeout_seconds) == (120, 30)
+    store.write_text('{"relay_idle_minutes": 1, "relay_timeout_seconds": 3600}', encoding="utf-8")
+    loaded = Settings.load(store)
+    assert (loaded.relay_idle_minutes, loaded.relay_timeout_seconds) == (1, 3600)

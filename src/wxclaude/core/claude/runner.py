@@ -29,6 +29,13 @@ from wxclaude.core.claude.events import (
     TurnEnded,
     TurnResult,
 )
+from wxclaude.core.claude.inline_settings import settings_arguments
+from wxclaude.core.claude.launch import (
+    ProviderLaunch,
+    provider_environment,
+    provider_settings,
+    sends_effort,
+)
 from wxclaude.core.claude.permission_channel import (
     DEFAULT_HOOK_TIMEOUT_SECONDS,
     STDIO,
@@ -41,6 +48,11 @@ from wxclaude.core.claude.stream import parse_stream_line
 from wxclaude.core.claude.usage_text import parse_usage
 from wxclaude.core.config.agents import Agent
 from wxclaude.core.errors import ClaudeNotFoundError, RunnerError, StreamParseError
+from wxclaude.core.security.restricted import (
+    RESTRICTED_ARGUMENTS,
+    restricted_permission_mode,
+    restricted_settings,
+)
 
 _KILL_WAIT_SECONDS = 5
 _RENAME_WAIT_SECONDS = 30
@@ -56,6 +68,10 @@ class RunRequest:
     with ``--name`` to the first message (a later rename goes through ``rename_session``).
     ``fork_from`` is the conversation a branch comes from: its first message copies that history
     into the new session (``--resume <fork_from> --fork-session --session-id <session_id>``).
+    ``restricted`` is a launch in a folder that is not trusted (``core/security/restricted.py``).
+    ``provider`` is the provider to launch with and its key (``core/claude/launch.py``); without
+    one, or with Claude, the CLI is launched as it always was.
+    ``max_turns`` limits the turns of the message (``--max-turns``); 0 is no limit.
     """
 
     prompt: str
@@ -65,13 +81,29 @@ class RunRequest:
     cwd: Path
     name: str = ""
     fork_from: str = ""
+    restricted: bool = False
+    provider: ProviderLaunch | None = None
+    max_turns: int = 0
 
 
 def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str]:
-    """The arguments of ``claude`` for ``request`` (the prompt goes through stdin)."""
+    """The arguments of ``claude`` for ``request`` (the prompt goes through stdin).
+
+    ``--settings`` is given once, merged from the channel, the provider and, in a restricted
+    launch, the rules of the project (the CLI keeps only the last ``--settings`` it is given).
+    The key of a provider is never an argument: it goes to the environment (``_spawn``).
+    """
     agent = request.agent
     if not (agent.model and agent.effort and agent.permission_mode):
         raise RunnerError("The agent must have a model, an effort and a permission mode.")
+    parts = [channel.settings(), provider_settings(request.provider)]
+    if request.restricted:
+        parts.append(restricted_settings(request.cwd))
+    mode = (
+        restricted_permission_mode(agent.permission_mode)
+        if request.restricted
+        else agent.permission_mode
+    )
     return [
         "-p",
         "--input-format",
@@ -80,12 +112,14 @@ def build_arguments(request: RunRequest, channel: PermissionChannel) -> list[str
         "stream-json",
         "--verbose",
         *channel.arguments(),
+        *(RESTRICTED_ARGUMENTS if request.restricted else ()),
+        *settings_arguments(*parts),
         "--model",
         agent.model,
-        "--effort",
-        agent.effort,
+        *(["--effort", agent.effort] if sends_effort(request.provider) else []),
         "--permission-mode",
-        agent.permission_mode,
+        mode,
+        *(["--max-turns", str(request.max_turns)] if request.max_turns > 0 else []),
         *_session_arguments(request),
         *(["--name", request.name] if request.name and not request.resume else []),
     ]
@@ -153,6 +187,11 @@ class ClaudeRunner:
             return False
         return True
 
+    def base_command(self) -> list[str]:
+        """The command that starts the CLI, for what is asked of it besides a message (the
+        sign-in state); raises ``ClaudeNotFoundError``."""
+        return list(self._command) if self._command is not None else find_claude(self.claude_path)
+
     @property
     def is_running(self) -> bool:
         with self._lock:
@@ -201,6 +240,7 @@ class ClaudeRunner:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     cwd=request.cwd,
+                    env=provider_environment(request.provider),  # None: the process's own
                     text=True,
                     encoding="utf-8",
                     errors="replace",
@@ -215,12 +255,15 @@ class ClaudeRunner:
             self._interrupted = False
         return process, stdin
 
-    def rename_session(self, session_id: str, name: str, cwd: Path) -> None:
+    def rename_session(
+        self, session_id: str, name: str, cwd: Path, *, restricted: bool = False
+    ) -> None:
         """Give the session ``session_id`` of the folder ``cwd`` the name ``name``.
 
         It is the ``/rename`` command of the CLI, run as the prompt of ``claude -p --resume``: the
         CLI writes the name in the session file itself, sends nothing to the model and answers at
-        once. Raises ``ClaudeNotFoundError`` or ``RunnerError``.
+        once. ``restricted``: the folder is not trusted. Raises ``ClaudeNotFoundError`` or
+        ``RunnerError``.
         """
         command = self._command if self._command is not None else find_claude(self.claude_path)
         argv = [
@@ -231,6 +274,7 @@ class ClaudeRunner:
             session_id,
             "--output-format",
             "json",
+            *(RESTRICTED_ARGUMENTS if restricted else ()),
         ]
         try:
             done = subprocess.run(
@@ -256,18 +300,29 @@ class ClaudeRunner:
             )
             raise RunnerError(detail)
 
-    def read_usage(self, cwd: Path, on_event: Callable[[RunEvent], None]) -> None:
+    def read_usage(
+        self, cwd: Path, on_event: Callable[[RunEvent], None], *, restricted: bool = False
+    ) -> None:
         """Read the gauges with the ``/usage`` command of the CLI, without waiting.
 
         ``claude -p /usage`` sends nothing to the model and answers at once; without a session
         file (``--no-session-persistence``) it adds no conversation to the user's list. The
         process is the running one (``interrupt`` stops it, no message can start meanwhile) and
         is killed after ``_USAGE_WAIT_SECONDS``. ``on_event`` receives one ``GaugesRead`` from a
-        thread, with no windows when the reading failed for any reason. Raises
-        ``ClaudeNotFoundError`` or ``RunnerError`` if the CLI cannot be started.
+        thread, with no windows when the reading failed for any reason. ``restricted``: the folder
+        is not trusted. Raises ``ClaudeNotFoundError`` or ``RunnerError`` if the CLI cannot be
+        started.
         """
         command = self._command if self._command is not None else find_claude(self.claude_path)
-        argv = [*command, "-p", "/usage", "--no-session-persistence", "--output-format", "json"]
+        argv = [
+            *command,
+            "-p",
+            "/usage",
+            "--no-session-persistence",
+            "--output-format",
+            "json",
+            *(RESTRICTED_ARGUMENTS if restricted else ()),
+        ]
         with self._lock:
             if self._process is not None:
                 raise RunnerError("Claude is already answering.")

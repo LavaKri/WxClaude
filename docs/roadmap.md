@@ -2,7 +2,8 @@
 
 Start here in a new session. Read `CLAUDE.md` (rules), then this file, then the spec of the feature
 you work on (`architecture.md`, `interface.md`, `conversation-display.md`, `focus.md`,
-`claude-cli.md`, `settings.md`, `accessibility.md`). What is still to decide, to verify or to
+`claude-cli.md`, `settings.md`, `accessibility.md`, and for the next big work `providers.md`,
+`security.md` and its plan `plan-providers.md`). What is still to decide, to verify or to
 improve is in `open-questions.md`.
 
 ## Where the project stands
@@ -13,8 +14,9 @@ Claude are asked to the user (two channels, chosen in Preferences > Claude: the 
 the HTTP hook), and the permission rules are edited in the settings files of Claude Code; the
 details of a message (tools, tables, links), the task list, the plans and the usage of Claude are
 shown in dialogs; a conversation can be branched and deleted; the usage dialog ends with the
-statistics of the whole workspace, and a line under each answer sums up its tools. 854 tests
-pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
+statistics of the whole workspace, and a line under each answer sums up its tools; a folder can be
+approved or restricted and a message can go to another AI provider (tried with DeepSeek, `claude-cli.md`).
+1682 tests pass (`pytest`), plus `ruff check`, `ruff format --check` and `mypy src tests`.
 The real CLI was checked by hand with the cheapest model (haiku, low effort): a message, a resumed
 message, a permission question through each channel (allow, deny, the modes `plan` and `dontAsk`,
 a structured question and its answer, the expiry of the hook), the allow / ask / deny rules of
@@ -29,9 +31,38 @@ of the structured questions of Claude (lists of check boxes, the message when a 
 unanswered), the context menu of the prompt, the Display submenu, the button *Claude state* and its read-only field in
 Preferences > Claude, the message at the start when Claude Code is not found, the plan dialog of the
 mode Plan, and the key `K`; the *Sign in to Claude…* dialog (the focus on the progress while it waits,
-the message at the end, the optional e-mail field).
+the message at the end, the optional e-mail field). Added with the providers and the trusted folders (`plan-providers.md`): the offer to approve a folder
+(the focus on *Keep restricted*, the text read), the alert about changed files (the list and the
+differences under it), the announcement *Folder not trusted: restricted mode* and the category
+*Trust of the folder*; the tabs *Environment variables* (the lines with *sensitive*, the explanation) and
+*Security* (the check boxes of the watched files, the confirmation of the approval); the Preferences page
+*Providers* (the lines, *Key state*, the password field and *Show the key*, the form of a provider); the list
+*Provider* of the agents; the check box about the credentials in the Claude page. Added since: the list box
+*Variable* and the field *Value* of the form of a provider (with the explanation of each line), the field
+*Limit of turns per message*, and the focus after Alt+Tab with a button (*Interrupt Claude*) or a greyed control.
 
-Last work, in order (most recent first): the *Sign in to Claude…* dialog of the Tools menu; the button *Claude state* of the Preferences; the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
+Last work, in order (most recent first): the **return of the focus after Alt+Tab** (`ui/focus_keeper.py`,
+`focus.md` rule E: remembered at deactivation, used once, a button or a greyed control gives the prompt, else the
+conversation); the **variables of a provider** (a closed list of four, `core/config/provider_variables.py`,
+sent in the inline `--settings`, so also in a restricted folder; the form of a provider has one list box
+*Variable* and a field *Value* instead of four model fields; `providers.md`, `claude-cli.md`); DeepSeek and
+Ollama defined at the first start; the **limit of turns per message** (tab *Security* of the Workspace
+settings, `--max-turns`); the French and English help pages brought up to date; and a clean-up of the big
+classes by subject, one extraction at a time (`PermissionHandler`, `GaugeReader`, `ConversationNavigator`,
+`CaretAnchor`, `PromptArea`, `FocusKeeper`, then `WorkspaceSettingsPresenter`, `DisplayOptions`, the sending of
+the prompt in `ConversationPresenter`, `ConversationLoader` and `ProgressAnnouncer`; the settings are applied in
+one place, `MainWindow._apply_settings`). Only `MainWindow`, 385 lines, is still over the limit of 300, on
+purpose: what is left is the wiring of the presenters and of their views (the construction, the table of the
+menu handlers), and splitting it would touch almost every test of the window. Before it: the **methods to retrieve the data of a provider** (two lists
+in its form, *Models retrieval* and *Gauge retrieval*, one inheritable class per method in
+`core/config/provider_methods.py`, and the button *Check the data retrieved*; `providers.md`, "The data
+of a server"); the transmission of the key (*Masked*, *Shared*, *Relayed* with the local relay), the
+credit of the providers in the gauge dialog, the item *Statistics*, the stop at a 401 and the
+announcements that name the provider (version 0.3.0); the **providers and the trusted folders, part 1** (the offer to
+approve a folder and the alert about changed files, the restricted launch, the tabs *Environment
+variables* and *Security* of the Workspace settings, the Preferences page *Providers* with keys encrypted
+by the DPAPI, the list *Provider* of the agents, the launch with a provider; `plan-providers.md`); the
+*Sign in to Claude…* dialog of the Tools menu; the button *Claude state* of the Preferences; the message and the status bar line when Claude Code is not found; the plan of Claude shown as such in the permission dialog; the keys
 `K` / `Shift+K` between the links of the conversation; the Display submenu of the Conversation menu (the summary of
 the tools and *Remove the Markdown formatting*, which takes the marks of bold and italic out of the
 text); the fields of the status bar cut at 200 characters; the context menu of the prompt (Cut, Copy,
@@ -61,15 +92,22 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
 
 - **Versions**: `MAJOR.MINOR.PATCH`, the number is `__version__` in `src/wxclaude/__init__.py`
   (read by `pyproject.toml`), a tag `vX.Y.Z` marks each release and `CHANGELOG.md` says what it holds
-  (`versions.md`). The current number is `0.2.0` (`0.1.0` was never released), not tagged yet: it waits for the checks with NVDA and
-  JAWS and for the packaging.
+  (`versions.md`). The current number is `0.4.0` (`0.2.0` is tagged, `0.1.0` was never released), not tagged yet; the
+  major number stays `0` until the checks with NVDA and JAWS and the packaging are done.
 - **Model-View-Presenter, adopted progressively.** The folders stay `core/` (model) and `ui/`
   (views); `presenters/` is added. One screen at a time moves its logic into a presenter without
   wx, tested with a fake view (`architecture.md`). The first one is the sending of a message.
 - **One machine only.** WxClaude runs on a single computer. No server/client split, no network, no
-  JSON protocol of our own, no second executable. The runner sends typed events (dataclasses)
-  straight to the interface. (If two machines are wanted one day, those events are the natural
-  thing to serialize.)
+  second executable. The runner sends typed events (dataclasses) straight to the interface. (If two
+  machines are wanted one day, those events are the natural thing to serialize.) The one JSON
+  protocol of our own is the optional remote control (next decision): a named pipe, this computer
+  only.
+- **Remote control** (decided 2026-11-12, built, `remote.md`): `--remote` at the launch of the first
+  instance opens the named pipe `\\.\pipe\WxClaude-<user>` for five commands (`interrupt`, `send`, `last`
+  with `message` / `status` / `tokens`, `announcements`, `version`), as one JSON request and one JSON response per
+  connection; any program can use it (no key, no client in WxClaude), the title says *Remote enabled*, a message
+  sent goes through the normal permission questions and leaves the prompt and the focus alone. Chosen over a
+  local socket: nothing to publish, no stale port, no network stack.
 - **Display**: a read-only text field holding the conversation as a Markdown document, navigation
   by headings (see `conversation-display.md`). First version: only the user's prompts and Claude's
   answers; everything else (tools, tables, links) later, in dialogs.
@@ -123,6 +161,16 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
   text (`conversation-display.md`); only web and mail addresses are handed to the system.
 - **"Options" is named "Preferences"**; the per-workspace settings are "Workspace settings".
 - **No migration** of older settings files: only the keys described in `settings.md` are read.
+- **AI providers** (decided 2026-11-09, built in part 1, `providers.md`): the word is *provider* (*fournisseur*), a
+  field of the agent at its three levels, defined once in the Preferences, never per workspace;
+  Claude is the built-in one and the default. The key is kept encrypted with the DPAPI; the URL goes
+  by `--settings`, the key by the environment, the credentials are scrubbed from the tools of Claude
+  (a check box), telemetry is off. One shared context when switching, a branch as the fall-back.
+- **Trusted folders** (decided 2026-11-09, built, `security.md`): no more than Claude Code or VS Code do;
+  the user is told and decides. A folder not trusted runs in restricted mode (`--setting-sources
+  user`, the `deny` and `ask` rules of the project, the mode `manual`); the watched files are hashed
+  and their approved copy (values masked) is kept by WxClaude; checked at the opening of a workspace
+  and of the dialogs, not before each message.
 - **No subagents** when working on this project (see `CLAUDE.md`).
 - Nothing in the code or docs may refer to another project.
 
@@ -141,7 +189,7 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
    Preferences > Claude.
 5. **Details dialogs** (`core/conversation/details.py`, `ui/details_dialogs.py`, context menu of
    `ConversationView`): tools used, tables, links, copy a message. **Claude usage** dialog
-   (`core/claude/usage.py`, `ui/usage_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
+   (`core/claude/usage.py`, `ui/text_dialog.py`). **Task list** read from `<config>/tasks/<id>/*.json`
    (`core/claude/tasks.py`, `ui/tasks_dialog.py`). **Plans** of a conversation, to read (`core/claude/plans.py`,
    `ui/plans_dialog.py`, *Tools > Plan…*). The dialogs share `ui/list_dialog.py`.
    The context menu of the conversation is always ours (the native one of the field is never
@@ -174,7 +222,8 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
     `show_tools_summary`). *Preferences* is in the File menu, above Quit.
 12. **Log file** (`core/diagnostics.py`): `wxclaude.log` with a start-up report, the uncaught errors
     of every thread, a crash file apart; the level is set by the `.bat` shipped with the zip. **Packaging**: `build.bat` makes `dist\WxClaude` (PyInstaller, one
-    folder, no console) and `dist\WxClaude-<version>.zip`, with `LICENSE` and a
+    folder, no console) and `dist\WxClaude-<version>.zip`, with a `tools` folder (the launchers of `tools/`:
+    `WxClaude-debug.bat`, `WxClaude-remote.bat`, and `remote.md` copied from `docs/`), `LICENSE` and a
     `THIRD-PARTY-NOTICES.txt` made by `packaging/make_notices.py` from `pyproject.toml` and the
     installed packages (the license of each, and its text where it ships one).
 13. **Navigation of the conversation**: `H` headings, `1`-`6` levels, `T` tables, `L` lists of level 1,
@@ -182,6 +231,18 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
     at the caret; the announcements of the moves are two categories (*movement done*, *no further
     movement possible*). The table dialog shows one column at a time (`ui/table_dialog.py`; the first
     dialog is one assignment away, `TABLE_DIALOG`).
+
+14. **AI providers and trusted folders, part 1** (`plan-providers.md`, `providers.md`, `security.md`):
+    `core/security/` (sensitive names and masking, watched files and the one door that writes the
+    settings files, the restricted launch, the DPAPI vault), `core/config/providers.py`, the provider of an
+    agent, the launch with a provider (`core/claude/launch.py`), `core/claude/env_vars.py` with
+    `data/env_vars.txt`, the presenters (`security`, `security_tab`, `providers`, `env_vars`) and their
+    views. Measured with the real CLI against a fake server, then with DeepSeek (`claude-cli.md`). Since:
+    the key transmission and the relay, and the methods for the models and the gauge
+    (`core/config/provider_methods.py`, `providers.md`). Then DeepSeek and Ollama defined at the first start
+    and the closed list of variables of a provider (`core/config/provider_variables.py`). Left: the measures
+    of part 3 with a local server (the user's machine is too slow for a model), more methods as real
+    services are tried (`open-questions.md`).
 
 ## Next milestones
 
@@ -196,10 +257,16 @@ turned into `src/wxclaude/help/fr.html` / `en.html` by `MakeHelp/make_help.py <s
    the check at the start, the checks with NVDA and JAWS.
 9. **Spelling dialog** for the prompt (a shortcut, a check list of corrections, an editable list of
    other choices), after choosing the spell checker.
-10. **Claude Code missing**, the rest: grey the send buttons, try again, the install address.
-11. **After that**, from `open-questions.md`: the tab "Environment variables" of the Workspace
-   settings, the tools announced by the CLI added to the list, and the other settings of the
-   `.claude` files.
+10. **Claude Code missing or not logged in**: done (the message and the status bar for both, `interface.md`); the
+   send buttons stay active on purpose, a *Try again* button and the install address are dropped.
+11. **AI providers and trusted folders**: part 1 (everything that needs no server) is done, see item 14
+   below and `plan-providers.md`. Part 2 (DeepSeek) is measured. Part 3: the settings of a local server are built (a provider without a key,
+   the variables of a provider such as `API_TIMEOUT_MS` and the context); the measures need a server on a machine
+   fast enough for a model, which the user's is not. Left too: more methods for the models and the gauge
+   (`open-questions.md`). Versions `0.3.0` and `0.3.1` were released (the latter is not tagged); `0.4.0` holds the remote control (`remote.md`),
+   to check with NVDA and JAWS (the title *Remote enabled*, the list *Variable*, the field *Limit of turns*, the focus after Alt+Tab) before its tag.
+12. **After that**, from `open-questions.md`: the tools announced by the CLI added to the list, and
+   the other settings of the `.claude` files.
 
 ## Working notes for a new session
 

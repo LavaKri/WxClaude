@@ -21,13 +21,23 @@
   Preferences* (on the Claude page) and *Close* (the default). It is said once per launch. The message
   field of the status bar then says "Claude Code not found" instead of "Ready", until it is found: the
   check runs again when the Preferences are closed with OK, and the "Ready" line comes back. The send
-  buttons are not greyed yet (`open-questions.md`).
+  buttons are not greyed, on purpose: the interface does not become empty, and the error comes with the
+  message that is sent.
+- **Claude Code not logged in**: when `claude` is found, `claude auth status` is asked in a thread (the window is
+  not held; `core/claude/status.py`, `read_login`) at the start and when the Preferences are closed with OK. If
+  it says it is not logged in, the status bar says "Not logged in to Claude Code" instead of "Ready", and,
+  at the start only, a message says so with the buttons *Sign in…* (opens the dialog of *Tools > Sign in to
+  Claude…*) and *Close* (the default). When the sign-in dialog is closed the state is asked again and the
+  "Ready" line comes back if it worked. An answer that cannot be read says nothing. Nothing is asked when
+  the default agent uses another provider than Claude (it has its own key).
 - Status bar, three fields: the position of the caret among your prompts (`Message 3 of 8`), the
   step Claude works on (`Step 2 of 5: Build the module`; empty when there is none and while the
   window waits for a prompt), then the last announcement. Progress ("Claude is thinking", "Claude
   uses the tool Read", "Claude is answering", "Permission denied for the tool Bash"), the steps, the
   end of a turn ("Claude has answered", "Claude was interrupted") and the other announcements go
-  where the Announcements page of the Preferences says, per category. A failure ("Claude could not
+  where the Announcements page of the Preferences says, per category. The announcements that name who answers (thinking, tool, answer,
+  interruption, failure, permission and plan questions) say the name of the provider of the agent of
+  the message ("DeepSeek is thinking", "DeepSeek uses the tool Read"); Claude for the built-in one. A failure ("Claude could not
   answer: ...") is written in the status bar and opens a dialog with the details; the prompt is
   kept when Claude cannot be started. No field of the status bar holds more than 200 characters: a
   longer text is cut and ends with `…` (`STATUS_TEXT_LIMIT` in `ui/feedback.py`).
@@ -36,7 +46,13 @@
   conversation (`core/claude/tasks.py`). It is announced (category "Step in progress", instead of "Claude
   uses the tool TaskUpdate") and kept in the second status field until the end of the turn. A task
   that is not in the files gives the normal progress.
-- Window title: `<conversation> - <workspace> - WxClaude`, the parts that exist.
+- Help menu: *WxClaude help* (F1), *Statistics…*, *Announcement history…*, *Open the log folder* (the folder
+  that holds `wxclaude.log` and `wxclaude-crash.log`, in the file explorer), *About*.
+- Error boxes: two buttons, *Close* (the default one: Enter and Escape) and *Copy the details*, which puts the
+  text of the error and `WxClaude <version>` on the clipboard and says *Details copied.* (nothing of the log is
+  copied). The text of an error is also in the announcement history.
+- Window title: `<conversation> - <workspace> - WxClaude`, the parts that exist. With the remote
+  control on (`--remote`, `remote.md`) it starts with `Remote enabled`.
 
 ## Menus
 
@@ -51,12 +67,15 @@ Delete the conversation (see "Branch and delete"), Interrupt Claude (Ctrl+Shift+
 *Remove the Markdown formatting* and *Summary of the tools under the answers*, see the conversation
 display) and the submenu **Search** (see below).
 
-**Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Claude usage (Ctrl+Shift+U), Sign
+**Tools**: Task list (Ctrl+T, as in the CLI), Plan (no shortcut), Usage gauge (Ctrl+Shift+U), Sign
 in to Claude (no shortcut; needs nothing, not even a workspace), Open the workspace folder (in the
-file explorer; needs a workspace), Workspace settings (needs a workspace).
+file explorer; needs a workspace), Workspace settings (Alt+Enter; needs a workspace).
 
 The context menu of the conversation (tools used, table, links, copy) is in
-`conversation-display.md`, with the usage dialog.
+`conversation-display.md`, with the usage gauge and the statistics.
+
+**Help**: WxClaude help (F1), Statistics (the spending and the statistics of the workspace; needs a
+workspace; no shortcut), About.
 
 ## Sign in
 
@@ -168,8 +187,19 @@ ordinary request.
 
 ## Workspace settings
 
-*Tools > Workspace settings...* edits the permission rules that Claude Code keeps in the `.claude`
-folder of the workspace. It is a dialog with one tab for now, **Tools**:
+*Tools > Workspace settings...* (Alt+Enter, configurable) edits what Claude Code keeps in the `.claude`
+folder of the workspace, and the alternative agent of the workspace.
+It is a dialog with four tabs: **Tools** (the permission rules), **Environment variables** (the `env`
+key of the same files), **Security** (the trusted folder and the watched files) and **Alternative
+agent**. When it opens, the keyboard focus is on the first tab, and the watched files of an approved
+folder are checked (see "Trusted folders" below). The tab **Alternative agent** has the four fields of
+the Agent dialog (*Provider*, *Model*, *Effort*, *Permission mode*; no access keys, and no entry
+"same as ..."): the alternative agent is always complete and holds for every conversation of the
+workspace. A new workspace gets the values of the alternative agent of the Preferences when it is
+opened for the first time, and a field that the Preferences leave on "same as the conversation" gets the
+value of the agent of a new conversation. After that the Preferences no longer change it: only the user
+does, in this tab. OK remembers the choice in the file of the workspace (`settings.md`); Cancel changes
+nothing. The tab **Tools**:
 
 - **Target file** (list): *Settings* (`.claude/settings.json`, shared and versioned, the default)
   or *SettingsLocal* (`.claude/settings.local.json`, personal). With the preference "Change the
@@ -194,6 +224,58 @@ folder of the workspace. It is a dialog with one tab for now, **Tools**:
 - OK writes the files that changed (atomically, the other keys of a file are kept, a file that
   cannot be read is never overwritten); Cancel writes nothing. The rules apply to the messages sent
   afterwards.
+
+The tab **Environment variables**:
+
+- **Target file** (list), as in the tab Tools; with the preference only *SettingsLocal* is proposed, and
+  changing *Settings* (versioned) asks first, once per target.
+- **Variables** (list): the variables of `data/env_vars.txt` and those the target file holds without
+  describing them, sorted by name. One line per variable: its name, then what has a value, separated by
+  commas: `not set`, `enabled`, `set to 60000` (`value set` for a name that looks like a credential: a
+  secret is never shown), `sensitive` (a credential, or a setting that redirects the traffic such as a proxy
+  or an address) and `ignored in project files` (a variable the CLI only takes from the shell, the user or
+  the managed settings). The variables that choose the provider are not listed.
+- Buttons **Enable** / **Disable** (a flag: enabled is the value `1`, disabled takes the variable out of
+  the file), **Set the value…** and **Remove**, greyed when they do not apply.
+- **Explanation** (read-only field): what the selected variable does, from the file `env_vars.txt` (one
+  language); a variable that is not described says so.
+- The changes are kept in memory and written by OK, like the tab Tools.
+
+The tab **Security** (what is decided here applies at once, OK is not needed):
+
+- **Trusted folder** (check box). Checking it asks for a confirmation, then the files as they are become
+  the approved reference; unchecking it restricts the folder (the reference is kept).
+- **Limit of turns per message** (number, 0 = no limit, kept in the file of the workspace). It is given to
+  the CLI as `--max-turns`; it is here and not in the Tools tab because it is not a setting of Claude Code.
+  When the CLI stops for it (`error_max_turns`), the error dialog says the limit was reached.
+- **Watched files** (list with a check box per file): `.claude/settings.json`, `.claude/settings.local.json`,
+  `.mcp.json`, the files of `.claude/agents`, `.claude/skills` and `.claude/commands`, and those the user
+  added. One line per file: its path, its state (`unchanged`, `changed`, `added`, `removed`, `absent`) and
+  `not watched` when its check box is clear. Buttons **Accept the change** (the selected file), **Add a
+  file…** (a file of the workspace) and **Remove from the list** (only a file the user added).
+- **Explanation** (read-only field): what the approved and the restricted folder mean and what to be careful
+  about.
+
+## Trusted folders
+
+A folder is *approved* or *restricted* (`security.md`). In a restricted folder the CLI ignores the hooks, the
+settings and the servers of the project, Claude cannot act without permission (the modes `plan` and
+`dontAsk` are kept, the others become `manual`) and it can still read the project.
+
+- **When a workspace opens**, once the window shows, a folder that was never answered gets the dialog
+  *Approve this folder?*: what the folder is (new, or used before), the watched files it holds, and two
+  buttons, *Approve the folder* and *Keep restricted* (the default). The question is asked once; the tab
+  Security approves later. Afterwards a restricted folder is only announced ("Folder not trusted:
+  restricted mode.", category *Trust of the folder*, written in the status bar).
+- **A watched file of an approved folder changed** (when the folder opens, when the Workspace settings
+  open, or when a write is refused because the file changed from outside): the dialog *A watched file
+  changed* lists the files and, under the list, the differences of the selected one with the approved copy
+  (a secret shows only as another hash, a new file as added lines). Buttons *Accept the changes* and
+  *Restrict the folder*; Close decides nothing (the change is announced and asked again next time). A
+  restricted folder is not alerted.
+- A write of the settings files (the tab Tools, the tab Environment variables, "always allow") is refused
+  when its file changed from outside since it was approved; nothing is written, the alert above opens and
+  the error "The settings could not be saved." is shown.
 
 ## Search
 
@@ -220,6 +302,43 @@ is displayed, titles included).
   announced again only after it went back under that threshold, so the windows that start again
   at 0 % (every 5 hours, every week) are announced again in an application left open. An alert is
   only said, never written in the status bar (it would stay there until the next message).
+- **Silent retries of the CLI**: when the server returns an error that the CLI retries (overloaded, 429,
+  5xx: up to ten times with growing waits), each retry is said with its reason: "The server of Claude
+  returned an error (overloaded). Retry 2 of 10; you can interrupt." Category "Progress of Claude" (so
+  it is also written in the status bar). A refusal of the credentials (401, 403) is not one of these:
+  the run is stopped at once and the error box tells why.
+- **Compaction**: when the CLI compacts the conversation (`system` / `compact_boundary` in the stream,
+  automatic or after `/compact`), WxClaude says "Conversation compacted (automatic): 362766 tokens
+  reduced to 76351. Claude may have lost details; consider a new conversation or a branch." Always
+  said as a message (not a category: it is information, not progress). Not yet written in the
+  conversation itself.
+- **A permission mode that was not applied**: the `system` / `init` line gives the mode the CLI really
+  uses (`default` for our `manual`). When it is not the one sent for the message, WxClaude says so,
+  category "Permission mode not applied" (nothing, a message, default, or a dialog box). With the key
+  transmission *Masked* the text says why ("The mode plan was not applied: with the key transmission
+  Masked, Claude Code forces the manual mode. Change it in the Preferences, page Providers."), else it
+  names both modes. A restricted folder makes the mode manual on purpose (`security.md`): this is
+  compared with the mode sent, so it is not reported again.
+- **MCP servers that did not start**: the `init` line of the CLI lists its MCP servers with their state
+  (`connected`, `pending`, `failed`). A `failed` one is said ("The MCP server ollama did not start:
+  its tools are not available."), a `pending` one too, with another text ("...is slow to start: its
+  tools may not be available for this message."): a slow server is not ready for the first message
+  and starts again at each message, as each message is a new process (`claude-cli.md`). Each is said
+  once for each state, not at each message, and said again if it worked in between. Category "MCP
+  servers" (nothing, a message, default, or a dialog box). Other states, and the servers that work,
+  say nothing. Not written in the conversation: this is about one start, not about the exchange.
+- **History of the announcements** (*Help > Announcement history…*, no shortcut, needs nothing): so that
+  an announcement that was missed, or sent to nothing, is not lost. A `TextDialog` (read-only text and a
+  Close button) with one line per announcement, the oldest first and the newest last, the caret on the
+  last line: `10:20 Ready`. It holds the last 500 lines, in memory (a new start begins empty), for the
+  whole session: a change of conversation does not clear it, it adds a blank line and a line
+  `Workspace: WxClaude` when a workspace is opened, or `Conversation: Fix` when another conversation
+  becomes the current one (not for a refresh, a rename or the same workspace again). Every announcement
+  is kept, even when its category is set to *No announcement* and whatever its destination (message,
+  sound, dialog box), except the movements in the conversation and the searches (they answer at once
+  to a key and are many). The texts of the message boxes (errors, warnings, information) are kept too,
+  on one line; the questions (Yes / No) are not. The same text is never merged with the previous one.
+  The time is `hh:mm`, 24 hours. An empty history says "No announcement yet.".
 - When Claude has answered (or was interrupted) the status bar goes back to "Ready", followed by
   the 5-hour gauge when it is known: "Ready, gauge at 50 %". The weekly gauge is added once it is at
   or over its last alert threshold (75 %): "Ready, gauge at 50 %, week at 76 %"; under it, the usage
@@ -228,7 +347,7 @@ is displayed, titles included).
 - **Reading the gauges** (`claude-cli.md`, "Gauges without a message"): at startup, when a first
   workspace opens, and by a timer of one minute when a gauge is unknown or past its reset time,
   WxClaude reads them with `/usage`, without sending a message. It is handled like a message: both
-  send buttons and the *Claude usage* item of the Tools menu are greyed, the message field of the
+  send buttons and the *Usage gauge* item of the Tools menu are greyed, the message field of the
   status bar says "Refreshing the gauges", and *Interrupt Claude* stays available to stop it. At the
   end, success or not, the window is back to waiting for a prompt ("Ready, gauge at 50 %"). Nothing
   is shown as an error and the only thing said is a gauge alert when a threshold is reached; nothing
@@ -281,12 +400,17 @@ picker, `/rename`) and WxClaude show the same one:
 
 ## Agents
 
-An agent bundles a model (listed from the least to the most powerful), an effort and a permission
-mode, all three always chosen: the CLI is never left to pick one from its own settings. Two agents
+An agent bundles a provider, a model (those of the provider; for Claude, from the least to the most
+powerful), an effort and a permission mode, all four always chosen: the CLI is never left to pick one from its own settings. Two agents
 are defined in Preferences > Agent: the one of a new conversation and the alternative agent, used by the
-"send with the alternative agent" command; its fields can be left on "same as the conversation".
-Changing the model loses the prompt cache of the conversation (measured with the CLI); changing the
-effort or the permission mode does not.
+"send with the alternative agent" command; its fields can be left on "same as the conversation". The
+Workspace settings (tab *Alternative agent*) hold the alternative agent of each workspace, which is the
+one used there: the Preferences only give its first value to a new workspace.
+Changing the provider (the first list of the Agent dialog and of the Agent page) takes the first model of
+the new provider unless the current model is one of its models, and, like changing the model, loses the
+prompt cache of the conversation (measured with the CLI); changing the effort or the permission mode
+does not. The alternative agent can leave the provider on "same as the conversation"; the models of
+Claude are then offered. A provider that was deleted shows as Claude. See `providers.md`.
 
 ## Preferences
 
@@ -306,10 +430,39 @@ effort or the permission mode does not.
   auth status` (`core/claude/status.py`); the address and the organization that `auth status` also
   gives are not read. The window waits for the answer (20 seconds at most). Signing in has a dialog
   of its own, *Tools > Sign in to Claude…* (see "Sign in" above); the Preferences have no button for it.
+- **Providers** (after Claude): the list of the providers, one line each (`Claude, built in`; `DeepSeek,
+  https://api.deepseek.com/anthropic, key saved`), the buttons *Add…*, *Edit…* and *Delete…* (asks first, No
+  by default; the key goes with it). Whether a key is saved is said by the line of the list only. Claude
+  is always first and cannot be changed or deleted. What is done to the providers is saved at once (Cancel
+  does not undo it). Under the buttons, the list *API key transmission* (*Masked*, the default, *Shared*
+  or *Relayed*) and the read-only field *Explanation* that tells what the chosen one means: *Masked*
+  hides the key from the commands that Claude runs but the CLI then forces the manual permission mode;
+  *Shared* leaves the key readable by them and applies every mode; *Relayed* keeps the key in WxClaude,
+  which forwards the requests with it, so the key is hidden and every mode applies (`providers.md`,
+  "How the key reaches the CLI" and "The relay"). OK stores this choice (the setting
+  `key_transmission`). The form of a provider: name, address
+  (`http://` or `https://`), where the key comes from (saved by
+  WxClaude, or none for a local server), a button *Add a key* / *Remove the key* (by whether the provider
+  has one; greyed for a provider that needs none; the key is typed in a password field with a check box
+  *Show the key*, kept encrypted when the form is accepted, never shown again; Cancel changes nothing),
+  a list box *Variable* (a classic list, one line selected, all six lines visible) and a field *Value*: the list holds one line per variable, written `Small model =
+  deepseek-v4-flash`: the four models (*Small*, *Medium*, *Large* and *Largest model*; an empty one takes
+  the weakest model given, one is enough; the first three also stand for `haiku`, `sonnet` and `opus`),
+  then the variables of the CLI the provider can set (`API_TIMEOUT_MS`, `CLAUDE_CODE_MAX_CONTEXT_TOKENS`,
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW`, `CLAUDE_CODE_MAX_OUTPUT_TOKENS`: a closed list, whole numbers; empty means not set: `providers.md`). The field *Value* holds the value of
+  the selected line (its name says which: *Value of API_TIMEOUT_MS*) and a read-only field *Explanation*
+  says what the line does. The line follows the value when the field is left, not at each key, so a screen
+  reader does not read the list again at each one. The check box *Send the
+  effort*, then, at the bottom, two lists *Models retrieval* (*No method*, *V1*) and *Gauge retrieval*
+  (*No method*, *DeepSeek*), and right under them the button *Check the data retrieved* (greyed while a key
+  is needed and missing, or when both lists say *No method*): it asks the server with the two methods
+  chosen and shows the models and the credit in a read-only text (`providers.md`, "The data of a
+  server"). The same form serves to add and to change a provider. A form that is not valid is asked again with what
+  was typed, the key included.
 - **Workspace**: hide the system messages (checked by default): the noise the CLI writes in
   a session, such as the answer "No response requested." or the summary of a compaction, is not displayed; change the tools only
   in the local file, which is not versioned (unchecked by default, see Workspace settings).
-- **Agent**: list of the two agents, their fields, the check box *Refuse the requests of Claude to
+- **Agent**: list of the two agents, their fields (the provider first), the check box *Refuse the requests of Claude to
   leave the Plan mode* (checked by default) and the read-only field that gives the implication of
   each permission level, the cache notice and, last, a paragraph that explains the check box (a
   screen reader reads a field, not a note under a check box). Checked, two requests of Claude are

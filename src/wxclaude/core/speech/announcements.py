@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from wxclaude.core.errors import ScreenReaderOutputError
+from wxclaude.core.speech.history import AnnouncementHistory
 from wxclaude.i18n import N_, _
 
 
@@ -129,8 +130,29 @@ SEARCH_FAILED = Category(
 GAUGE = Category(
     "gauge", N_("Gauge alerts"), Destination.MESSAGE, _NONE_OR_MESSAGE, in_status_bar=False
 )  # the "Ready" line of the status bar shows the gauges worth a look (``UsageTracker.ready_line``)
+#: The trust state of a folder: restricted when it opens, approved, or a watched file changed.
+SECURITY = Category(
+    "security",
+    N_("Trust of the folder"),
+    Destination.MESSAGE,
+    (Destination.NONE, Destination.MESSAGE, Destination.DIALOG),
+)
 #: The conversation read again.
 REFRESH = Category("refresh", N_("Refresh"), Destination.MESSAGE, _NONE_OR_MESSAGE)
+#: An MCP server that failed to start, or is slow to.
+MCP_SERVERS = Category(
+    "mcp_servers",
+    N_("MCP servers"),
+    Destination.MESSAGE,
+    (Destination.NONE, Destination.MESSAGE, Destination.DIALOG),
+)
+#: The CLI runs a message in another permission mode than the one asked for.
+MODE_NOT_APPLIED = Category(
+    "mode_not_applied",
+    N_("Permission mode not applied"),
+    Destination.MESSAGE,
+    (Destination.NONE, Destination.MESSAGE, Destination.DIALOG),
+)
 
 #: Every category, in the order of the Announcements page of the Preferences.
 CATEGORIES = (
@@ -145,7 +167,19 @@ CATEGORIES = (
     SEARCH_FAILED,
     REFRESH,
     GAUGE,
+    SECURITY,
+    MODE_NOT_APPLIED,
+    MCP_SERVERS,
 )
+
+
+#: The categories whose announcements are not kept in the history: moving in the conversation and
+#: searching it answer at once to what the user just did, and are many.
+_NOT_RECORDED = frozenset(
+    category.id for category in (MOVEMENT, MOVEMENT_BLOCKED, SEARCH, SEARCH_FAILED)
+)
+
+DEFAULT_SPEAKER = "Claude"  # who answers when a message does not say
 
 
 class Announce(enum.Enum):
@@ -153,40 +187,91 @@ class Announce(enum.Enum):
     ``text``, a message id (translate, then format)."""
 
     NO_CONVERSATION = (None, N_("No conversation in this workspace."))
-    CLAUDE_FAILED = (None, N_("Claude could not answer: {details}"))
+    DETAILS_COPIED = (None, N_("Details copied."))
+    FOLDER_RESTRICTED = (SECURITY, N_("Folder not trusted: restricted mode."))
+    FOLDER_APPROVED = (SECURITY, N_("Folder approved: Claude uses its settings."))
+    FOLDER_CHANGED = (SECURITY, N_("A watched file changed: {files}."))
+    CLAUDE_FAILED = (None, N_("{name} could not answer: {details}"))
     CONVERSATION_REFRESHED = (REFRESH, N_("Conversation refreshed. New messages: {count}."))
     CONVERSATION_NOT_SAVED = (REFRESH, N_("This conversation has no history yet."))
     CONVERSATION_DELETED = (None, N_('Conversation "{name}" moved to the Recycle Bin.'))
     SEARCH_FOUND = (SEARCH, N_("{line}"))
     SEARCH_NO_NEXT = (SEARCH_FAILED, N_('No next occurrence of "{term}".'))
     SEARCH_NO_PREVIOUS = (SEARCH_FAILED, N_('No previous occurrence of "{term}".'))
-    CLAUDE_THINKING = (PROGRESS, N_("Claude is thinking."))
-    CLAUDE_USING_TOOL = (PROGRESS, N_("Claude uses the tool {tool}."))
-    CLAUDE_ANSWERING = (PROGRESS, N_("Claude is answering."))
-    CLAUDE_INTERRUPTING = (PROGRESS, N_("Interrupting Claude."))
+    CLAUDE_THINKING = (PROGRESS, N_("{name} is thinking."))
+    CLAUDE_USING_TOOL = (PROGRESS, N_("{name} uses the tool {tool}."))
+    #: Never said: the history writes one of these in place of CLAUDE_USING_TOOL when the tool
+    #: works on something it can name (``values["history_as"]``, ``values["target"]``).
+    CLAUDE_USING_TOOL_ON = (PROGRESS, N_("{name} uses the tool {tool} on {target}."))
+    CLAUDE_USING_TOOL_TO_RUN = (PROGRESS, N_("{name} uses the tool {tool} to run {target}."))
+    CLAUDE_ANSWERING = (PROGRESS, N_("{name} is answering."))
+    CLAUDE_INTERRUPTING = (PROGRESS, N_("Interrupting {name}."))
+    SERVER_RETRY = (
+        PROGRESS,
+        N_(
+            "The server of {name} returned an error ({reason}). Retry {attempt} of {total}; "
+            "you can interrupt."
+        ),
+    )
+    CONVERSATION_COMPACTED = (
+        None,
+        N_(
+            "Conversation compacted ({trigger}): {before} tokens reduced to {after}. {name} may "
+            "have lost details; consider a new conversation or a branch."
+        ),
+    )
+    CONVERSATION_COMPACTED_UNKNOWN = (
+        None,
+        N_(
+            "Conversation compacted ({trigger}). {name} may have lost details; consider a new "
+            "conversation or a branch."
+        ),
+    )
+    MODE_FORCED_MANUAL = (
+        MODE_NOT_APPLIED,
+        N_(
+            "The mode {asked} was not applied: with the key transmission Masked, Claude Code "
+            "forces the manual mode. Change it in the Preferences, page Providers."
+        ),
+    )
+    MCP_SERVER_FAILED = (
+        MCP_SERVERS,
+        N_("The MCP server {server} did not start: its tools are not available."),
+    )
+    MCP_SERVER_SLOW = (
+        MCP_SERVERS,
+        N_(
+            "The MCP server {server} is slow to start: its tools may not be available for this "
+            "message."
+        ),
+    )
+    MODE_DIFFERENT = (
+        MODE_NOT_APPLIED,
+        N_("{name} runs in the mode {actual}, not in the mode {asked} that was chosen."),
+    )
     PERMISSION_DENIED = (PROGRESS, N_("Permission denied for the tool {tool}."))
     GAUGE_FIVE_HOUR = (GAUGE, N_("Alert: the 5-hour gauge is at {percent} %."))
     GAUGE_WEEKLY = (GAUGE, N_("Alert: the weekly gauge is at {percent} %."))
     STEP_STARTED = (STEP, N_("Step {number} of {total}: {subject}"))
-    CLAUDE_DONE = (END_OF_ANSWER, N_("Claude has answered."))
-    CLAUDE_INTERRUPTED = (END_OF_ANSWER, N_("Claude was interrupted."))
-    PERMISSION_ASKED = (PERMISSION_QUESTION, N_("Claude asks permission for the tool {tool}."))
-    PLAN_PROPOSED = (PERMISSION_QUESTION, N_("Claude proposes a plan."))
-    QUESTION_ASKED = (PERMISSION_QUESTION, N_("Claude has questions for you."))
-    QUESTION_ANSWERED = (PERMISSION_ANSWER, N_("Your answers were sent to Claude."))
+    CLAUDE_DONE = (END_OF_ANSWER, N_("{name} has answered."))
+    CLAUDE_INTERRUPTED = (END_OF_ANSWER, N_("{name} was interrupted."))
+    PERMISSION_ASKED = (PERMISSION_QUESTION, N_("{name} asks permission for the tool {tool}."))
+    PLAN_PROPOSED = (PERMISSION_QUESTION, N_("{name} proposes a plan."))
+    QUESTION_ASKED = (PERMISSION_QUESTION, N_("{name} has questions for you."))
+    QUESTION_ANSWERED = (PERMISSION_ANSWER, N_("Your answers were sent to {name}."))
     PERMISSION_GRANTED = (PERMISSION_ANSWER, N_("Permission granted for the tool {tool}."))
     PERMISSION_REFUSED = (PERMISSION_ANSWER, N_("Permission refused for the tool {tool}."))
     PLAN_REFUSED = (
         PERMISSION_ANSWER,
-        N_("Claude asked to leave the Plan mode: refused, as set in the Preferences."),
+        N_("{name} asked to leave the Plan mode: refused, as set in the Preferences."),
     )
     PLAN_QUESTIONS_REFUSED = (
         PERMISSION_ANSWER,
-        N_("Claude's questions were refused in the Plan mode, as set in the Preferences."),
+        N_("The questions of {name} were refused in the Plan mode, as set in the Preferences."),
     )
     PERMISSION_EXPIRED = (
         PERMISSION_ANSWER,
-        N_("The question about the tool {tool} expired: Claude denied the tool."),
+        N_("The question about the tool {tool} expired: {name} denied the tool."),
     )
     MOVED = (MOVEMENT, N_("{line}"))
     MOVED_HEADING = (MOVEMENT, N_("{title}, title {level}"))
@@ -292,14 +377,16 @@ class AnnouncementCenter:
     ) -> None:
         self.message_sink: MessageSink = message_sink or NullMessageSink()
         self.sound_player: SoundPlayer = sound_player or NullSoundPlayer()
+        self.history = AnnouncementHistory()  # a test may replace it (its clock)
         self._destination_of = destination_of or (lambda category: category.default)
         self._on_error = on_error
         self._show_dialog = show_dialog
 
     @staticmethod
     def text(announce: Announce, **values: object) -> str:
-        """The text of ``announce`` filled with ``values``, without saying it."""
-        return _(announce.text).format(**values)
+        """The text of ``announce`` filled with ``values``, without saying it. ``name`` is who
+        answers (the provider of the agent); it is Claude when it is not given."""
+        return _(announce.text).format(**{"name": DEFAULT_SPEAKER, **values})
 
     def destination(self, announce: Announce) -> Destination:
         """Where ``announce`` goes now (a fixed announcement is always a message)."""
@@ -315,7 +402,14 @@ class AnnouncementCenter:
         ``values`` may carry ``line``, the text of the line concerned (what ``READ_LINE`` sends).
         Returns the text to write in the status bar: the text that was sent, None if the
         announcement is a sound, a dialog, nothing, or of a category kept out of the status bar.
+
+        Whatever its destination (even none, or a sound), the text goes to the history, except the
+        announcements of a movement in the conversation and of a search. The history may be more
+        informative than what is said (``_history_text``); what is said never changes.
         """
+        category = announce.category
+        if category is None or category.id not in _NOT_RECORDED:
+            self.history.add(self._history_text(announce, values))
         destination = self.destination(announce)
         if destination is Destination.NONE:
             return None
@@ -334,8 +428,23 @@ class AnnouncementCenter:
         except ScreenReaderOutputError as error:
             self.message_sink = NullMessageSink()
             self._report(error)
-        category = announce.category
         return text if category is None or category.in_status_bar else None
+
+    def _history_text(self, announce: Announce, values: dict[str, object]) -> str:
+        """What the history keeps of ``announce``: the more detailed message that ``values`` ask
+        for (``history_as``) when it has its ``target``, else the text that is said."""
+        detailed = values.get("history_as")
+        if isinstance(detailed, Announce) and values.get("target"):
+            return self.text(detailed, **values)
+        return self.text(announce, **values)
+
+    def record(self, text: str) -> None:
+        """Put in the history a text shown another way (a message box)."""
+        self.history.add(text)
+
+    def record_change(self, text: str) -> None:
+        """Put in the history a change of workspace or of conversation (after a blank line)."""
+        self.history.add_change(text)
 
     def _play(self, destination: Destination) -> None:
         try:

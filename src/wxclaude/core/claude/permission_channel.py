@@ -24,7 +24,11 @@ class PermissionChannel(Protocol):
     """What the runner needs from a channel."""
 
     def arguments(self) -> list[str]:
-        """The arguments of ``claude`` that open this channel."""
+        """The arguments of ``claude`` that open this channel (never ``--settings``)."""
+
+    def settings(self) -> dict[str, object]:
+        """What this channel adds to the inline settings of the launch (``--settings``, which the
+        launch writes once for all its parts); empty if it adds nothing."""
 
     def bind(self, process_input: ProcessInput) -> None:
         """Called once the process runs, with its standard input."""
@@ -44,6 +48,9 @@ class StdioChannel:
 
     def arguments(self) -> list[str]:
         return ["--permission-prompt-tool", "stdio"]
+
+    def settings(self) -> dict[str, object]:
+        return {}
 
     def bind(self, process_input: ProcessInput) -> None:
         self._input = process_input

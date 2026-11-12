@@ -1,0 +1,51 @@
+# The environment variables of Claude Code that the tab "Environment variables" of the Workspace
+# settings describes. One variable per line:  NAME | kind | where | explanation
+#   kind:  flag  = switched on with the value 1 (the tab offers Enable / Disable);
+#          value = takes a text or a number (the tab asks for it).
+#   where: any   = the CLI accepts it in the `env` key of every settings file;
+#          user  = shell, user or managed settings only: a project file does not apply it.
+# Blank lines and lines that start with # are ignored. A variable that a settings file already
+# holds but that is not listed here is shown too, without an explanation. The explanations are in
+# one language (English) on purpose: edit this file freely, nothing else has to change.
+# Source: the page "Environment variables" of the Claude Code documentation (read 2026-11-09; the
+# page is long and its end was not read: add the variables you need). Variables that choose the
+# provider (ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, the model aliases) are not listed: WxClaude
+# gives them at launch (see the Providers page of the Preferences).
+API_TIMEOUT_MS | value | any | Time in milliseconds each API request waits for the response headers.
+BASH_DEFAULT_TIMEOUT_MS | value | any | Default timeout, in milliseconds, of a foreground Bash or PowerShell command.
+BASH_MAX_OUTPUT_LENGTH | value | any | Maximum characters of command output that Claude reads back (default 30000, at most 150000).
+BASH_MAX_TIMEOUT_MS | value | any | Longest timeout, in milliseconds, that the model may give a foreground Bash or PowerShell command.
+CLAUDE_AUTOCOMPACT_PCT_OVERRIDE | value | any | Percentage (1 to 100) of the auto-compact window at which the conversation is compacted.
+CLAUDE_BASH_MAINTAIN_PROJECT_WORKING_DIR | flag | any | Return to the original working directory after each Bash or PowerShell command.
+CLAUDE_CODE_ALWAYS_ENABLE_EFFORT | flag | any | Send the effort parameter with every request, even for a model name the CLI does not know.
+CLAUDE_CODE_AUTO_COMPACT_WINDOW | value | any | The auto-compact window: how full the context gets before it is compacted.
+CLAUDE_CODE_DISABLE_1M_CONTEXT | flag | any | Turn off the support of the 1 million token context window.
+CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING | flag | any | Turn off adaptive reasoning on Opus and Sonnet 4.6.
+CLAUDE_CODE_DISABLE_ATTACHMENTS | flag | user | Turn off the processing of attachments.
+CLAUDE_CODE_DISABLE_AUTO_MEMORY | flag | any | Turn off the automatic memory.
+CLAUDE_CODE_DISABLE_BACKGROUND_TASKS | flag | any | Remove the background parameter from the tools and turn off background runs.
+CLAUDE_CODE_DISABLE_CLAUDE_MDS | flag | any | Never load CLAUDE.md memory files.
+CLAUDE_CODE_DISABLE_CRON | flag | any | Turn off the scheduled tasks of a session.
+CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS | flag | any | Remove the pre-release anthropic-beta headers and fields from the requests.
+CLAUDE_CODE_DISABLE_FAST_MODE | flag | any | Turn off the fast mode.
+CLAUDE_CODE_DISABLE_FILE_CHECKPOINTING | flag | any | Turn off the file checkpoints.
+CLAUDE_CODE_DISABLE_FILE_MENTIONS | flag | user | Stop expanding the @ mentions of files and folders.
+CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS | flag | any | Remove the built-in git workflow instructions from the context.
+CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC | flag | any | Turn off the network traffic that is not essential, and the fetching of feature flags.
+CLAUDE_CODE_DISABLE_THINKING | flag | any | Leave the thinking parameter out of the API requests.
+CLAUDE_CODE_DISABLE_WEB_FETCH | flag | any | Turn off the WebFetch tool.
+CLAUDE_CODE_EFFORT_LEVEL | value | any | The effort level for the models that support it.
+CLAUDE_CODE_ENABLE_TELEMETRY | flag | user | Turn on the OpenTelemetry data collection.
+CLAUDE_CODE_EXTRA_BODY | value | any | A JSON object merged into the body of the model requests.
+CLAUDE_CODE_FILE_READ_MAX_OUTPUT_TOKENS | value | any | Token limit of a file read, instead of the default.
+CLAUDE_CODE_GIT_BASH_PATH | value | any | Windows only: the path of the Git Bash program.
+CLAUDE_CODE_GLOB_TIMEOUT_SECONDS | value | any | Timeout, in seconds, of the searches of the Glob and Grep tools.
+CLAUDE_CODE_MAX_CONTEXT_TOKENS | value | any | The size of the context window that the CLI assumes for the model.
+CLAUDE_CODE_MAX_OUTPUT_TOKENS | value | any | Maximum number of output tokens of most requests.
+CLAUDE_CODE_MAX_RETRIES | value | any | How many times a failed API request is tried again.
+CLAUDE_CODE_MAX_TURNS | value | any | Cap on the number of agentic turns when no limit is given.
+CLAUDE_CODE_MAX_WEB_SEARCHES_PER_SESSION | value | any | Cap on the WebSearch calls of a session.
+CLAUDE_CODE_MCP_ALLOWLIST_ENV | flag | any | Start the stdio MCP servers with a safe base environment only (no credentials).
+CLAUDE_CODE_MCP_STARTUP_WAIT_MS | value | any | How long the first turn of a non-interactive session waits for the MCP servers.
+CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT | value | any | Idle timeout, in milliseconds, of the calls of MCP tools.
+CLAUDE_CODE_USE_POWERSHELL_TOOL | flag | any | Make the PowerShell tool available on Windows (seen needed with the CLI 2.1.286).

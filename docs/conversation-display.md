@@ -177,11 +177,17 @@ view (`focus.md`).
   underscores (in backticks it stays). Switching the item rebuilds the text and the caret stays on
   its message. The export of the conversation keeps the marks (`ConversationView.markdown_text`); the
   dialog of a table, the context menu and the copies read the Markdown of the message as written.
-- **Usage of Claude**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available. A read-only
-  field (initial focus) with one fact per line: each gauge of the subscription (`5-hour window, 74 %
+- **Usage gauge**: a dialog in the Tools menu, `Ctrl+Shift+U`, always available (`TextDialog`: a read-only
+  field with the initial focus, one fact per line). It holds the gauges and the credit of the providers
+  (below); the spending and the statistics are in the dialog *Statistics* of the Help menu. Each gauge of the subscription (`5-hour window, 74 %
   used, resets at 16:00`, from the `rate_limit_event` lines; "at" and the time alone for today,
   else "on" ("le" in French) and the date and
-  time), the limit status when it is not `allowed`, when the gauges were updated, then the tokens, the cost at
+  time), the limit status when it is not `allowed`, when the gauges were updated, then the credit of each
+  provider that has a key saved and a gauge method (`DeepSeek: balance 4.99 USD, topped up
+  4.99, offered 0.00.`; asked to the server when the dialog opens, a failure is a line: `DeepSeek: balance
+  not available. The server refused the key (error 401).`).
+
+- **Statistics** (Help menu, needs a workspace, no shortcut): the same kind of dialog with the tokens, the cost at
   list price, the duration and the turns of the last message, and the totals of the conversation
   since it was opened in WxClaude (sum of the `result` lines received; they start again when another
   conversation becomes current, the gauges belong to the account and stay). A `result` reports the
@@ -189,7 +195,7 @@ view (`focus.md`).
   message whose previous total is not known is counted without a cost). After these lines come the
   statistics of the whole workspace (below).
 
-- **Statistics of the workspace**: the last lines of the usage dialog, one fact per line, kept in a
+- **Statistics of the workspace**: the last lines of the dialog *Statistics*, one fact per line, kept in a
   ledger of the workspace (`settings.md`), so they include the conversations that were deleted:
 
   ```

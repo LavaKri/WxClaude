@@ -159,7 +159,7 @@ def test_a_question_that_expired_closes_its_dialog_and_is_not_answered(
     monkeypatch.setattr(
         conversation._run_view, "ask_permission", lambda _request, _wait: Decision(Choice.DENY)
     )
-    run._on_permission_request(request)
+    run.on_event(request)
     assert answers == []
 
 
@@ -245,6 +245,6 @@ def test_the_workspace_settings_item_needs_a_workspace(window: MainWindow) -> No
     item = next(
         item
         for item in window._menu.needs_workspace
-        if item.GetItemLabel() == "Workspace &settings…"
+        if item.GetItemLabel() == "Workspace &settings…\tAlt+Enter"  # with its shortcut
     )
     assert not item.IsEnabled()

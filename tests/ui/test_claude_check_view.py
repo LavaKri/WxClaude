@@ -2,7 +2,7 @@ import pytest
 
 from wxclaude.ui.claude_check_view import WxClaudeCheckView
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.ui
 
 
 class FakeFeedback:
@@ -19,9 +19,18 @@ class FakeFeedback:
         return self.answer
 
 
+def _view(answer: bool) -> tuple[WxClaudeCheckView, FakeFeedback, list[str]]:
+    feedback, opened = FakeFeedback(answer), []
+    view = WxClaudeCheckView(
+        feedback,  # type: ignore[arg-type]
+        lambda: opened.append("preferences"),
+        lambda: opened.append("sign in"),
+    )
+    return view, feedback, opened
+
+
 def test_the_message_tells_what_to_do_and_yes_opens_the_preferences() -> None:
-    feedback, opened = FakeFeedback(True), []
-    view = WxClaudeCheckView(feedback, lambda: opened.append("preferences"))  # type: ignore[arg-type]
+    view, feedback, opened = _view(True)
     view.claude_not_found()
     ((title, message, yes, no),) = feedback.asked
     assert title == "Claude Code not found"
@@ -32,12 +41,29 @@ def test_the_message_tells_what_to_do_and_yes_opens_the_preferences() -> None:
 
 
 def test_no_leaves_the_preferences_closed() -> None:
-    feedback, opened = FakeFeedback(False), []
-    WxClaudeCheckView(feedback, lambda: opened.append("preferences")).claude_not_found()  # type: ignore[arg-type]
+    view, _feedback, opened = _view(False)
+    view.claude_not_found()
+    assert opened == []
+
+
+def test_the_message_about_the_login_says_what_to_do_and_yes_opens_the_sign_in() -> None:
+    view, feedback, opened = _view(True)
+    view.not_logged_in()
+    ((title, message, yes, no),) = feedback.asked
+    assert title == "Not logged in to Claude Code"
+    assert "not logged in" in message
+    assert "Tools > Sign in to Claude…" in message  # the way to do it later
+    assert (yes, no) == ("&Sign in…", "&Close")
+    assert opened == ["sign in"]
+
+
+def test_no_leaves_the_sign_in_closed() -> None:
+    view, _feedback, opened = _view(False)
+    view.not_logged_in()
     assert opened == []
 
 
 def test_the_status_goes_to_the_status_bar() -> None:
-    feedback = FakeFeedback(False)
-    WxClaudeCheckView(feedback, lambda: None).set_status("Claude Code not found")  # type: ignore[arg-type]
+    view, feedback, _opened = _view(False)
+    view.set_status("Claude Code not found")
     assert feedback.status == ["Claude Code not found"]

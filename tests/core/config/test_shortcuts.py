@@ -6,6 +6,7 @@ from wxclaude.core.config.shortcuts import (
     OPEN_WORKSPACE_COMMAND,
     SEND_ALTERNATIVE_COMMAND,
     SEND_COMMAND,
+    WORKSPACE_SETTINGS_COMMAND,
     ShortcutProblem,
     check_shortcut,
     normalize_shortcut,
@@ -57,7 +58,16 @@ def test_a_plain_enter_is_refused_because_it_adds_a_line_break() -> None:
 
 
 def test_enter_with_a_modifier_is_accepted() -> None:
-    assert check_shortcut(INTERRUPT_COMMAND, "Alt+Enter", DEFAULTS).problem is None
+    assert check_shortcut(INTERRUPT_COMMAND, "Ctrl+Alt+Enter", DEFAULTS).problem is None
+
+
+def test_alt_enter_opens_the_workspace_settings_and_can_be_changed() -> None:
+    assert WORKSPACE_SETTINGS_COMMAND.default == "Alt+Enter"
+    check = check_shortcut(INTERRUPT_COMMAND, "Alt+Enter", DEFAULTS)
+    assert check.problem is ShortcutProblem.TAKEN
+    assert check.other == WORKSPACE_SETTINGS_COMMAND
+    assert check_shortcut(WORKSPACE_SETTINGS_COMMAND, "Alt+Enter", DEFAULTS).problem is None
+    assert check_shortcut(WORKSPACE_SETTINGS_COMMAND, "Ctrl+K", DEFAULTS).problem is None
 
 
 def test_the_send_shortcuts_are_known_to_the_conflict_check() -> None:

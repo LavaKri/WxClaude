@@ -9,7 +9,7 @@ from wxclaude.core.conversation.messages import Message, Role, ToolUse
 from wxclaude.ui.conversation_view import ConversationView
 from wxclaude.ui.details_dialogs import LinksDialog, TableDialog, ToolsDialog
 from wxclaude.ui.tasks_dialog import TasksDialog
-from wxclaude.ui.usage_dialog import UsageDialog
+from wxclaude.ui.text_dialog import TextDialog
 
 pytestmark = pytest.mark.ui
 
@@ -97,10 +97,12 @@ def test_the_task_dialog_says_when_there_is_no_task(frame: wx.Frame) -> None:
     _close(dialog)
 
 
-def test_the_usage_dialog_shows_the_report_and_has_the_focus_on_it(frame: wx.Frame) -> None:
-    dialog = UsageDialog(frame, ["first fact.", "second fact."])
-    assert dialog.report == "first fact.\nsecond fact."
-    assert dialog.FindFocus() is dialog._report
+def test_the_text_dialog_shows_the_lines_and_has_the_focus_on_them(frame: wx.Frame) -> None:
+    dialog = TextDialog(frame, "Claude usage", "&Usage", ["first fact.", "second fact."])
+    assert dialog.GetTitle() == "Claude usage"
+    assert dialog.text == "first fact.\nsecond fact."
+    assert dialog.FindFocus() is dialog._text
+    assert dialog._text.GetName() == "Usage"
     _close(dialog)
 
 
